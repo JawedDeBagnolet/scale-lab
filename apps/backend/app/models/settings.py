@@ -2,8 +2,8 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -22,12 +22,12 @@ class WorkspaceSettings(Base):
     # Integration: OnlyChat
     oc_api_key: Mapped[str | None] = mapped_column(Text)
     oc_connected: Mapped[bool] = mapped_column(Boolean, default=False)
-    oc_last_sync: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    oc_last_sync: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Integration: GetMySocial
     gms_api_key: Mapped[str | None] = mapped_column(Text)
     gms_connected: Mapped[bool] = mapped_column(Boolean, default=False)
-    gms_last_sync: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    gms_last_sync: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Integration: Telegram alert bot
     tg_bot_token: Mapped[str | None] = mapped_column(Text)
@@ -41,7 +41,7 @@ class WorkspaceSettings(Base):
     notifications: Mapped[dict | None] = mapped_column(JSONB, default=dict)
 
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ,
+        DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
