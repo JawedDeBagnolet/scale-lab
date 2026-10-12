@@ -7,7 +7,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import comptes, comportements, dashboard, health, logs, personas, referentiels, settings, targets
+from app.api import (
+    comptes, comportements, crm, dashboard, health, iphones, liens, logs,
+    personas, posting, proxies, referentiels, scenarios, settings,
+    statistiques, targets, veille,
+)
 from app.auth import auth_middleware
 from app.db import engine
 from app.ws import ws_logs
@@ -60,6 +64,14 @@ app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
 app.include_router(comportements.router, prefix="/api/presets", tags=["comportements"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+app.include_router(proxies.router, prefix="/api/proxies", tags=["proxies"])
+app.include_router(iphones.router, prefix="/api/iphones", tags=["iphones"])
+app.include_router(statistiques.router, prefix="/api/stats", tags=["statistiques"])
+app.include_router(liens.router, prefix="/api/liens", tags=["liens"])
+app.include_router(crm.router, prefix="/api/crm", tags=["crm"])
+app.include_router(veille.router, prefix="/api/veille", tags=["veille"])
+app.include_router(scenarios.router, prefix="/api/scenarios", tags=["scenarios"])
+app.include_router(posting.router, prefix="/api/posting", tags=["posting"])
 
 # WebSocket (pas d'auth — le gateway proxy le WS séparément)
 app.websocket("/ws/logs")(ws_logs)
