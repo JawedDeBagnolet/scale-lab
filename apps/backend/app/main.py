@@ -7,9 +7,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import comptes, health, personas, referentiels
+from app.api import comptes, comportements, dashboard, health, logs, personas, referentiels, settings, targets
 from app.auth import auth_middleware
 from app.db import engine
+from app.ws import ws_logs
 
 
 @asynccontextmanager
@@ -51,6 +52,14 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 
 
 app.include_router(health.router, tags=["health"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(personas.router, prefix="/api/personas", tags=["personas"])
 app.include_router(comptes.router, prefix="/api/comptes", tags=["comptes"])
 app.include_router(referentiels.router, prefix="/api", tags=["referentiels"])
+app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
+app.include_router(comportements.router, prefix="/api/presets", tags=["comportements"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+
+# WebSocket (pas d'auth — le gateway proxy le WS séparément)
+app.websocket("/ws/logs")(ws_logs)
