@@ -1,0 +1,19 @@
+name = "scale-lab-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+# Doit rester AVANT les tables [vars] / [[kv_namespaces]] : en TOML, une cle
+# placee apres une table appartient a cette table.
+routes = [
+  { pattern = "api.scalelab.win/*", zone_name = "scalelab.win" }
+]
+
+# API_SECRET n'est pas ici : c'est un secret Worker.
+#   prod : npx wrangler secret put API_SECRET
+#   dev  : apps/gateway/.dev.vars (non versionne, voir .dev.vars.example)
+[vars]
+API_BASE = "https://vps.scalelab.win"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "15ea593d7838454dabd796d8e34669f4"

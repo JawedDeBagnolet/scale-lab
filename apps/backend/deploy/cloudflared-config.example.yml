@@ -1,0 +1,8 @@
+# A copier dans /root/.cloudflared/config.yml (remplacer <TUNNEL_ID>)
+tunnel: <TUNNEL_ID>
+credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: vps.scalelab.win
+    service: http://localhost:8000
+  - service: http_status:404
