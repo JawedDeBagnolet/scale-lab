@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import AsyncSessionLocal
 from app.models.iphone import IPhone
+from app.services.logs import emit_event
 from app.ws import manager as ws_manager
 
 logger = logging.getLogger("usb")
@@ -239,6 +240,14 @@ async def provision_device(
     await db.refresh(iphone)
     await _broadcast_iphone_status(iphone)
     logger.info("Provisioned new iPhone: %s (UDID: %s)", device_name, info["udid"])
+    await emit_event(
+        module="iphones",
+        event_type="device.provisioned",
+        level="info",
+        target=device_name,
+        message=f"iPhone provisionné : {device_name} (UDID: {info['udid'][:8]}…)",
+        meta={"iphone_id": str(iphone.id), "udid": info["udid"]},
+    )
     return iphone
 
 
@@ -307,6 +316,14 @@ class USBMonitor:
                     await db.refresh(iphone)
                     await _broadcast_iphone_status(iphone)
                     logger.info("iPhone back online: %s (%s)", iphone.name, serial)
+                    await emit_event(
+                        module="iphones",
+                        event_type="device.connected",
+                        level="info",
+                        target=iphone.name,
+                        message=f"iPhone connecté : {iphone.name}",
+                        meta={"iphone_id": str(iphone.id), "udid": serial},
+                    )
 
             # Detect disconnected devices
             lost_serials = self._known_serials - current_serials
@@ -321,6 +338,14 @@ class USBMonitor:
                     await db.refresh(iphone)
                     await _broadcast_iphone_status(iphone)
                     logger.warning("iPhone went offline: %s (%s)", iphone.name, serial)
+                    await emit_event(
+                        module="iphones",
+                        event_type="device.disconnected",
+                        level="warning",
+                        target=iphone.name,
+                        message=f"iPhone déconnecté : {iphone.name}",
+                        meta={"iphone_id": str(iphone.id), "udid": serial},
+                    )
 
             # Update telemetry for all connected devices
             for dev in current_devices:

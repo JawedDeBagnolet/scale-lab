@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.log import AlertRule, Event, Incident
 from app.schemas.log import AlertRuleCreate, EventCreate, LogStats
+from app.ws import manager as ws_manager
 
 
 # --- Events -------------------------------------------------------------------
@@ -31,12 +32,72 @@ async def list_events(
     return result.scalars().all()
 
 
+async def _broadcast_event(event: Event) -> None:
+    """Send a log event to all connected WebSocket clients."""
+    if ws_manager.count == 0:
+        return
+    await ws_manager.broadcast({
+        "type": "log_event",
+        "id": str(event.id),
+        "timestamp": event.timestamp.isoformat(),
+        "module": event.module,
+        "event_type": event.event_type,
+        "level": event.level,
+        "target": event.target,
+        "cause": event.cause,
+        "code": event.code,
+        "message": event.message,
+        "meta": event.meta,
+    })
+
+
 async def create_event(db: AsyncSession, data: EventCreate) -> Event:
     e = Event(**data.model_dump())
     db.add(e)
     await db.commit()
     await db.refresh(e)
+    await _broadcast_event(e)
     return e
+
+
+async def emit_event(
+    *,
+    module: str,
+    event_type: str,
+    message: str,
+    level: str = "info",
+    target: str | None = None,
+    cause: str | None = None,
+    code: str | None = None,
+    meta: dict | None = None,
+) -> None:
+    """Fire-and-forget: persist an event and broadcast it via WebSocket.
+
+    Use this from background services (engine, USB monitor) that don't have
+    an active request-scoped DB session.
+    """
+    from app.db import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            e = Event(
+                module=module,
+                event_type=event_type,
+                level=level,
+                target=target,
+                cause=cause,
+                code=code,
+                message=message,
+                meta=meta,
+            )
+            db.add(e)
+            await db.commit()
+            await db.refresh(e)
+            await _broadcast_event(e)
+    except Exception:
+        # Never crash a background service because of a log write failure
+        import logging
+        logging.getLogger("logs").exception("Failed to emit event")
 
 
 async def get_stats(db: AsyncSession) -> LogStats:

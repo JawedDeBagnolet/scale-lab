@@ -24,6 +24,7 @@ from app.db import AsyncSessionLocal
 from app.models.compte import Compte
 from app.models.iphone import IPhone
 from app.models.scenario import PlageHoraire, Run, Scenario
+from app.services.logs import emit_event
 from app.ws import manager as ws_manager
 
 logger = logging.getLogger("engine")
@@ -470,6 +471,14 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
             ))
             if not success:
                 step_ok = False
+                await emit_event(
+                    module="scenarios",
+                    event_type="action.error",
+                    level="error",
+                    target=str(acc_id),
+                    message=f"Erreur action '{action_type}' step {current_step_idx}: {detail}",
+                    meta={"run_id": str(run.id), "step": current_step_idx, "platform": platform},
+                )
                 break
 
         acc_progress[step_key] = "ok" if step_ok else "error"
@@ -520,6 +529,16 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
 
     await db.commit()
     await _broadcast_run(run)
+
+    if run.status == "done":
+        await emit_event(
+            module="scenarios",
+            event_type="run.done",
+            level="info",
+            target=scenario.name if scenario else None,
+            message=f"Run terminé avec succès",
+            meta={"run_id": str(run.id)},
+        )
 
 
 async def _broadcast_run(run: Run) -> None:
@@ -605,6 +624,13 @@ class ExecutionEngine:
                     ]
                     await db.commit()
                     await _broadcast_run(run)
+                    await emit_event(
+                        module="scenarios",
+                        event_type="run.error",
+                        level="critical",
+                        message=f"Erreur critique moteur d'exécution",
+                        meta={"run_id": str(run.id)},
+                    )
 
     @property
     def is_running(self) -> bool:
@@ -668,6 +694,14 @@ async def launch_run(
 
     await _broadcast_run(run)
     logger.info("Launched run %s for scenario %s", run.id, scenario.name)
+    await emit_event(
+        module="scenarios",
+        event_type="run.started",
+        level="info",
+        target=scenario.name,
+        message=f"Run lancé : '{scenario.name}' sur {len(comptes)} compte(s)",
+        meta={"run_id": str(run.id), "scenario_id": str(scenario_id)},
+    )
     return run
 
 
@@ -682,6 +716,13 @@ async def pause_run(db: AsyncSession, run: Run) -> Run:
     await db.commit()
     await db.refresh(run)
     await _broadcast_run(run)
+    await emit_event(
+        module="scenarios",
+        event_type="run.paused",
+        level="warning",
+        message=f"Run mis en pause",
+        meta={"run_id": str(run.id)},
+    )
     return run
 
 
@@ -697,6 +738,13 @@ async def resume_run(db: AsyncSession, run: Run) -> Run:
     await db.commit()
     await db.refresh(run)
     await _broadcast_run(run)
+    await emit_event(
+        module="scenarios",
+        event_type="run.resumed",
+        level="info",
+        message=f"Run repris",
+        meta={"run_id": str(run.id)},
+    )
     return run
 
 
@@ -759,4 +807,11 @@ async def abort_run(db: AsyncSession, run: Run) -> Run:
     await db.commit()
     await db.refresh(run)
     await _broadcast_run(run)
+    await emit_event(
+        module="scenarios",
+        event_type="run.aborted",
+        level="warning",
+        message=f"Run annulé",
+        meta={"run_id": str(run.id)},
+    )
     return run
