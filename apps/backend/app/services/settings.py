@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.settings import WorkspaceSettings
@@ -70,11 +72,21 @@ async def update_integration(
     if provider == "oc":
         if "api_key" in data and data["api_key"] is not None:
             s.oc_api_key = data["api_key"]
-            s.oc_connected = bool(data["api_key"])
+            # Test the key against real API
+            from app.services import oc_client
+            result = await oc_client.test_connection(data["api_key"])
+            s.oc_connected = result.get("ok", False)
+            if s.oc_connected:
+                s.oc_last_sync = datetime.now(UTC)
     elif provider == "gms":
         if "api_key" in data and data["api_key"] is not None:
             s.gms_api_key = data["api_key"]
-            s.gms_connected = bool(data["api_key"])
+            # Test the key against real API
+            from app.services import gms_client
+            result = await gms_client.test_connection(data["api_key"])
+            s.gms_connected = result.get("ok", False)
+            if s.gms_connected:
+                s.gms_last_sync = datetime.now(UTC)
     elif provider == "tg":
         if "bot_token" in data and data["bot_token"] is not None:
             s.tg_bot_token = data["bot_token"]

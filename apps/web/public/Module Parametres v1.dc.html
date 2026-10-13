@@ -159,7 +159,7 @@ a:hover { color: #b9d0ff; }
 class Component extends DCLogic {
   state = { tab: 'int', navCollapsed: false, showTop: false, toast: null, toastErr: false, reveal: {}, testing: null, ready: false, cfg: null, saved: null, syncing: false, syncedAt: 4 };
   DEF = {
-    oc: { key: 'oc_live_7Hq2mX9pLk4vR8tN3f9a', status: 'ok' },
+    oc: { key: '', status: 'none' },
     gm: { key: '', status: 'none' },
     tg: { key: '7012345678:AAH-k3Jd9sLqPz0vXc2Bn5Mw8Ty1Ru4Ei6', chat: '@scalelab_alerts', status: 'ok' },
     notif: { domain: { on: true, thr: 85 }, domfull: { on: true }, balance: { on: true, min: '50' }, dead: { on: true } },
@@ -177,7 +177,41 @@ class Component extends DCLogic {
     this._apiFn = () => this.forceUpdate(); window.addEventListener('scale-api', this._apiFn); window.addEventListener('storage', this._apiFn);
     const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
     const D0 = JSON.parse(JSON.stringify(this.DEF)); if (window.SCALE_DATA && window.SCALE_DATA.empty) { D0.oc.key = ''; D0.gm.key = ''; D0.tg.key = ''; D0.tg.chat = ''; D0.oc.status = D0.gm.status = D0.tg.status = 'none'; } const c = JSON.stringify(D0); this.setState({ cfg: JSON.parse(c), saved: JSON.parse(c) });
-    const boot = () => this.setState({ ready: true }); if (window.SCALE_DATA) boot(); else this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); boot(); } }, 80);
+    const boot = () => { this.setState({ ready: true }); this._loadInitialState(); }; if (window.SCALE_DATA) boot(); else this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); boot(); } }, 80);
+  }
+  _loadStatus(svc) {
+    var me = this; var API = window.SCALE_DATA && window.SCALE_DATA.api;
+    if (!API) return;
+    API.getStatus(svc).then(function (r) {
+      if (!r || !r.ok) return;
+      var d = r.data || {};
+      if (svc === 'oc') { me._ocStatus = d; }
+      else if (svc === 'gms') { me._gmsStatus = d; }
+      me.forceUpdate();
+    });
+  }
+  _loadInitialState() {
+    var me = this; var SD = window.SCALE_DATA; if (!SD) return;
+    var ws = SD.workspace;
+    if (ws) {
+      var cfg = JSON.parse(JSON.stringify(me.state.cfg));
+      if (ws.oc) {
+        cfg.oc.key = ws.oc.key_tail || '';
+        cfg.oc.status = ws.oc.connected ? 'ok' : (ws.oc.key_tail ? 'err' : 'none');
+        if (ws.oc.connected) me._loadStatus('oc');
+      }
+      if (ws.gms) {
+        cfg.gm.key = ws.gms.key_tail || '';
+        cfg.gm.status = ws.gms.connected ? 'ok' : (ws.gms.key_tail ? 'err' : 'none');
+        if (ws.gms.connected) me._loadStatus('gms');
+      }
+      if (ws.tg) {
+        cfg.tg.key = ws.tg.key_tail || '';
+        cfg.tg.status = ws.tg.connected ? 'ok' : 'none';
+      }
+      var c = JSON.stringify(cfg);
+      me.setState({ cfg: JSON.parse(c), saved: JSON.parse(c) });
+    }
   }
   componentWillUnmount() { window.removeEventListener('scale-api', this._apiFn); window.removeEventListener('storage', this._apiFn); clearInterval(this._sd); clearTimeout(this._tt); clearTimeout(this._ts); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift = null; } }
   toast(m, err) { clearTimeout(this._tt); this.setState({ toast: m, toastErr: !!err }); this._tt = setTimeout(() => this.setState({ toast: null }), 2400); }
@@ -200,7 +234,7 @@ class Component extends DCLogic {
       copy: () => { try { navigator.clipboard.writeText(c.key).catch(() => {}); } catch (e) {} this.toast('Copié'); },
       statusLabel: st[0], pill: this.pill(st[1], st[2]), hasErr: (c.status === 'err' || sim === 'auth' || sim === 'down') && !testing, err: sim === 'down' ? 'Le service ne répond pas. Dernière synchro réussie il y a ' + API.since(svc) + '.' : 'La clé a été refusée ou a expiré. Colle une nouvelle clé depuis le dashboard du service, puis teste-la.',
       testLabel: testing ? 'Test…' : 'Tester', testIcon: testing ? 'ph ph-circle-notch' : 'ph ph-plugs-connected', testStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 36, padding: '0 13px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', fontSize: 12.5, fontWeight: 600, color: '#e8eaf3', cursor: testing ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: testing ? .6 : 1 },
-      test: () => { if (testing || !c.key) return; this.setState({ testing: id }); clearTimeout(this._ts); this._ts = setTimeout(() => { const ok = c.key.length >= minLen && !/\s/.test(c.key); this.set(C => { C[id].status = ok ? 'ok' : 'err'; return C; }); this.setState({ testing: null }); if (ok && svc && API && sim !== 'ok') API.set(svc, 'ok'); this.toast(ok ? okMsg : 'Connexion refusée', !ok); }, 900); } };
+      test: () => { if (testing || !c.key) return; if (c.key.length < minLen || /\s/.test(c.key)) { this.toast('Clé invalide (trop courte ou contient des espaces)', true); return; } this.setState({ testing: id }); const me = this; if (svc && API) { API.saveKey(svc, c.key).then(function (r) { if (r && r.ok) { me.set(function (C) { C[id].status = 'ok'; return C; }); API.set(svc, 'ok'); me.toast(okMsg); me._loadStatus(svc); } else { me.set(function (C) { C[id].status = 'err'; return C; }); API.set(svc, 'auth'); me.toast(r && r.error ? r.error : 'Connexion refusée', true); } me.setState({ testing: null }); }); } else { this.set(function (C) { C[id].status = 'err'; return C; }); this.setState({ testing: null }); this.toast('API non disponible', true); } } };
   }
   shellVals() {
     const s = this.state;
@@ -234,17 +268,17 @@ class Component extends DCLogic {
     out.subtitle = s.tab === 'int' ? 'Clés API des services connectés · elles restent côté serveur, l’app n’affiche que les 4 derniers caractères' : s.tab === 'notif' ? 'Alertes envoyées par le bot Telegram' : 'Nom, devise, fuseau et marchés';
     const per = SD.personas || [], oca = SD.ocAccounts || [], lic = SD.licenses || [];
     const nLic = lic.filter(l => l.status ? l.status === 'active' : l.active !== false).length;
-    out.oc = Object.assign(this.keyCard('oc', 16, 'OnlyChat connecté · 6 créatrices trouvées'), { meta: 'Dernière synchro il y a ' + s.syncedAt + ' min',
-      facts: [{ label: 'Créatrices', v: String(per.length), sub: '= personas de l’app' }, { label: 'Comptes OnlyChat', v: String(oca.length || per.length), sub: 'OnlyFans + Telegram' }, { label: 'Licences actives', v: String(nLic || oca.length), sub: 'renouvellement auto dans OnlyChat' }, { label: 'Solde', v: '182 $', sub: 'crédits OnlyChat' }],
-      syncTxt: 'Créatrices, scripts et transactions sont relus toutes les 15 min.', syncIcon: s.syncing ? 'ph ph-circle-notch' : 'ph ph-arrows-clockwise',
-      sync: () => { if (s.syncing) return; this.setState({ syncing: true }); setTimeout(() => { this.setState({ syncing: false, syncedAt: 0 }); this.toast('Synchronisation OnlyChat terminée'); }, 1100); } });
-    if (s.syncedAt === 0) out.oc.meta = 'Synchronisé à l’instant';
+    { const ocs = this._ocStatus || {}; const ocConnected = C.oc.key && C.oc.status === 'ok'; const API = window.SCALE_DATA && window.SCALE_DATA.api; const ocSince = API ? API.since('oc') : 'jamais';
+    out.oc = Object.assign(this.keyCard('oc', 16, 'OnlyChat connecté'), { meta: ocConnected ? (ocSince === 'jamais' ? 'Jamais synchronisé' : ocSince === 'a l\'instant' ? 'Synchronisé à l\'instant' : 'Dernière synchro il y a ' + ocSince) : '',
+      facts: ocConnected ? [{ label: 'Créatrices', v: String(ocs.creator_count != null ? ocs.creator_count : '-'), sub: 'dans l\'organisation OC' }, { label: 'Organisation', v: ocs.org_name || '-', sub: 'nom du compte OnlyChat' }, { label: 'Solde', v: ocs.balance != null ? ocs.balance + ' $' : '-', sub: 'crédits OnlyChat' }] : [],
+      syncTxt: 'Créatrices, scripts et transactions sont relus depuis l\'API.', syncIcon: s.syncing ? 'ph ph-circle-notch' : 'ph ph-arrows-clockwise',
+      sync: () => { if (s.syncing) return; this.setState({ syncing: true }); const me = this; if (API) { API.retry('oc'); me._loadStatus('oc'); setTimeout(() => { me.setState({ syncing: false }); me.toast('Synchronisation OnlyChat terminée'); }, 1500); } } }); }
     { const API = window.SCALE_DATA && window.SCALE_DATA.api; if (API) { const so = API.get('oc'); if (so === 'sync') out.oc.meta = 'Synchronisation en cours…'; else if (so !== 'ok') out.oc.meta = 'Dernière synchro réussie il y a ' + API.since('oc'); } }
-    { const gmConnected = C.gm.key && C.gm.status === 'ok';
-    out.gm = Object.assign(this.keyCard('gm', 16, 'GetMySocial connecté · plan Agency'), { meta: gmConnected ? 'Plan Agency' : '',
-      facts: gmConnected ? [{ label: 'Liens GetMySocial', v: '9', sub: 'liens directs et landings' }, { label: 'Landing pages', v: '6', sub: 'construites dans l’app' }, { label: 'Options Agency', v: 'Actives', sub: 'pixels, paramètres, sans marque' }] : [],
-      hasDomains: gmConnected,
-      domains: gmConnected ? [['gms.fyi', 'Domaine par défaut', 'ok'], ['bio.velvetlinks.co', 'Personnalisé · 4 landings', 'ok'], ['links.sunbio.me', 'Personnalisé', 'pending']].map(d => ({ host: d[0], sub: d[1], status: d[2] === 'ok' ? 'Vérifié' : 'DNS en attente', pill: d[2] === 'ok' ? this.pill('#86efac', 'rgba(74,222,128,.1)') : this.pill('#f5c77e', 'rgba(245,199,126,.12)') })) : [] }); }
+    { const gmConnected = C.gm.key && C.gm.status === 'ok'; const gmsS = this._gmsStatus || {}; const API2 = window.SCALE_DATA && window.SCALE_DATA.api; const gmSince = API2 ? API2.since('gms') : 'jamais';
+    out.gm = Object.assign(this.keyCard('gm', 16, 'GetMySocial connecté'), { meta: gmConnected ? (gmSince === 'jamais' ? 'Jamais synchronisé' : gmSince === 'a l\'instant' ? 'Synchronisé à l\'instant' : 'Dernière synchro il y a ' + gmSince) : '',
+      facts: gmConnected ? [{ label: 'Liens', v: String(gmsS.link_count != null ? gmsS.link_count : '-'), sub: 'liens GetMySocial' }, { label: 'Landing pages', v: String(gmsS.landing_count != null ? gmsS.landing_count : '-'), sub: 'construites dans GMS' }, { label: 'Groupes', v: String(gmsS.group_count != null ? gmsS.group_count : '-'), sub: 'de liens' }] : [],
+      hasDomains: false,
+      domains: [] }); }
     { const API = window.SCALE_DATA && window.SCALE_DATA.api; if (API) { const sg = API.get('gms'); if (sg === 'sync') out.gm.meta = 'Synchronisation en cours…'; else if (sg !== 'ok') out.gm.meta = 'Dernière synchro réussie il y a ' + API.since('gms'); } }
     out.tg = Object.assign(this.keyCard('tg', 30, 'Bot joignable'), { meta: '@ScaleLabAlertsBot', chat: C.tg.chat, setChat: e => { const v = e.target.value.trim(); this.set(X => { X.tg.chat = v; return X; }); },
       ping: () => { if (!C.tg.chat) return this.toast('Indique un destinataire', true); if (C.tg.status !== 'ok') return this.toast('Teste d’abord le token du bot', true); this.toast('Message test envoyé à ' + C.tg.chat); } });
@@ -253,7 +287,7 @@ class Component extends DCLogic {
     out.notifs = [
       { k: 'domain', icon: 'ph ph-globe-hemisphere-west', label: 'Domaine bientôt plein', sub: 'Un domaine tracké dépasse le seuil de liens actifs', from: 'Liens', thrLabel: 'Seuil', isSeg: true, seg: [70, 80, 85, 90].map(v => ({ label: v + ' %', style: this.segStyle(N.domain.thr === v), go: () => setN('domain', { thr: v }) })), thrHint: 'Même réglage que dans Liens › Domaines' },
       { k: 'domfull', icon: 'ph ph-prohibit', label: 'Domaine plein', sub: 'Un domaine atteint sa limite de liens actifs : plus aucun lien ne peut y être créé', from: 'Liens · Logs' },
-      { k: 'balance', icon: 'ph ph-wallet', label: 'Solde OnlyChat bas', sub: 'Le solde de crédits passe sous le montant choisi', from: 'CRM', thrLabel: 'Sous', isMoney: true, money: N.balance.min, setMoney: e => setN('balance', { min: e.target.value.replace(/\D/g, '') }), thrHint: 'Solde actuel : 182 $' },
+      { k: 'balance', icon: 'ph ph-wallet', label: 'Solde OnlyChat bas', sub: 'Le solde de crédits passe sous le montant choisi', from: 'CRM', thrLabel: 'Sous', isMoney: true, money: N.balance.min, setMoney: e => setN('balance', { min: e.target.value.replace(/\D/g, '') }), thrHint: 'Solde actuel : ' + ((this._ocStatus || {}).balance != null ? (this._ocStatus || {}).balance + ' $' : '-') },
       { k: 'dead', icon: 'ph ph-link-break', label: 'Lien sur un compte indisponible', sub: 'Le compte qui porte un lien passe en suspendu, checkpoint ou session expirée', from: 'Liens · Comptes' }
     ].map((n, i) => Object.assign({ isSeg: false, isMoney: false, seg: [], money: '', setMoney: null, thrHint: '', thrLabel: '' }, n, { track: this.track(N[n.k].on), toggle: () => setN(n.k, { on: !N[n.k].on }), hasThr: N[n.k].on && (n.isSeg || n.isMoney), row: Object.assign({}, row, i === 0 ? { borderTop: 'none' } : {}, N[n.k].on ? {} : { opacity: .7 }) }));
     out.notifDest = C.tg.status === 'ok' && C.tg.chat ? 'Envoyées à ' + C.tg.chat + ' par @ScaleLabAlertsBot' : 'Configure le bot d’alertes dans Intégrations pour recevoir ces notifications';
@@ -272,7 +306,7 @@ class Component extends DCLogic {
     const a = JSON.stringify(Object.assign({}, C, { oc: { key: C.oc.key }, gm: { key: C.gm.key }, tg: { key: C.tg.key, chat: C.tg.chat } })), b = JSON.stringify(Object.assign({}, s.saved, { oc: { key: s.saved.oc.key }, gm: { key: s.saved.gm.key }, tg: { key: s.saved.tg.key, chat: s.saved.tg.chat } }));
     out.dirty = a !== b; out.dirtyTxt = 'Modifications non enregistrées';
     out.discard = () => this.setState({ cfg: JSON.parse(JSON.stringify(s.saved)), reveal: {} });
-    out.save = () => { const bad = ['oc', 'gm', 'tg'].filter(k => C[k].key !== s.saved[k].key && C[k].status !== 'ok'); if (bad.length) { this.setState({ tab: 'int' }); return this.toast('Teste les clés modifiées avant d’enregistrer', true); } this.setState({ saved: JSON.parse(JSON.stringify(C)), reveal: {} }); this.toast('Paramètres enregistrés'); };
+    out.save = () => { const bad = ['oc', 'gm', 'tg'].filter(k => C[k].key !== s.saved[k].key && C[k].status !== 'ok'); if (bad.length) { this.setState({ tab: 'int' }); return this.toast('Teste les clés modifiées avant d\'enregistrer', true); } const D = window.SCALE_DATA; if (D && D.apiPatch) { D.apiPatch('/settings/workspace', { name: C.ws.name, currency: C.ws.cur, timezone: C.ws.tz }); if (C.tg.key !== s.saved.tg.key || C.tg.chat !== s.saved.tg.chat) { D.apiPatch('/settings/integration/tg', { bot_token: C.tg.key || null, chat_id: C.tg.chat || null }); } if (C.notif) { D.apiPatch('/settings/notifications', C.notif); } } this.setState({ saved: JSON.parse(JSON.stringify(C)), reveal: {} }); this.toast('Paramètres enregistrés'); };
     return out;
   }
 }

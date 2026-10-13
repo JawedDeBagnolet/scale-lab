@@ -79,6 +79,36 @@
     return false;
   }
 
+  // PUT synchrone — retourne l'objet ou null
+  function apiPutSync(path, data) {
+    try {
+      var x = new XMLHttpRequest();
+      x.open('PUT', API_BASE + path, false);
+      x.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+      x.setRequestHeader('Content-Type', 'application/json');
+      x.send(JSON.stringify(data));
+      if (x.status >= 200 && x.status < 300) {
+        return JSON.parse(x.responseText);
+      }
+      console.warn('[Scale Lab] PUT ' + path + ' -> ' + x.status, x.responseText);
+    } catch (e) {
+      console.warn('[Scale Lab] Erreur PUT ' + path + ' :', e);
+    }
+    return null;
+  }
+
+  // Async fetch (pour les appels non-bloquants)
+  function apiAsync(method, path, data) {
+    var opts = {
+      method: method,
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }
+    };
+    if (data) opts.body = JSON.stringify(data);
+    return fetch(API_BASE + path, opts)
+      .then(function (r) { return r.json(); })
+      .catch(function (e) { console.warn('[Scale Lab] Async ' + method + ' ' + path + ' :', e); return null; });
+  }
+
   // Helper : s'assurer qu'on a un array
   function safe(v) { return Array.isArray(v) ? v : []; }
 
@@ -641,44 +671,92 @@
     return { device: ch.d, n: ch.n, max: ch.d.rules.max, why: why, skipped: skipped };
   }
 
-  // ─── Etat des integrations (localStorage) ─────────────────────────
-  var API_KEY = 'scale.apiSim';
-  function apiRead() {
-    try { return JSON.parse(localStorage.getItem(API_KEY) || '{}'); } catch (e) { return {}; }
+  // ─── Etat des integrations (backend reel) ──────────────────────────
+  var _apiState = { oc: 'none', gms: 'none' };
+  var _apiSync = {};  // timestamps de derniere synchro
+
+  // Mise a jour de l'etat depuis les donnees workspace
+  function apiUpdateFromWorkspace(ws) {
+    if (!ws) return;
+    if (ws.oc) {
+      _apiState.oc = ws.oc.connected ? 'ok' : (ws.oc.key_tail ? 'auth' : 'none');
+      if (ws.oc.last_sync) _apiSync.oc = new Date(ws.oc.last_sync).getTime();
+    }
+    if (ws.gms) {
+      _apiState.gms = ws.gms.connected ? 'ok' : (ws.gms.key_tail ? 'auth' : 'none');
+      if (ws.gms.last_sync) _apiSync.gms = new Date(ws.gms.last_sync).getTime();
+    }
   }
+
   var api = {
     NAMES: { oc: 'OnlyChat', gms: 'GetMySocial' },
-    STATES: [['ok', 'Connecte'], ['sync', 'Synchro en cours'], ['down', 'Injoignable'], ['auth', 'Cle refusee'], ['rate', 'Limite de requetes']],
-    get: function (svc) { return apiRead()[svc] || 'ok'; },
+    STATES: [['ok', 'Connecte'], ['sync', 'Synchro en cours'], ['down', 'Injoignable'], ['auth', 'Cle refusee'], ['rate', 'Limite de requetes'], ['none', 'Non configure']],
+    get: function (svc) { return _apiState[svc] || 'none'; },
     set: function (svc, v) {
-      var o = apiRead(); o[svc] = v;
-      try { localStorage.setItem(API_KEY, JSON.stringify(o)); } catch (e) {}
+      _apiState[svc] = v;
       window.dispatchEvent(new Event('scale-api'));
     },
-    lastSync: function (svc) { return Date.now() - (svc === 'oc' ? 2 * 36e5 + 14 * 6e4 : 47 * 6e4); },
+    lastSync: function (svc) { return _apiSync[svc] || 0; },
     stale: function (svc) { var s = api.get(svc); return s === 'down' || s === 'auth' || s === 'rate'; },
     since: function (svc) {
-      var m = Math.round((Date.now() - api.lastSync(svc)) / 6e4);
-      return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(m % 60).padStart(2, '0') : '');
+      var ts = api.lastSync(svc);
+      if (!ts) return 'jamais';
+      var m = Math.round((Date.now() - ts) / 6e4);
+      return m < 1 ? 'a l\'instant' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(m % 60).padStart(2, '0') : '');
     },
-    retry: function (svc) { api.set(svc, 'sync'); setTimeout(function () { api.set(svc, 'ok'); }, 1600); },
+    retry: function (svc) {
+      api.set(svc, 'sync');
+      apiAsync('POST', '/integrations/' + svc + '/test', {}).then(function (r) {
+        if (r && r.ok) { api.set(svc, 'ok'); _apiSync[svc] = Date.now(); }
+        else api.set(svc, 'down');
+      });
+    },
+    // Test a key (async, returns promise)
+    testKey: function (svc, key) {
+      return apiAsync('POST', '/integrations/' + svc + '/test', { api_key: key || null });
+    },
+    // Save a key (async, returns promise)
+    saveKey: function (svc, key) {
+      return apiAsync('PUT', '/integrations/' + svc + '/key', { api_key: key });
+    },
+    // Remove a key (async)
+    removeKey: function (svc) {
+      return apiAsync('DELETE', '/integrations/' + svc + '/key', null);
+    },
+    // Get live status (async)
+    getStatus: function (svc) {
+      return apiAsync('GET', '/integrations/' + svc + '/status');
+    },
+    // GMS data proxies
+    gmsLinks: function (limit, cursor) {
+      var q = '?limit=' + (limit || 25);
+      if (cursor) q += '&cursor=' + encodeURIComponent(cursor);
+      return apiAsync('GET', '/integrations/gms/links' + q);
+    },
+    gmsAnalytics: function (timeframe) {
+      return apiAsync('GET', '/integrations/gms/analytics/overview?timeframe=' + (timeframe || 'today'));
+    },
+    // OC data proxies
+    ocCreators: function () {
+      return apiAsync('GET', '/integrations/oc/creators');
+    },
     subscribe: function (fn) {
       window.addEventListener('scale-api', fn);
-      window.addEventListener('storage', fn);
-      return function () { window.removeEventListener('scale-api', fn); window.removeEventListener('storage', fn); };
+      return function () { window.removeEventListener('scale-api', fn); };
     },
     banners: function (svcs, compact) {
       return svcs.map(function (svc) {
-        var s = api.get(svc), N = api.NAMES[svc], ago = api.since(svc),
-            t = new Date(api.lastSync(svc)),
-            hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-        if (s === 'ok') return null;
+        var s = api.get(svc), N = api.NAMES[svc], ts = api.lastSync(svc), ago = api.since(svc);
+        var t = ts ? new Date(ts) : new Date();
+        var hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+        if (s === 'ok' || s === 'none') return null;
         var B = {
           sync: ['ph ph-arrows-clockwise', 'Synchronisation ' + N + ' en cours', 'Les donnees se mettent a jour. Elles restent consultables pendant la synchro.', ['#8db4fd', 'rgba(141,180,253,.3)', 'rgba(141,180,253,.06)'], false, false],
           down: ['ph ph-cloud-slash', N + ' ne repond pas', "Donnees de la derniere synchro reussie, a " + hh + " (il y a " + ago + "). Les modifications vers " + N + " sont en attente.", ['#f5c77e', 'rgba(245,199,126,.32)', 'rgba(245,199,126,.06)'], true, true],
           auth: ['ph ph-key', 'Cle API ' + N + ' refusee', "La cle a expire ou a ete revoquee. Donnees figees a " + hh + " (il y a " + ago + ") tant qu'une nouvelle cle n'est pas enregistree.", ['#fda4af', 'rgba(244,114,140,.35)', 'rgba(244,114,140,.07)'], false, true],
           rate: ['ph ph-hourglass-medium', 'Limite de requetes ' + N + ' atteinte', "Nouvel essai automatique dans 4 min. Donnees de " + hh + " (il y a " + ago + ").", ['#f5c77e', 'rgba(245,199,126,.32)', 'rgba(245,199,126,.06)'], true, false]
         }[s];
+        if (!B) return null;
         return {
           svc: svc, state: s, icon: B[0], title: B[1], text: compact ? '' : B[2], hasText: !compact,
           canRetry: B[4], retry: function () { api.retry(svc); }, retryLabel: 'Reessayer',
@@ -801,8 +879,10 @@
     // ── API helpers (write) ──
     apiPost: apiPostSync,
     apiPatch: apiPatchSync,
+    apiPut: apiPutSync,
     apiDelete: apiDeleteSync,
     apiFetch: apiFetchSync,
+    apiAsync: apiAsync,
 
     // ── Transforms (exposes pour les modules) ──
     x: {
@@ -1002,10 +1082,11 @@
           var raw = apiFetchSync('/settings');
           if (raw && !Array.isArray(raw)) {
             D.workspace = xWorkspace(raw);
+            apiUpdateFromWorkspace(raw);
           } else {
             D.workspace = xWorkspace({});
           }
-          console.log('[Scale Lab] Module settings : workspace charge');
+          console.log('[Scale Lab] Module settings : workspace charge, oc=' + api.get('oc') + ', gms=' + api.get('gms'));
           break;
 
         case 'proxies':
