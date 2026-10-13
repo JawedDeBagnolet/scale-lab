@@ -235,16 +235,16 @@ class Component extends DCLogic {
     const per = SD.personas || [], oca = SD.ocAccounts || [], lic = SD.licenses || [];
     const nLic = lic.filter(l => l.status ? l.status === 'active' : l.active !== false).length;
     out.oc = Object.assign(this.keyCard('oc', 16, 'OnlyChat connecté · 6 créatrices trouvées'), { meta: 'Dernière synchro il y a ' + s.syncedAt + ' min',
-      facts: [{ label: ‘Créatrices’, v: String(per.length), sub: ‘= personas de l’app’ }, { label: ‘Comptes OnlyChat’, v: String(oca.length || per.length), sub: ‘OnlyFans + Telegram’ }, { label: ‘Licences actives’, v: String(nLic || oca.length), sub: ‘renouvellement auto dans OnlyChat’ }, { label: ‘Solde’, v: ‘182 $’, sub: ‘crédits OnlyChat’ }],
+      facts: [{ label: 'Créatrices', v: String(per.length), sub: '= personas de l’app' }, { label: 'Comptes OnlyChat', v: String(oca.length || per.length), sub: 'OnlyFans + Telegram' }, { label: 'Licences actives', v: String(nLic || oca.length), sub: 'renouvellement auto dans OnlyChat' }, { label: 'Solde', v: '182 $', sub: 'crédits OnlyChat' }],
       syncTxt: 'Créatrices, scripts et transactions sont relus toutes les 15 min.', syncIcon: s.syncing ? 'ph ph-circle-notch' : 'ph ph-arrows-clockwise',
       sync: () => { if (s.syncing) return; this.setState({ syncing: true }); setTimeout(() => { this.setState({ syncing: false, syncedAt: 0 }); this.toast('Synchronisation OnlyChat terminée'); }, 1100); } });
     if (s.syncedAt === 0) out.oc.meta = 'Synchronisé à l’instant';
     { const API = window.SCALE_DATA && window.SCALE_DATA.api; if (API) { const so = API.get('oc'); if (so === 'sync') out.oc.meta = 'Synchronisation en cours…'; else if (so !== 'ok') out.oc.meta = 'Dernière synchro réussie il y a ' + API.since('oc'); } }
-    { const gmConnected = C.gm.key && C.gm.status === ‘ok’;
-    out.gm = Object.assign(this.keyCard(‘gm’, 16, ‘GetMySocial connecté · plan Agency’), { meta: gmConnected ? ‘Plan Agency’ : ‘’,
-      facts: gmConnected ? [{ label: ‘Liens GetMySocial’, v: ‘9’, sub: ‘liens directs et landings’ }, { label: ‘Landing pages’, v: ‘6’, sub: ‘construites dans l’app’ }, { label: ‘Options Agency’, v: ‘Actives’, sub: ‘pixels, paramètres, sans marque’ }] : [],
+    { const gmConnected = C.gm.key && C.gm.status === 'ok';
+    out.gm = Object.assign(this.keyCard('gm', 16, 'GetMySocial connecté · plan Agency'), { meta: gmConnected ? 'Plan Agency' : '',
+      facts: gmConnected ? [{ label: 'Liens GetMySocial', v: '9', sub: 'liens directs et landings' }, { label: 'Landing pages', v: '6', sub: 'construites dans l’app' }, { label: 'Options Agency', v: 'Actives', sub: 'pixels, paramètres, sans marque' }] : [],
       hasDomains: gmConnected,
-      domains: gmConnected ? [[‘gms.fyi’, ‘Domaine par défaut’, ‘ok’], [‘bio.velvetlinks.co’, ‘Personnalisé · 4 landings’, ‘ok’], [‘links.sunbio.me’, ‘Personnalisé’, ‘pending’]].map(d => ({ host: d[0], sub: d[1], status: d[2] === ‘ok’ ? ‘Vérifié’ : ‘DNS en attente’, pill: d[2] === ‘ok’ ? this.pill(‘#86efac’, ‘rgba(74,222,128,.1)’) : this.pill(‘#f5c77e’, ‘rgba(245,199,126,.12)’) })) : [] }); }
+      domains: gmConnected ? [['gms.fyi', 'Domaine par défaut', 'ok'], ['bio.velvetlinks.co', 'Personnalisé · 4 landings', 'ok'], ['links.sunbio.me', 'Personnalisé', 'pending']].map(d => ({ host: d[0], sub: d[1], status: d[2] === 'ok' ? 'Vérifié' : 'DNS en attente', pill: d[2] === 'ok' ? this.pill('#86efac', 'rgba(74,222,128,.1)') : this.pill('#f5c77e', 'rgba(245,199,126,.12)') })) : [] }); }
     { const API = window.SCALE_DATA && window.SCALE_DATA.api; if (API) { const sg = API.get('gms'); if (sg === 'sync') out.gm.meta = 'Synchronisation en cours…'; else if (sg !== 'ok') out.gm.meta = 'Dernière synchro réussie il y a ' + API.since('gms'); } }
     out.tg = Object.assign(this.keyCard('tg', 30, 'Bot joignable'), { meta: '@ScaleLabAlertsBot', chat: C.tg.chat, setChat: e => { const v = e.target.value.trim(); this.set(X => { X.tg.chat = v; return X; }); },
       ping: () => { if (!C.tg.chat) return this.toast('Indique un destinataire', true); if (C.tg.status !== 'ok') return this.toast('Teste d’abord le token du bot', true); this.toast('Message test envoyé à ' + C.tg.chat); } });
