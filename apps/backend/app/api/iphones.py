@@ -4,8 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.schemas.iphone import IPhoneCreate, IPhoneOut, IPhoneUpdate, TelemetryUpdate
+from app.schemas.iphone import (
+    IPhoneCreate, IPhoneOut, IPhoneUpdate, ProvisionRequest,
+    TelemetryUpdate, USBMonitorStatus, USBScanResult,
+)
 from app.services import iphones as service
+from app.services.usb import scan_usb_devices, provision_device, usb_monitor, _PYMOBILE_AVAILABLE
 
 router = APIRouter()
 
@@ -59,3 +63,40 @@ async def delete_iphone(iphone_id: UUID, db: AsyncSession = Depends(get_db)):
     if not iphone:
         raise HTTPException(404, "iphone not found")
     await service.delete_iphone(db, iphone)
+
+
+# --- USB Detection ------------------------------------------------------------
+
+@router.post("/usb/scan", response_model=USBScanResult)
+async def usb_scan():
+    """Scan USB bus for connected iPhones."""
+    if not _PYMOBILE_AVAILABLE:
+        return USBScanResult(devices=[], usbmuxd_available=False)
+    devices = await scan_usb_devices()
+    return USBScanResult(devices=devices, usbmuxd_available=True)
+
+
+@router.post("/usb/provision", response_model=IPhoneOut, status_code=201)
+async def usb_provision(data: ProvisionRequest, db: AsyncSession = Depends(get_db)):
+    """Pair and register a detected iPhone."""
+    try:
+        return await provision_device(
+            db,
+            data.serial,
+            name=data.name,
+            rack=data.rack,
+            market=data.market,
+            max_comptes=data.max_comptes,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/usb/status", response_model=USBMonitorStatus)
+async def usb_status():
+    """Get USB monitor background service status."""
+    return USBMonitorStatus(
+        running=usb_monitor.is_running,
+        connected_count=usb_monitor.connected_count,
+        pymobiledevice_available=_PYMOBILE_AVAILABLE,
+    )

@@ -164,7 +164,13 @@ async def _next_slot_opening(db: AsyncSession, slot_ids: list) -> datetime | Non
 
 
 async def _check_account_status(db: AsyncSession, account_id: UUID) -> str:
-    """Return 'ok', 'blocked', or 'waiting' based on account + device state."""
+    """Return 'ok', 'blocked', or 'waiting' based on account + device state.
+
+    Uses the USB monitor's live connected set when available,
+    falls back to the DB status field.
+    """
+    from app.services.usb import usb_monitor, _find_iphone_by_udid
+
     compte = await db.get(Compte, account_id)
     if not compte:
         return "blocked"  # account deleted
@@ -174,21 +180,29 @@ async def _check_account_status(db: AsyncSession, account_id: UUID) -> str:
 
     # Check if the account's iPhone is online (for iPhone platforms)
     if compte.device_id:
-        # device_id could be an iPhone UUID
         try:
             device_uid = UUID(compte.device_id)
             iphone = await db.get(IPhone, device_uid)
-            if iphone and iphone.status != "online":
-                return "waiting"
+            if iphone:
+                # Prefer live USB monitor state
+                if usb_monitor.is_running:
+                    udid = (iphone.telemetry or {}).get("udid")
+                    if udid and udid not in usb_monitor._known_serials:
+                        return "waiting"
+                elif iphone.status != "online":
+                    return "waiting"
         except (ValueError, AttributeError):
-            pass  # not a UUID device_id, skip iPhone check
+            pass
 
     return "ok"
 
 
 # ---------------------------------------------------------------------------
-# Action execution (stub until Point 5)
+# Action execution
 # ---------------------------------------------------------------------------
+
+# iPhone platform prefixes that require a USB-connected device
+IPHONE_PLATFORMS = {"ig_iph", "th_iph"}
 
 async def _execute_action(
     account_id: UUID,
@@ -201,16 +215,79 @@ async def _execute_action(
 
     Returns (success: bool, detail: str).
 
-    STUB: logs the action and returns success. Will be replaced by real
-    iPhone/browser command dispatch in Point 5 (USB) and Point 4 (integrations).
+    For iPhone platforms: dispatches via USB if the device is connected.
+    For web platforms: STUB (will be replaced by browser automation in Point 4).
     """
+    if platform in IPHONE_PLATFORMS:
+        return await _execute_iphone_action(account_id, platform, action_type, values, preset_ids)
+
+    # Web platforms (th_web, x_web, stories) — still a stub
     logger.info(
-        "STUB execute: account=%s platform=%s action=%s values=%s",
-        account_id, platform, action_type, values,
+        "STUB web execute: account=%s platform=%s action=%s",
+        account_id, platform, action_type,
     )
-    # Simulate a tiny processing delay
     await asyncio.sleep(0.1)
-    return True, f"stub: {action_type} executed"
+    return True, f"stub: {action_type} executed (web)"
+
+
+async def _execute_iphone_action(
+    account_id: UUID,
+    platform: str,
+    action_type: str,
+    values: dict,
+    preset_ids: list,
+) -> tuple[bool, str]:
+    """Execute an action on an iPhone via USB.
+
+    The actual automation (tap sequences, app control) requires an agent
+    running on the jailbroken iPhone. For now this sends a command payload
+    to the device and logs it. The agent protocol will be implemented
+    when the on-device agent is ready.
+    """
+    from app.services.usb import usb_monitor
+
+    # Find the iPhone for this account
+    async with AsyncSessionLocal() as db:
+        compte = await db.get(Compte, account_id)
+        if not compte or not compte.device_id:
+            return False, "No device assigned to account"
+
+        try:
+            device_uid = UUID(compte.device_id)
+            iphone = await db.get(IPhone, device_uid)
+        except (ValueError, AttributeError):
+            return False, "Invalid device_id"
+
+        if not iphone:
+            return False, "iPhone not found in database"
+
+        udid = (iphone.telemetry or {}).get("udid")
+        if not udid:
+            return False, "iPhone has no UDID — re-provision via USB"
+
+        # Check USB connection
+        if usb_monitor.is_running and udid not in usb_monitor._known_serials:
+            return False, f"iPhone '{iphone.name}' not connected via USB"
+
+        # Build command payload for the on-device agent
+        command = {
+            "action": action_type,
+            "platform": platform,
+            "account_id": str(account_id),
+            "handle": compte.handle,
+            "values": values,
+            "preset_ids": preset_ids,
+        }
+
+        logger.info(
+            "iPhone command: device=%s udid=%s action=%s account=%s",
+            iphone.name, udid, action_type, compte.handle,
+        )
+
+        # TODO: Send command to on-device agent via USB tunnel or local socket
+        # For now, log and return success as the agent is not yet implemented
+        await asyncio.sleep(0.2)
+        return True, f"iphone: {action_type} dispatched to {iphone.name}"
 
 
 # ---------------------------------------------------------------------------

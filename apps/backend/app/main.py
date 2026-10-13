@@ -15,13 +15,16 @@ from app.api import (
 from app.auth import auth_middleware
 from app.db import engine as db_engine
 from app.services.engine import engine as execution_engine
+from app.services.usb import usb_monitor
 from app.ws import ws_logs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await execution_engine.start()
+    await usb_monitor.start()
     yield
+    await usb_monitor.stop()
     await execution_engine.stop()
     await db_engine.dispose()
 

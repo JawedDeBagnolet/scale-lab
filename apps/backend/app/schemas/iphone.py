@@ -60,3 +60,45 @@ class IPhoneOut(IPhoneBase):
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+
+# --- USB Detection ------------------------------------------------------------
+
+class USBDeviceInfo(BaseModel):
+    """Device detected on the USB bus."""
+    udid: str
+    name: str
+    model: str
+    model_name: str | None = None
+    ios_version: str
+    jailbreak: bool = False
+    serial_number: str | None = None
+    battery_pct: int | None = None
+    charging: bool | None = None
+    storage_total_gb: float | None = None
+    storage_free_gb: float | None = None
+    connection_type: str = "USB"
+    db_match: UUID | None = None       # iPhone ID if already registered
+    db_status: str | None = None       # current DB status if registered
+
+
+class USBScanResult(BaseModel):
+    """Result of a USB scan."""
+    devices: list[USBDeviceInfo]
+    usbmuxd_available: bool = True
+
+
+class ProvisionRequest(BaseModel):
+    """Request to provision a detected iPhone."""
+    serial: str                        # UDID of the device
+    name: str | None = None            # override device name
+    rack: str | None = None
+    market: str | None = None
+    max_comptes: int = 3
+
+
+class USBMonitorStatus(BaseModel):
+    """Status of the USB monitor background service."""
+    running: bool
+    connected_count: int
+    pymobiledevice_available: bool
