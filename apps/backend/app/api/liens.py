@@ -20,7 +20,7 @@ from app.services import liens as service
 router = APIRouter()
 
 
-# --- Links --------------------------------------------------------------------
+# --- Links (collection) ------------------------------------------------------
 
 
 @router.get("/", response_model=list[TrackedLinkOut])
@@ -35,46 +35,14 @@ async def list_links(
     )
 
 
-@router.get("/{link_id}", response_model=TrackedLinkOut)
-async def get_link(link_id: UUID, db: AsyncSession = Depends(get_db)):
-    link = await service.get_link(db, link_id)
-    if not link:
-        raise HTTPException(404, "link not found")
-    return link
-
-
-@router.get("/{link_id}/stats", response_model=LinkStats)
-async def get_link_stats(link_id: UUID, db: AsyncSession = Depends(get_db)):
-    link = await service.get_link(db, link_id)
-    if not link:
-        raise HTTPException(404, "link not found")
-    return await service.get_link_stats(db, link_id)
-
-
 @router.post("/", response_model=TrackedLinkOut, status_code=201)
 async def create_link(data: TrackedLinkCreate, db: AsyncSession = Depends(get_db)):
     return await service.create_link(db, data)
 
 
-@router.patch("/{link_id}", response_model=TrackedLinkOut)
-async def update_link(
-    link_id: UUID, data: TrackedLinkUpdate, db: AsyncSession = Depends(get_db)
-):
-    link = await service.get_link(db, link_id)
-    if not link:
-        raise HTTPException(404, "link not found")
-    return await service.update_link(db, link, data.model_dump(exclude_unset=True))
-
-
-@router.delete("/{link_id}", status_code=204)
-async def delete_link(link_id: UUID, db: AsyncSession = Depends(get_db)):
-    link = await service.get_link(db, link_id)
-    if not link:
-        raise HTTPException(404, "link not found")
-    await service.delete_link(db, link)
-
-
 # --- Domains ------------------------------------------------------------------
+# IMPORTANT : ces routes DOIVENT être définies AVANT /{link_id}
+# sinon FastAPI tente de parser "domains" comme un UUID → 422
 
 
 @router.get("/domains", response_model=list[DomainOut])
@@ -103,6 +71,45 @@ async def delete_domain(domain_id: UUID, db: AsyncSession = Depends(get_db)):
     if not domain:
         raise HTTPException(404, "domain not found")
     await service.delete_domain(db, domain)
+
+
+# --- Links (par ID) -----------------------------------------------------------
+# APRÈS les routes /domains/* pour éviter que FastAPI
+# ne parse "domains" comme un UUID
+
+
+@router.get("/{link_id}", response_model=TrackedLinkOut)
+async def get_link(link_id: UUID, db: AsyncSession = Depends(get_db)):
+    link = await service.get_link(db, link_id)
+    if not link:
+        raise HTTPException(404, "link not found")
+    return link
+
+
+@router.get("/{link_id}/stats", response_model=LinkStats)
+async def get_link_stats(link_id: UUID, db: AsyncSession = Depends(get_db)):
+    link = await service.get_link(db, link_id)
+    if not link:
+        raise HTTPException(404, "link not found")
+    return await service.get_link_stats(db, link_id)
+
+
+@router.patch("/{link_id}", response_model=TrackedLinkOut)
+async def update_link(
+    link_id: UUID, data: TrackedLinkUpdate, db: AsyncSession = Depends(get_db)
+):
+    link = await service.get_link(db, link_id)
+    if not link:
+        raise HTTPException(404, "link not found")
+    return await service.update_link(db, link, data.model_dump(exclude_unset=True))
+
+
+@router.delete("/{link_id}", status_code=204)
+async def delete_link(link_id: UUID, db: AsyncSession = Depends(get_db)):
+    link = await service.get_link(db, link_id)
+    if not link:
+        raise HTTPException(404, "link not found")
+    await service.delete_link(db, link)
 
 
 # --- Clicks -------------------------------------------------------------------

@@ -1,0 +1,21 @@
+[0;1;32m●[0m cloudflared.service - cloudflared
+     Loaded: loaded (]8;;file://ubuntu-4gb-hel1-1/etc/systemd/system/cloudflared.service\/etc/systemd/system/cloudflared.service]8;;\; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Mon 2026-10-12 17:55:57 UTC; 29ms ago
+ Invocation: 89a586e70b21489bab45817d95de7de5
+   Main PID: 3272410 (cloudflared)
+      Tasks: 7[0;38:5:245m (limit: 3647)[0m
+     Memory: 17.1M (peak: 17.1M)
+        CPU: 405ms
+     CGroup: /system.slice/cloudflared.service
+             └─[0;38:5:245m3272410 /usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run[0m
+
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="DNS Resolution" details="DNS Resolved successfully" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=region2.v2.argotunnel.com
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=region1.v2.argotunnel.com
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=region2.v2.argotunnel.com
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=region1.v2.argotunnel.com
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=region2.v2.argotunnel.com
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck component="Cloudflare API" details="API is reachable" run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d status=pass target=api.cloudflare.com:443
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF precheck complete hard_fail=false run_id=0c8d7bfc-a739-4349-9761-9283d93b0b3d suggested_protocol=quic
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF Registered tunnel connection connIndex=0 connection=0a133f9a-0fc0-4727-8f7b-76c609ecbc7c event=0 ip=2606:4700:a0::6 location=dme05 protocol=quic
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 cloudflared[3272410]: 2026-10-12T17:55:57Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=1 event=0 ip=2606:4700:a8::3
+Oct 12 17:55:57 ubuntu-4gb-hel1-1 systemd[1]: Started cloudflared.service - cloudflared.

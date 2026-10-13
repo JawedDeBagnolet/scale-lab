@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;background:#0b0d16}@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.2s;animation-timing-function:ease-in-out}</style>
+<script>
+// Deterministic blob positions across pages
+(function(){
+  try{
+    var k='__sl_blob_seed',s=sessionStorage,v=s.getItem(k);
+    if(!v){v=String(Math.random());s.setItem(k,v)}
+    var seed=parseFloat(v)*233280,i=0;
+    window.__slRand=function(){seed=(seed*9301+49297)%233280;return seed/233280};
+  }catch(e){window.__slRand=Math.random}
+})();
+</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="api-data.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; background: #0b0d16; }
+* { scrollbar-width: none; box-sizing: border-box; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+a { color: #8db4fd; text-decoration: none; }
+a:hover { color: #b9d0ff; }
+</style>
+</helmet>
+
+<div style="position:relative;display:flex;height:100vh;min-width:1280px;background:#0b0d16;color:#e8eaf3;font-family:'Manrope',system-ui,sans-serif;overflow:hidden">
+<div style="position:absolute;inset:0;z-index:0;pointer-events:none">
+<div style="position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.3px);background-size:22px 22px"></div>
+<div style="position:absolute;inset:0;background:radial-gradient(1100px 420px at 60% -10%,rgba(99,102,241,.06),transparent 60%)"></div>
+<div ref="{{ fxRef }}" style="position:absolute;inset:0;overflow:hidden"></div>
+</div>
+
+<div style="{{ navStyle }}">
+<div onClick="{{ toggleCollapse }}" style="{{ brandRow }}">
+<span style="width:28px;height:28px;flex:none;border-radius:9px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(99,102,241,.4)">S</span>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap">Scale Lab</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8;white-space:nowrap">Organic growth</div></div></sc-if>
+</div>
+<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navMain }}" as="it" hint-placeholder-count="9">
+<a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#5b6175;padding:0 10px 7px">Système</div></sc-if>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navBottom }}" as="it" hint-placeholder-count="5">
+<sc-if value="{{ it.active }}"><div title="{{ it.label }}" style="{{ navItemActive }}"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ it.label }}</span></sc-if></div></sc-if>
+<sc-if value="{{ it.idle }}"><a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a></sc-if>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div ref="{{ mainRef }}" onScroll="{{ onMainScroll }}" style="position:relative;z-index:1;flex:1;min-width:0;overflow:auto">
+<div style="padding:26px 32px 120px;display:flex;flex-direction:column;gap:18px;max-width:1480px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div style="min-width:0"><div style="font-size:12px;color:#5b6175;margin-bottom:6px">Workspace France</div><div style="font-size:26px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa;line-height:1.15">Comportements</div><div style="font-size:13px;color:#8a91a8;margin-top:5px">{{ subtitle }}</div></div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<div onClick="{{ newB }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 17px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 4px 18px rgba(99,102,241,.35)"><i class="ph ph-plus" style="font-size:15px"></i>Nouveau comportement</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px;width:max-content"><sc-for list="{{ platSeg }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa"><i class="{{ t.icon }}" style="font-size:14px"></i>{{ t.label }}<span style="{{ t.nStyle }}">{{ t.n }}</span></div></sc-for></div>
+<span style="font-size:12px;color:#8a91a8">Le poids de chaque preset se règle dans les étapes des scénarios</span>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">
+<sc-for list="{{ cards }}" as="c" hint-placeholder-count="4">
+<div onClick="{{ c.edit }}" style="display:flex;flex-direction:column;gap:13px;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);cursor:pointer" style-hover="border-color:rgba(255,255,255,.18)">
+<div style="display:flex;gap:11px;align-items:center"><span style="width:38px;height:38px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3);color:#cfc9ff"><i class="{{ c.icon }}" style="font-size:19px"></i></span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:#f2f3fa">{{ c.name }}</div><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a91a8;margin-top:2px"><i class="{{ c.platIcon }}" style="font-size:12px"></i>{{ c.type }}</div></div></div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px"><sc-for list="{{ c.sum }}" as="k" hint-placeholder-count="4"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px"><span style="color:#8a91a8">{{ k.k }}</span><span style="color:#e8eaf3;font-weight:600;font-variant-numeric:tabular-nums">{{ k.v }}</span></div></sc-for></div>
+<div style="display:flex;align-items:center;gap:8px;padding-top:11px;border-top:1px solid rgba(255,255,255,.06);margin-top:auto"><span style="{{ c.usedStyle }}">{{ c.used }}</span><span style="flex:1"></span><span onClick="{{ c.del }}" title="Supprimer" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="color:#f2f3fa;background:rgba(255,255,255,.05)"><i class="ph ph-trash" style="font-size:14px"></i></span><span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;color:#c5c9d8;border:1px solid rgba(255,255,255,.1)"><i class="ph ph-pencil-simple" style="font-size:13px"></i>Éditer</span></div>
+</div>
+</sc-for>
+<div onClick="{{ newB }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:200px;border-radius:14px;border:1px dashed rgba(255,255,255,.14);color:#aab0c5;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(124,108,246,.55);color:#f2f3fa"><i class="ph ph-plus" style="font-size:18px"></i>{{ addLabel }}</div>
+</div>
+
+<div onClick="{{ scrollTop }}" title="Revenir en haut" style="{{ topBtnStyle }}" style-hover="background:rgba(124,108,246,.28);color:#ffffff;border-color:rgba(124,108,246,.6)"><i class="ph ph-arrow-up" style="font-size:17px"></i></div>
+<sc-if value="{{ hasToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:12px;background:rgba(20,23,38,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 36px rgba(0,0,0,.45);font-size:12.5px;color:#e8eaf3"><i class="ph ph-check-circle" style="font-size:16px;color:#2dd4a8"></i>{{ toast }}</div></sc-if>
+</div>
+</div>
+
+<sc-if value="{{ edOpen }}">
+<div onClick="{{ closeEd }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" data-modal-scroll="1" style="width:min(780px,100%);max-height:calc(100vh - 48px);overflow-y:auto;border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:center;gap:14px"><div style="flex:1"><div style="font-size:20px;font-weight:600;color:#f2f3fa">{{ ed.title }}</div><div style="font-size:12.5px;color:#8a91a8;margin-top:4px">Sélectionné dans une étape, ce preset remplace ses probabilités, ses pauses et sa durée</div></div><span onClick="{{ closeEd }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:end">
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:6px">Icône</div><div onClick="{{ ed.iconToggle }}" style="{{ ed.iconBtn }}"><i class="{{ ed.icon }}" style="font-size:20px"></i></div></div>
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:6px">Nom du preset</div><input value="{{ ed.name }}" onChange="{{ ed.setName }}" placeholder="ex. Lecteur discret" style="width:100%;height:40px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;outline:none;font-family:inherit;font-size:13.5px" style-focus="border-color:rgba(148,163,184,.55)"></div>
+</div>
+<sc-if value="{{ ed.iconOpen }}"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px"><sc-for list="{{ ed.icons }}" as="ic" hint-placeholder-count="18"><span onClick="{{ ic.go }}" style="{{ ic.style }}"><i class="{{ ic.icon }}" style="font-size:18px"></i></span></sc-for></div></sc-if>
+<div style="display:flex;gap:24px;flex-wrap:wrap">
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:6px">Plateforme</div><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px;width:max-content"><sc-for list="{{ ed.plats }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa"><i class="{{ t.icon }}" style="font-size:14px"></i>{{ t.label }}</div></sc-for></div></div>
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:6px">Type de session</div><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px;width:max-content"><sc-for list="{{ ed.types }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div></div>
+</div>
+
+<sc-for list="{{ ed.lots }}" as="lot" hint-placeholder-count="2">
+<div style="flex:none;border-radius:13px;border:1px solid rgba(255,255,255,.08);overflow:hidden">
+<div onClick="{{ lot.toggle }}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;background:rgba(255,255,255,.025)"><span style="font-size:13px;font-weight:600;color:#f2f3fa">{{ lot.title }}</span><span style="font-size:11.5px;color:#8a91a8">{{ lot.sub }}</span><span style="flex:1"></span><i class="{{ lot.chev }}" style="font-size:14px;color:#8a91a8"></i></div>
+<sc-if value="{{ lot.open }}"><div style="display:flex;flex-direction:column"><sc-for list="{{ lot.rows }}" as="r" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:10px 14px;border-top:1px solid rgba(255,255,255,.05)"><div style="min-width:0"><div style="font-size:12.5px;font-weight:600;color:#e8eaf3">{{ r.label }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px;line-height:1.4">{{ r.desc }}</div></div><div style="display:flex;align-items:center;gap:4px"><span onClick="{{ r.dec }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-minus" style="font-size:12px"></i></span><div style="display:flex;align-items:center;height:28px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);padding:0 8px 0 4px"><input value="{{ r.val }}" onChange="{{ r.set }}" inputMode="numeric" style="width:32px;background:transparent;border:none;outline:none;color:#f2f3fa;font-family:inherit;font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span style="font-size:12px;color:#8a91a8;margin-left:3px">%</span></div><span onClick="{{ r.inc }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-plus" style="font-size:12px"></i></span></div></div></sc-for></div></sc-if>
+</div>
+</sc-for>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Pauses · {{ ed.nPauses }}</span><span style="font-size:11.5px;color:#6b7289">Déclenchées au hasard pendant la session</span></div>
+<sc-for list="{{ ed.pauses }}" as="p" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto 30px;gap:12px;align-items:center;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)">
+<input value="{{ p.label }}" onChange="{{ p.setLabel }}" placeholder="Nom de la pause" style="width:100%;height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;outline:none;font-family:inherit;font-size:12.5px" style-focus="border-color:rgba(148,163,184,.55)">
+<sc-for list="{{ p.steppers }}" as="f" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:#8a91a8;min-width:24px">{{ f.label }}</span><span onClick="{{ f.dec }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-minus" style="font-size:12px"></i></span><span style="min-width:46px;text-align:center;font-size:12.5px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ f.v }}</span><span onClick="{{ f.inc }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-plus" style="font-size:12px"></i></span></div></sc-for>
+<div title="Probabilité de déclenchement" style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:#8a91a8">proba</span><div style="display:flex;align-items:center;gap:4px"><span onClick="{{ p.probDec }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-minus" style="font-size:12px"></i></span><div style="display:flex;align-items:center;height:28px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);padding:0 8px 0 4px"><input value="{{ p.prob }}" onChange="{{ p.setProb }}" inputMode="numeric" style="width:32px;background:transparent;border:none;outline:none;color:#f2f3fa;font-family:inherit;font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span style="font-size:12px;color:#8a91a8;margin-left:3px">%</span></div><span onClick="{{ p.probInc }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-plus" style="font-size:12px"></i></span></div></div>
+<span onClick="{{ p.del }}" title="Supprimer la pause" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer" style-hover="color:#f2f3fa;background:rgba(255,255,255,.06)"><i class="ph ph-x" style="font-size:13px"></i></span>
+</div></sc-for>
+<sc-if value="{{ ed.noPauses }}"><div style="font-size:12px;color:#8a91a8">Aucune pause personnalisée.</div></sc-if>
+<div onClick="{{ ed.addPause }}" style="display:flex;align-items:center;justify-content:center;gap:7px;height:36px;border-radius:10px;border:1px dashed rgba(255,255,255,.14);color:#aab0c5;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="border-color:rgba(124,108,246,.55);color:#f2f3fa"><i class="ph ph-plus" style="font-size:14px"></i>Ajouter une pause</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Durées de session · {{ ed.nDur }}</span><span style="font-size:11.5px;color:#6b7289">{{ ed.durSub }}</span></div>
+<sc-for list="{{ ed.durs }}" as="p" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:70px auto auto auto minmax(0,1fr) 30px;gap:12px;align-items:center;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)">
+<span style="font-size:12.5px;font-weight:600;color:#e8eaf3">{{ p.label }}</span>
+<sc-for list="{{ p.steppers }}" as="f" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:#8a91a8;min-width:30px">{{ f.label }}</span><span onClick="{{ f.dec }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-minus" style="font-size:12px"></i></span><span style="min-width:52px;text-align:center;font-size:12.5px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ f.v }}</span><span onClick="{{ f.inc }}" style="{{ stepSt }}" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-plus" style="font-size:12px"></i></span></div></sc-for>
+<div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="flex:1;height:4px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden"><div style="{{ p.bar }}"></div></div><span style="font-size:12px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums;min-width:38px;text-align:right">{{ p.share }}</span></div>
+<span onClick="{{ p.del }}" title="Supprimer la durée" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer" style-hover="color:#f2f3fa;background:rgba(255,255,255,.06)"><i class="ph ph-x" style="font-size:13px"></i></span>
+</div></sc-for>
+<sc-if value="{{ ed.noDur }}"><div style="font-size:12px;color:#8a91a8">Aucune durée · l’étape du scénario garde sa propre durée.</div></sc-if>
+<div onClick="{{ ed.addDur }}" style="display:flex;align-items:center;justify-content:center;gap:7px;height:36px;border-radius:10px;border:1px dashed rgba(255,255,255,.14);color:#aab0c5;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="border-color:rgba(124,108,246,.55);color:#f2f3fa"><i class="ph ph-plus" style="font-size:14px"></i>Ajouter une durée</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px"><sc-if value="{{ ed.hasErr }}"><span style="font-size:12px;color:#fda4af;margin-right:auto">{{ ed.err }}</span></sc-if><div onClick="{{ closeEd }}" style="height:40px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;color:#c5c9d8;font-size:13px;cursor:pointer">Annuler</div><div onClick="{{ ed.save }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13px;font-weight:600;cursor:pointer"><i class="ph ph-check" style="font-size:15px"></i>Enregistrer</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ cfOpen }}">
+<div onClick="{{ cfClose }}" style="position:fixed;inset:0;z-index:90;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center">
+<div onClick="{{ stopProp }}" style="width:380px;max-width:92vw;text-align:center;border-radius:20px;padding:24px 22px 20px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="width:54px;height:54px;border-radius:99px;display:flex;align-items:center;justify-content:center;margin:2px auto 14px;background:linear-gradient(180deg,rgba(236,243,255,.14),rgba(214,228,255,.05));border:1px solid rgba(226,236,255,.45);color:#eef4ff;box-shadow:0 0 18px rgba(205,222,255,.3)"><i class="ph ph-trash" style="font-size:24px"></i></div>
+<div style="font-size:16px;font-weight:700;color:#f2f3fa;margin-bottom:7px">{{ cf.title }}</div>
+<div style="font-size:12.5px;line-height:1.55;color:#aab0c5;margin-bottom:20px">{{ cf.text }}</div>
+<div style="display:flex;gap:10px"><div onClick="{{ cfClose }}" style="flex:1;display:flex;align-items:center;justify-content:center;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:13px;cursor:pointer">Annuler</div><div onClick="{{ cf.go }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:38px;border-radius:10px;background:linear-gradient(135deg,#ffffff,#dde8ff 55%,#c9d8ff);border:1px solid rgba(255,255,255,.9);color:#0b0d16;font-size:13px;font-weight:700;cursor:pointer"><i class="ph ph-trash" style="font-size:14px"></i>Supprimer</div></div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  startDrift(box) {
+    const cols = [[124, 108, 246], [75, 123, 245], [150, 122, 250], [96, 150, 240]];
+    const blobs = cols.map(c => { const el = document.createElement('div'); Object.assign(el.style, { position: 'absolute', left: '0', top: '0', width: '560px', height: '560px', marginLeft: '-280px', marginTop: '-280px', borderRadius: '50%', willChange: 'transform', background: 'radial-gradient(circle,rgba(' + c + ',.12),rgba(' + c + ',.04) 45%,transparent 70%)' }); box.appendChild(el); const R = () => (window.__slRand||Math.random)(); return { el, p: [R() * 6.28, R() * 6.28, R() * 6.28, R() * 6.28], f: [.00012 + R() * .00012, .00018 + R() * .00014, .0001 + R() * .00012, .00016 + R() * .00014] }; });
+    const dots = document.createElement('div'); Object.assign(dots.style, { position: 'absolute', inset: '0', backgroundImage: 'radial-gradient(rgba(200,192,255,.3) 1px,transparent 1.3px)', backgroundSize: '22px 22px' }); box.appendChild(dots);
+    const t0 = performance.now();
+    const tick = now => { const t = now - t0; const W = box.clientWidth, H = box.clientHeight; const m = blobs.map(b => { const x = W * (.5 + .38 * Math.sin(t * b.f[0] + b.p[0]) + .1 * Math.sin(t * b.f[1] + b.p[1])); const y = H * (.5 + .36 * Math.sin(t * b.f[2] + b.p[2]) + .1 * Math.sin(t * b.f[3] + b.p[3])); b.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; return 'radial-gradient(260px circle at ' + x.toFixed(0) + 'px ' + y.toFixed(0) + 'px,rgba(0,0,0,.55),transparent 70%)'; }).join(','); dots.style.webkitMaskImage = m; dots.style.maskImage = m; if (this._drift) this._drift.raf = requestAnimationFrame(tick); };
+    this._drift = { blobs, dots, raf: requestAnimationFrame(tick) };
+  }
+  ICONS = ['book-open', 'fire', 'lightning', 'magnifying-glass', 'sun-horizon', 'moon-stars', 'film-strip', 'target', 'chat-circle-dots', 'broadcast', 'heart', 'eye', 'coffee', 'sparkle', 'hand-pointing', 'mouse-scroll', 'shield-check', 'repeat'];
+  PF = [['x', 'Twitter', 'ph ph-twitter-logo'], ['ig', 'Instagram', 'ph ph-instagram-logo'], ['th', 'Threads', 'ph ph-threads-logo']];
+  SUM = { x: [['like', 'Like'], ['target', 'Visite target'], ['cursor', 'Curseur']], ig: [['like', 'Like'], ['target', 'Visite target'], ['story', 'Stories']], th: [['like', 'Like'], ['target', 'Visite target'], ['comments', 'Commentaires']] };
+  state = { list: null, plat: 'x', mode: null, ed: null, cf: null, toast: null, showTop: false, navCollapsed: false };
+  pl(n, w, wp) { return n + ' ' + (n > 1 ? (wp || w + 's') : w); }
+  uid(p) { return p + Math.random().toString(36).slice(2, 8); }
+  segStyle(on) { return { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 8, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#ffffff' : '#8a91a8', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'transparent' }; }
+  toastMsg(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  keys(plat) { const B = window.SCALE_DATA.behaviorParams; return B.lot1.concat(B.lot2[plat]); }
+  usage(id) { const D = window.SCALE_DATA; return D.scenarios.filter(sc => sc.steps.some(st => st[1].some(t => (t[2] || []).indexOf(id) >= 0))); }
+  shares(list, plat, mode) { const L = list.filter(b => b.plat === plat); const tw = L.reduce((t, b) => t + b.weight, 0); const o = {}; L.forEach(b => { o[b.id] = L.length ? (mode === 'weighted' ? (tw ? b.weight / tw : 0) : 1 / L.length) : 0; }); return o; }
+  componentDidMount() {
+    const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
+    const boot = () => { const D = window.SCALE_DATA; const h = location.hash || ''; const mp = h.match(/plat=(x|ig|th)/); const mb = h.match(/b=(\w+)/); this.setState({ list: D.behaviors.map(b => JSON.parse(JSON.stringify(b))), mode: { ...D.drawMode }, plat: mp ? mp[1] : 'x' }, () => { const b = mb && this.state.list.find(x => x.id === mb[1]); if (b) this.setState({ plat: b.plat }, () => this.openEdit(b)); }); };
+    if (window.SCALE_DATA) boot(); else this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); boot(); } }, 80);
+    this._key = e => { if (e.key !== 'Escape') return; if (this.state.cf) this.setState({ cf: null }); else if (this.state.ed) this.setState({ ed: null }); }; window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._tt); clearInterval(this._sd); window.removeEventListener('keydown', this._key); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
+  openEdit(b) { this.setState({ ed: { ...JSON.parse(JSON.stringify(b)), open: { l1: true, l2: false }, iconOpen: false, err: '' } }); }
+  openNew() { const plat = this.state.plat; const p = {}; this.keys(plat).forEach(k => { p[k] = ({ like: 20, comments: 15, follow: 3 })[k] != null ? ({ like: 20, comments: 15, follow: 3 })[k] : 10; }); const T = window.SCALE_DATA.behaviorParams.types[plat]; this.setState({ ed: { id: null, plat, icon: 'sparkle', name: '', type: T[0][0], weight: 1, p, durations: [{ id: this.uid('d'), min: 10, max: 20, weight: 1 }], pauses: [{ id: this.uid('p'), label: 'Pause lecture', min: 10, max: 40, prob: 15 }], open: { l1: true, l2: false }, iconOpen: false, err: '' } }); }
+  edVals(s) {
+    const E = s.ed; const D = window.SCALE_DATA; const BP = D.behaviorParams; const up = p => this.setState(y => ({ ed: { ...y.ed, ...p } }));
+    const lot = (key, title, sub, ks) => ({ title, sub, open: !!E.open[key], chev: E.open[key] ? 'ph ph-caret-up' : 'ph ph-caret-down', toggle: () => up({ open: { ...E.open, [key]: !E.open[key] } }), rows: ks.map(k => { const v = E.p[k] || 0; const setV = n => up({ p: { ...E.p, [k]: Math.max(0, Math.min(100, n)) } }); return { label: BP.labels[k][0], desc: BP.labels[k][1], val: String(v), set: e => { const n = parseInt(String(e.target.value).replace(/\D/g, ''), 10); setV(isNaN(n) ? 0 : n); }, dec: () => setV(v - 1), inc: () => setV(v + 1) }; }) });
+    const upP = (i, p) => up({ pauses: E.pauses.map((x, j) => j === i ? { ...x, ...p } : x) });
+    const st = (i, k, lo, hi, lbl) => { const v = E.pauses[i][k]; const d = v >= 60 ? 10 : v >= 20 ? 5 : 1; return { label: lbl, v: v + ' s', dec: () => upP(i, k === 'max' ? { max: Math.max(E.pauses[i].min, v - d) } : { min: Math.max(lo, v - d) }), inc: () => upP(i, k === 'min' ? { min: Math.min(E.pauses[i].max, v + d) } : { max: Math.min(hi, v + d) }) }; };
+    const others = s.list.filter(b => b.plat === E.plat && b.id !== E.id); const tw = others.reduce((t, b) => t + b.weight, 0) + E.weight; const mode = s.mode[E.plat];
+    const pfName = this.PF.find(p => p[0] === E.plat)[1];
+    return { edOpen: true, closeEd: () => this.setState({ ed: null }), ed: {
+      title: E.id ? 'Éditer le comportement' : 'Nouveau comportement', name: E.name, setName: e => up({ name: e.target.value, err: '' }),
+      icon: 'ph ph-' + E.icon, iconOpen: E.iconOpen, iconToggle: () => up({ iconOpen: !E.iconOpen }), iconBtn: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#cfc9ff', background: 'rgba(124,108,246,.12)', border: '1px solid ' + (E.iconOpen ? 'rgba(124,108,246,.7)' : 'rgba(124,108,246,.3)') },
+      icons: this.ICONS.map(k => ({ icon: 'ph ph-' + k, go: () => up({ icon: k, iconOpen: false }), style: { width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: E.icon === k ? '#ffffff' : '#aab0c5', background: E.icon === k ? 'rgba(124,108,246,.22)' : 'rgba(255,255,255,.03)', border: '1px solid ' + (E.icon === k ? 'rgba(124,108,246,.6)' : 'rgba(255,255,255,.08)') } })),
+      plats: this.PF.map(p => ({ label: p[1], icon: p[2], style: this.segStyle(E.plat === p[0]), go: () => { if (p[0] === E.plat) return; const np = {}; this.keys(p[0]).forEach(k => { np[k] = E.p[k] != null ? E.p[k] : 10; }); up({ plat: p[0], p: np, type: BP.types[p[0]].some(t => t[0] === E.type) ? E.type : BP.types[p[0]][0][0] }); } })),
+      types: BP.types[E.plat].map(t => ({ label: t[1], style: this.segStyle(E.type === t[0]), go: () => up({ type: t[0] }) })),
+      lots: [lot('l1', 'Lot 1 · Intensité', 'Like, commentaires, follow', BP.lot1), lot('l2', 'Lot 2 · Anti-patterns', this.pl(BP.lot2[E.plat].length, 'réglage') + ' qui cassent la régularité', BP.lot2[E.plat])],
+      nPauses: E.pauses.length, noPauses: !E.pauses.length,
+      pauses: E.pauses.map((x, i) => ({ label: x.label, setLabel: e => upP(i, { label: e.target.value }), steppers: [st(i, 'min', 1, 3600, 'min'), st(i, 'max', 1, 3600, 'max')], prob: String(x.prob), setProb: e => { const n = parseInt(String(e.target.value).replace(/\D/g, ''), 10); upP(i, { prob: Math.max(0, Math.min(100, isNaN(n) ? 0 : n)) }); }, probDec: () => upP(i, { prob: Math.max(0, x.prob - 1) }), probInc: () => upP(i, { prob: Math.min(100, x.prob + 1) }), del: () => up({ pauses: E.pauses.filter((z, j) => j !== i) }) })),
+      addPause: () => up({ pauses: E.pauses.concat([{ id: this.uid('p'), label: '', min: 10, max: 40, prob: 10 }]) }),
+      nDur: E.durations.length, noDur: !E.durations.length, durSub: 'Chaque session tire une durée, pondérée par le poids',
+      durs: E.durations.map((x, i) => { const tw = E.durations.reduce((t, z) => t + z.weight, 0); const pct = Math.round(x.weight / tw * 100); const upX = p => up({ durations: E.durations.map((z, j) => j === i ? { ...z, ...p } : z) }); const sp = v => v >= 30 ? 5 : 1;
+        return { label: 'Durée ' + (i + 1), share: pct + ' %', bar: { height: '100%', width: pct + '%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' }, del: () => up({ durations: E.durations.filter((z, j) => j !== i) }),
+          steppers: [{ label: 'de', v: x.min + ' min', dec: () => upX({ min: Math.max(1, x.min - sp(x.min)) }), inc: () => upX({ min: Math.min(x.max, x.min + sp(x.min)) }) }, { label: 'à', v: x.max + ' min', dec: () => upX({ max: Math.max(x.min, x.max - sp(x.max)) }), inc: () => upX({ max: Math.min(180, x.max + sp(x.max)) }) }, { label: 'poids', v: String(x.weight), dec: () => upX({ weight: Math.max(1, x.weight - 1) }), inc: () => upX({ weight: Math.min(20, x.weight + 1) }) }] }; }),
+      addDur: () => { const l = E.durations[E.durations.length - 1]; up({ durations: E.durations.concat([{ id: this.uid('d'), min: l ? l.max : 10, max: l ? l.max + 10 : 20, weight: 1 }]) }); },
+      weight: E.weight, wDec: () => up({ weight: Math.max(1, E.weight - 1) }), wInc: () => up({ weight: Math.min(20, E.weight + 1) }),
+      weightSub: mode === 'weighted' ? 'Tirage pondéré : ce preset sort dans ' + Math.round(E.weight / tw * 100) + ' % des sessions ' + pfName + ' qui le proposent avec les ' + this.pl(others.length, 'autre') : 'Utilisé en mode pondéré · le tirage ' + pfName + ' est actuellement uniforme',
+      hasErr: !!E.err, err: E.err,
+      save: () => { if (!E.name.trim()) { up({ err: 'Donne un nom au preset' }); return; } const b = { id: E.id || this.uid('b'), plat: E.plat, icon: E.icon, name: E.name.trim(), type: E.type, weight: E.weight, p: { ...E.p }, durations: E.durations.map(x => ({ ...x })), pauses: E.pauses.filter(x => x.label.trim() || x.prob).map(x => ({ ...x, label: x.label.trim() || 'Pause' })) };
+        const i = D.behaviors.findIndex(x => x.id === b.id); if (i >= 0) D.behaviors[i] = b; else D.behaviors.push(b);
+        this.setState(y => ({ list: E.id ? y.list.map(x => x.id === b.id ? b : x) : y.list.concat([b]), ed: null, plat: b.plat })); this.toastMsg('« ' + b.name + ' » ' + (E.id ? 'enregistré' : 'créé')); }
+    } };
+  }
+  renderVals() {
+    const s = this.state; const D = window.SCALE_DATA; const list = s.list || []; const mode = s.mode || { x: 'uniform', ig: 'uniform', th: 'uniform' }; const BP = D ? D.behaviorParams : null;
+    const nav = [['squares-four', 'Dashboard', 0, 'Module%20Dashboard%20v1.dc.html'], ['device-mobile', 'Comptes', 'Module%20Comptes%20v1.dc.html'], ['user-circle', 'Personas', 'Module%20Personas%20v1.dc.html'], ['target', 'Targets', 'Module%20Targets%20v1.dc.html'], ['chart-line-up', 'Statistiques', 'Module%20Statistiques%20v1.dc.html'], ['address-book', 'CRM', 'Module%20CRM%20v1.dc.html'], ['link-simple', 'Liens', 0, 'Module%20Liens%20v1.dc.html'], ['paper-plane-tilt', 'Posting', 'Module%20Posting%20v1.dc.html'], ['warning-circle', 'Logs', 'Module%20Logs%20v1.dc.html'], ['magnifying-glass', 'Veille', 'Module%20Veille%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], href: n[2] || '#' }));
+    const navBottom = [['flow-arrow', 'Scénarios', 0, 'Module%20Scenarios%20v1.dc.html'], ['sliders-horizontal', 'Comportements', 1], ['globe-simple', 'Proxies', 0, 'Module%20Proxies%20v1.dc.html'], ['devices', 'Parc d’iPhone', 0, 'Module%20Parc%20iPhone%20v1.dc.html'], ['gear', 'Paramètres', 0, 'Module%20Parametres%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], active: !!n[2], idle: !n[2], href: n[3] || '#' }));
+    const NI = { display: 'flex', alignItems: 'center', justifyContent: s.navCollapsed ? 'center' : 'flex-start', gap: 10, height: 34, padding: s.navCollapsed ? 0 : '0 10px', borderRadius: 10, cursor: 'pointer' };
+    const cur = list.filter(b => b.plat === s.plat); const sh = this.shares(list, s.plat, mode[s.plat]); const pfName = this.PF.find(p => p[0] === s.plat)[1];
+    const usedSc = D ? [...new Set(list.reduce((a, b) => a.concat(this.usage(b.id).map(x => x.id)), []))].length : 0;
+    const cards = cur.map(b => { const u = D ? this.usage(b.id) : []; const pct = Math.round((sh[b.id] || 0) * 100); const T = BP ? (BP.types[b.plat].find(t => t[0] === b.type) || ['', ''])[1] : '';
+      return { name: b.name, icon: 'ph ph-' + b.icon, platIcon: this.PF.find(p => p[0] === b.plat)[2], type: 'Session ' + T + ((b.durations || []).length ? ' · ' + Math.min(...b.durations.map(d => d.min)) + '–' + Math.max(...b.durations.map(d => d.max)) + ' min' + (b.durations.length > 1 ? ' (' + b.durations.length + ' durées)' : '') : ''), share: pct + ' %', weight: mode[s.plat] === 'weighted' ? 'poids ' + b.weight : 'tirage uniforme', shareBar: { height: '100%', width: pct + '%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' },
+        sum: this.SUM[b.plat].map(k => ({ k: k[1], v: (b.p[k[0]] || 0) + ' %' })).concat([{ k: 'Pauses', v: String(b.pauses.length) }]),
+        used: u.length ? 'Utilisé dans ' + u.map(x => x.name).join(', ') : 'Utilisé dans aucun scénario', usedStyle: { fontSize: 11.5, color: u.length ? '#aab0c5' : '#6b7289', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+        edit: () => this.openEdit(b), del: e => { e.stopPropagation(); this.setState({ cf: { id: b.id, name: b.name, n: u.length } }); } }; });
+    const out = {
+      stopProp: e => e.stopPropagation(), fxRef: this._fxRef || (this._fxRef = React.createRef()), mainRef: this._mainRef || (this._mainRef = React.createRef()),
+      onMainScroll: e => { const u = e.currentTarget.scrollTop > 280; if (u !== s.showTop) this.setState({ showTop: u }); }, scrollTop: () => { const el = this._mainRef && this._mainRef.current; if (el) el.scrollTo({ top: 0, behavior: 'smooth' }); },
+      topBtnStyle: { position: 'fixed', right: 28, bottom: 28, zIndex: 30, width: 42, height: 42, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#cfd3ff', background: 'rgba(20,23,38,.72)', border: '1px solid rgba(255,255,255,.1)', opacity: s.showTop ? 1 : 0, pointerEvents: s.showTop ? 'auto' : 'none' },
+      navStyle: { position: 'relative', zIndex: 1, width: s.navCollapsed ? 64 : 210, flex: 'none', display: 'flex', flexDirection: 'column', padding: '18px 12px 12px', background: 'rgba(255,255,255,.015)', borderRight: '1px solid rgba(255,255,255,.06)', transition: 'width .2s ease', overflow: 'hidden' },
+      brandRow: { flex: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '0 6px', marginBottom: 22 },
+      navItem: { ...NI, color: '#8a91a8' }, navItemActive: { ...NI, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff' }, navMain: nav, navBottom, navFull: !s.navCollapsed, toggleCollapse: () => this.setState({ navCollapsed: !s.navCollapsed }),
+      stepSt: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flex: 'none', borderRadius: 8, border: '1px solid rgba(255,255,255,.1)', color: '#c5c9d8', cursor: 'pointer' },
+      subtitle: this.pl(list.length, 'preset') + ' · Twitter, Instagram et Threads · utilisés dans ' + this.pl(usedSc, 'scénario'),
+      platSeg: this.PF.map(p => { const on = s.plat === p[0]; return { label: p[1], icon: p[2], n: list.filter(b => b.plat === p[0]).length, style: this.segStyle(on), nStyle: { fontSize: 10.5, fontWeight: 600, color: on ? 'rgba(255,255,255,.8)' : '#6b7289' }, go: () => this.setState({ plat: p[0] }) }; }),
+      modeSeg: [['uniform', 'Uniforme'], ['weighted', 'Pondéré']].map(m => ({ label: m[1], style: this.segStyle(mode[s.plat] === m[0]), go: () => { if (D) D.drawMode[s.plat] = m[0]; this.setState({ mode: { ...mode, [s.plat]: m[0] } }); } })),
+      modeDesc: mode[s.plat] === 'weighted' ? pfName + ' · les presets sont tirés selon leur poids : un poids 3 sort 3 fois plus souvent qu’un poids 1' : pfName + ' · chaque preset a la même chance d’être tiré' + (cur.length ? ' (1 sur ' + cur.length + ')' : ''),
+      cards, addLabel: 'Nouveau comportement ' + pfName, newB: () => this.openNew(),
+      hasToast: !!s.toast, toast: s.toast || '', edOpen: false,
+      cfOpen: !!s.cf, cfClose: () => this.setState({ cf: null }),
+      cf: s.cf ? { title: 'Supprimer « ' + s.cf.name + ' » ?', text: s.cf.n ? 'Il est retiré des étapes de ' + this.pl(s.cf.n, 'scénario') + '. Ces étapes utiliseront leurs propres réglages ou les autres presets sélectionnés.' : 'Aucun scénario ne l’utilise.', go: () => { const id = s.cf.id; const nm = s.cf.name; if (D) { const i = D.behaviors.findIndex(x => x.id === id); if (i >= 0) D.behaviors.splice(i, 1); D.scenarios.forEach(sc => sc.steps.forEach(st => st[1].forEach(t => { if (t[2]) t[2] = t[2].filter(z => z !== id); }))); } this.setState(y => ({ list: y.list.filter(x => x.id !== id), cf: null })); this.toastMsg('« ' + nm + ' » supprimé'); } } : {}
+    };
+    if (s.ed && D) Object.assign(out, this.edVals(s));
+    return out;
+  }
+}
+</script>
+</body>
+</html>

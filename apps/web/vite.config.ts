@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // Static site: public/ files are copied as-is to dist/
+  // index.html redirects to Module Dashboard v1.dc.html
   server: { port: 5173 },
 })

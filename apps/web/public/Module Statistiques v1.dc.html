@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;background:#0b0d16}@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.2s;animation-timing-function:ease-in-out}</style>
+<script>
+// Deterministic blob positions across pages
+(function(){
+  try{
+    var k='__sl_blob_seed',s=sessionStorage,v=s.getItem(k);
+    if(!v){v=String(Math.random());s.setItem(k,v)}
+    var seed=parseFloat(v)*233280,i=0;
+    window.__slRand=function(){seed=(seed*9301+49297)%233280;return seed/233280};
+  }catch(e){window.__slRand=Math.random}
+})();
+</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="api-data.js"></script>
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; background: #0b0d16; }
+* { scrollbar-width: none; box-sizing: border-box; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+a { color: #8db4fd; text-decoration: none; }
+a:hover { color: #b9d0ff; }
+</style>
+</helmet>
+
+<div style="position:relative;display:flex;height:100vh;min-width:1280px;background:#0b0d16;color:#e8eaf3;font-family:'Manrope',system-ui,sans-serif;overflow:hidden">
+<div style="position:absolute;inset:0;z-index:0;pointer-events:none">
+<div style="position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.3px);background-size:22px 22px"></div>
+<div style="position:absolute;inset:0;background:radial-gradient(1100px 420px at 60% -10%,rgba(99,102,241,.06),transparent 60%)"></div>
+<div ref="{{ fxRef }}" style="position:absolute;inset:0;overflow:hidden"></div>
+</div>
+
+<div style="{{ navStyle }}">
+<div onClick="{{ toggleCollapse }}" style="{{ brandRow }}">
+<span style="width:28px;height:28px;flex:none;border-radius:9px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(99,102,241,.4)">S</span>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap">Scale Lab</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8;white-space:nowrap">Organic growth</div></div></sc-if>
+</div>
+<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navMain }}" as="it" hint-placeholder-count="9">
+<sc-if value="{{ it.active }}"><div title="{{ it.label }}" style="{{ navItemActive }}"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ it.label }}</span></sc-if></div></sc-if>
+<sc-if value="{{ it.idle }}"><a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a></sc-if>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#5b6175;padding:0 10px 7px">Système</div></sc-if>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navBottom }}" as="it" hint-placeholder-count="5">
+<a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div ref="{{ mainRef }}" onScroll="{{ onMainScroll }}" style="position:relative;z-index:1;flex:1;min-width:0;overflow:auto">
+<div style="padding:26px 32px 120px;display:flex;flex-direction:column;gap:16px;max-width:1480px">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div style="min-width:0"><div style="font-size:12px;color:#5b6175;margin-bottom:6px">Workspace France</div><div style="font-size:26px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa;line-height:1.15">Statistiques</div><div style="font-size:13px;color:#8a91a8;margin-top:5px">{{ subtitle }}</div></div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ periodSeg }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div>
+<div onClick="{{ toggleCompare }}" style="{{ compareStyle }}" style-hover="border-color:rgba(255,255,255,.2)"><i class="{{ compareIcon }}" style="font-size:15px"></i>vs période précédente</div>
+</div>
+</div>
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-chart-line-up" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Pas encore de statistiques</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Les stats arrivent dès qu’un compte est actif : abonnés, portée, engagement, nouveaux subs Telegram et OnlyFans, objectifs.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-device-mobile" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter des comptes</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+<a href="Module%20Posting%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-paper-plane-tilt" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Publier avec une campagne</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
+
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0">
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ mktSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div>
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ platSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" title="{{ t.title }}" style="{{ t.style }}" style-hover="color:#f2f3fa"><i class="{{ t.icon }}" style="font-size:14px"></i>{{ t.label }}</div></sc-for></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ persChips }}" as="p" hint-placeholder-count="6"><div onClick="{{ p.go }}" style="{{ p.style }}" style-hover="border-color:rgba(255,255,255,.22)"><span style="{{ p.dot }}"></span>{{ p.name }}</div></sc-for></div>
+<div style="position:relative">
+<div onClick="{{ toggleAcc }}" style="{{ accBtnStyle }}" style-hover="border-color:rgba(255,255,255,.2)"><i class="ph ph-at" style="font-size:14px"></i><span style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ accLabel }}</span><i class="ph ph-caret-down" style="font-size:12px;color:#8a91a8"></i></div>
+<sc-if value="{{ accOpen }}">
+<div onClick="{{ closeAcc }}" style="position:fixed;inset:0;z-index:39"></div>
+<div style="position:absolute;top:42px;left:0;z-index:40;width:290px;max-height:380px;display:grid;grid-template-rows:auto minmax(0,1fr);border-radius:14px;background:rgba(20,23,38,.96);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 44px rgba(0,0,0,.5);overflow:hidden">
+<div style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06)"><input value="{{ accQ }}" onChange="{{ setAccQ }}" placeholder="Rechercher un compte" autoFocus="{{ true }}" style="width:100%;height:34px;padding:0 11px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;outline:none;font-family:inherit;font-size:12.5px" style-focus="border-color:rgba(148,163,184,.55)"></div>
+<div style="overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:1px">
+<div onClick="{{ clearAcc }}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><i class="ph ph-users-three" style="font-size:14px"></i>Tous les comptes</div>
+<sc-for list="{{ accItems }}" as="o" hint-placeholder-count="6"><div onClick="{{ o.go }}" style="{{ o.style }}" style-hover="background:rgba(255,255,255,.05)"><span style="{{ o.dot }}"></span><i class="{{ o.platIcon }}" style="font-size:13px;color:#8a91a8"></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ o.handle }}</span><span style="font-size:11px;color:#6b7289">{{ o.mk }}</span></div></sc-for>
+<sc-if value="{{ accNone }}"><div style="padding:12px 10px;font-size:12px;color:#8a91a8">Aucun compte avec ces filtres.</div></sc-if>
+</div>
+</div>
+</sc-if>
+</div>
+<span style="flex:1"></span>
+<span style="font-size:12px;color:#8a91a8;white-space:nowrap">{{ selCount }}</span>
+<sc-if value="{{ hasFilters }}"><div onClick="{{ resetFilters }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:9px;font-size:12px;color:#c5c9d8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-x" style="font-size:12px"></i>Réinitialiser</div></sc-if>
+</div>
+
+<sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+<sc-for list="{{ kpis }}" as="k" hint-placeholder-count="12">
+<sc-if value="{{ k.clickable }}"><div onClick="{{ k.open }}" title="Voir le détail" style="display:flex;flex-direction:column;gap:7px;padding:14px 15px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);min-width:0;cursor:pointer;transition:border-color .15s, box-shadow .15s" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16)">
+<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a91a8;min-width:0"><i class="{{ k.icon }}" style="font-size:14px;flex:none"></i><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.label }}</span></div>
+<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:21px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap">{{ k.value }}</span><sc-if value="{{ k.hasDelta }}"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span></sc-if></div>
+<div style="font-size:11.5px;color:#6b7289;line-height:1.4">{{ k.sub }}</div>
+<sc-if value="{{ k.hasGoal }}"><div style="display:flex;flex-direction:column;gap:5px;margin-top:auto;padding-top:4px"><div style="height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="{{ k.goalBar }}"></div></div><div style="font-size:11px;color:#8a91a8">{{ k.goalText }}</div></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ k.fixed }}"><div style="display:flex;flex-direction:column;gap:7px;padding:14px 15px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);min-width:0">
+<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a91a8;min-width:0"><i class="{{ k.icon }}" style="font-size:14px;flex:none"></i><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.label }}</span></div>
+<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:21px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap">{{ k.value }}</span><sc-if value="{{ k.hasDelta }}"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span></sc-if></div>
+<div style="font-size:11.5px;color:#6b7289;line-height:1.4">{{ k.sub }}</div>
+<sc-if value="{{ k.hasGoal }}"><div style="display:flex;flex-direction:column;gap:5px;margin-top:auto;padding-top:4px"><div style="height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="{{ k.goalBar }}"></div></div><div style="font-size:11px;color:#8a91a8">{{ k.goalText }}</div></div></sc-if>
+</div>
+</sc-if>
+</sc-for>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Évolution</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ chartSub }}</div></div>
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px;flex-wrap:wrap"><sc-for list="{{ metricSeg }}" as="t" hint-placeholder-count="8"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div>
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ splitSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ legend }}" as="l" hint-placeholder-count="2"><div onClick="{{ l.go }}" title="Cliquer pour masquer ou afficher" style="{{ l.style }}" style-hover="border-color:rgba(255,255,255,.2)"><span style="{{ l.sw }}"></span>{{ l.name }}<span style="color:#8a91a8;font-variant-numeric:tabular-nums">{{ l.total }}</span></div></sc-for></div>
+<div style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px">
+<div style="position:relative;height:260px"><sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="5"><div style="{{ y.labelStyle }}">{{ y.label }}</div></sc-for></div>
+<div>
+<div onMouseMove="{{ onPlotMove }}" onMouseLeave="{{ onPlotLeave }}" style="position:relative;height:260px;cursor:crosshair">
+<sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="5"><div style="{{ y.lineStyle }}"></div></sc-for>
+<sc-for list="{{ series }}" as="sr" hint-placeholder-count="1"><svg viewBox="0 0 1000 260" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none"><path d="{{ sr.area }}" style="{{ sr.areaStyle }}"></path><path d="{{ sr.d }}" style="{{ sr.lineStyle }}"></path></svg></sc-for>
+<sc-for list="{{ pointDots }}" as="pd" hint-placeholder-count="0"><div style="{{ pd }}"></div></sc-for>
+<sc-if value="{{ hasHover }}">
+<div style="{{ hoverLine }}"></div>
+<sc-for list="{{ hoverDots }}" as="hd" hint-placeholder-count="1"><div style="{{ hd }}"></div></sc-for>
+<div style="{{ tipStyle }}"><div style="font-size:11.5px;color:#8a91a8;margin-bottom:7px">{{ tip.date }}</div><sc-for list="{{ tip.rows }}" as="r" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0"><span style="{{ r.sw }}"></span><span style="flex:1;color:#c5c9d8;white-space:nowrap">{{ r.name }}</span><span style="color:#f2f3fa;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.v }}</span></div></sc-for></div>
+</sc-if>
+</div>
+<div style="position:relative;height:22px;margin-top:6px"><sc-for list="{{ xTicks }}" as="x" hint-placeholder-count="7"><div style="{{ x.style }}">{{ x.label }}</div></sc-for></div>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px">
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:12px;min-width:0">
+<div><div style="font-size:14px;font-weight:600;color:#f2f3fa">Marchés</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">Intensité selon les abonnés de chaque marché · clique un pays pour filtrer</div></div>
+<div ref="{{ mapRef }}" style="position:relative;height:280px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.012)"><sc-if value="{{ mapLoading }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b7289">Chargement de la carte…</div></sc-if></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<sc-for list="{{ markets }}" as="m" hint-placeholder-count="3">
+<div onClick="{{ m.go }}" style="{{ m.style }}" style-hover="border-color:rgba(255,255,255,.2)">
+<div style="display:flex;align-items:center;gap:8px"><span style="{{ m.dot }}"></span><span style="font-size:13px;font-weight:600;color:#f2f3fa">{{ m.name }}</span><span style="flex:1"></span><span style="font-size:11px;color:#8a91a8">{{ m.n }}</span></div>
+<div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:18px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ m.f }}</span><span style="{{ m.deltaStyle }}">{{ m.delta }}</span></div>
+<div style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-size:11.5px"><span style="color:#8a91a8">Gain net</span><span style="text-align:right;color:#e8eaf3;font-variant-numeric:tabular-nums">{{ m.net }}</span><span style="color:#8a91a8">Portée</span><span style="text-align:right;color:#e8eaf3;font-variant-numeric:tabular-nums">{{ m.reach }}</span><span style="color:#8a91a8">Taux eng.</span><span style="text-align:right;color:#e8eaf3;font-variant-numeric:tabular-nums">{{ m.er }}</span><span style="color:#8a91a8">Nouveau Sub</span><span style="text-align:right;color:#e8eaf3;font-variant-numeric:tabular-nums">{{ m.tg }}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-width:0;max-height:560px">
+<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:600;color:#f2f3fa">Anomalies</span><span style="{{ anCountStyle }}">{{ anCount }}</span></div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ anSub }}</div></div><div onClick="{{ openRules }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:9px;font-size:12px;font-weight:600;color:#c5c9d8;cursor:pointer;border:1px solid rgba(255,255,255,.1);flex:none" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-sliders-horizontal" style="font-size:13px"></i>Règles</div></div>
+<div style="overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:0">
+<sc-for list="{{ anomalies }}" as="an" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)">
+<span style="{{ an.iconBox }}"><i class="{{ an.icon }}" style="font-size:15px"></i></span>
+<div style="min-width:0"><div style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#f2f3fa;min-width:0"><i class="{{ an.platIcon }}" style="font-size:12px;color:#8a91a8"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ an.handle }}</span><span style="font-size:11px;font-weight:500;color:#6b7289;white-space:nowrap">{{ an.persona }}</span></div><div style="font-size:12px;color:#c5c9d8;margin-top:2px">{{ an.text }}</div><sc-if value="{{ an.tg }}"><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#8db4fd;margin-top:4px"><i class="ph ph-telegram-logo" style="font-size:12px"></i>{{ an.tgText }}</div></sc-if></div>
+<div style="display:flex;gap:4px"><span onClick="{{ an.focus }}" title="Filtrer sur ce compte" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#c5c9d8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-funnel-simple" style="font-size:13px"></i></span><span onClick="{{ an.ignore }}" title="Ignorer" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-eye-slash" style="font-size:13px"></i></span></div>
+</div>
+</sc-for>
+<sc-if value="{{ anNone }}"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:30px 10px;color:#8a91a8;font-size:12.5px;text-align:center"><i class="ph ph-check-circle" style="font-size:22px;color:#86efac"></i>Aucune anomalie sur la sélection</div></sc-if>
+</div>
+</div>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Personas</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ persSub }}</div></div><div onClick="{{ openGoals }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:9px;font-size:12px;font-weight:600;color:#c5c9d8;cursor:pointer;border:1px solid rgba(255,255,255,.1)" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-flag-banner" style="font-size:13px"></i>Objectifs</div></div>
+<div style="display:grid;grid-template-columns:minmax(170px,1.5fr) 64px repeat(6,minmax(0,1fr)) minmax(240px,1.9fr);gap:0 12px;align-items:center">
+<sc-for list="{{ pHeads }}" as="h" hint-placeholder-count="9"><div onClick="{{ h.go }}" style="{{ h.style }}" style-hover="color:#f2f3fa">{{ h.label }}<i class="{{ h.arrow }}" style="font-size:10px"></i></div></sc-for>
+<sc-for list="{{ pRows }}" as="r" hint-placeholder-count="6">
+<div onClick="{{ r.go }}" style="{{ r.cellFirst }}"><span style="{{ r.avatar }}">{{ r.initial }}</span><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">{{ r.name }}</div><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#8a91a8;margin-top:1px">{{ r.mk }}<sc-for list="{{ r.plats }}" as="pi" hint-placeholder-count="2"><i class="{{ pi }}" style="font-size:12px"></i></sc-for></div></div></div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.n }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.f }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}"><div style="display:flex;flex-direction:column;gap:4px;width:100%"><span>{{ r.net }}</span><div style="height:3px;border-radius:99px;background:rgba(255,255,255,.05)"><div style="{{ r.netBar }}"></div></div></div></div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}"><span style="{{ r.growthStyle }}">{{ r.growth }}</span></div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.reach }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.er }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.tg }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}"><div style="display:flex;flex-direction:column;gap:8px;width:100%"><sc-for list="{{ r.goals }}" as="gx" hint-placeholder-count="1"><div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:baseline;gap:8px;font-size:11px"><span style="color:#aab0c5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ gx.label }}</span><span style="flex:1"></span><span style="color:#8a91a8;white-space:nowrap">{{ gx.text }}</span><span style="{{ gx.pctStyle }}">{{ gx.pct }}</span></div><div style="height:4px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="{{ gx.bar }}"></div></div></div></sc-for><sc-if value="{{ r.noGoals }}"><span style="font-size:11.5px;color:#6b7289">Aucun objectif</span></sc-if></div></div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+<sc-for list="{{ ranks }}" as="rk" hint-placeholder-count="2">
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:10px;min-width:0">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><i class="{{ rk.icon }}" style="{{ rk.iconStyle }}"></i><span style="font-size:14px;font-weight:600;color:#f2f3fa">{{ rk.title }}</span><span style="flex:1"></span><sc-if value="{{ rk.first }}"><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ rankSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div></sc-if></div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ rk.rows }}" as="r" hint-placeholder-count="5">
+<div onClick="{{ r.go }}" style="display:grid;grid-template-columns:22px minmax(0,1fr) 110px 70px;gap:10px;align-items:center;padding:8px 8px;border-radius:9px;cursor:pointer" style-hover="background:rgba(255,255,255,.04)">
+<span style="font-size:12px;font-weight:600;color:#6b7289;font-variant-numeric:tabular-nums">{{ r.rank }}</span>
+<div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="{{ r.dot }}"></span><i class="{{ r.platIcon }}" style="font-size:13px;color:#8a91a8"></i><span style="font-size:12.5px;font-weight:600;color:#e8eaf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ r.handle }}</span><span style="font-size:11px;color:#6b7289;white-space:nowrap">{{ r.sub }}</span></div>
+<div style="height:4px;border-radius:99px;background:rgba(255,255,255,.05)"><div style="{{ r.bar }}"></div></div>
+<span style="{{ r.vStyle }}">{{ r.v }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px;min-width:0">
+<div><div style="font-size:14px;font-weight:600;color:#f2f3fa">Publication</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ pubSub }}</div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:28px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ pubRate }}</span><span style="font-size:12px;color:#8a91a8">des posts planifiés publiés</span></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ pubRows }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:7px;font-size:12.5px"><i class="{{ r.icon }}" style="font-size:14px;color:#aab0c5"></i><span style="color:#e8eaf3;font-weight:600">{{ r.name }}</span><span style="flex:1"></span><span style="color:#c5c9d8;font-variant-numeric:tabular-nums">{{ r.txt }}</span></div><div style="display:flex;height:6px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="{{ r.bar }}"></div></div><div style="font-size:11px;color:#6b7289">{{ r.miss }}</div></div>
+</sc-for>
+<sc-if value="{{ pubNone }}"><div style="font-size:12px;color:#8a91a8">Aucune publication planifiée sur la période.</div></sc-if>
+</div>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px;min-width:0">
+<div><div style="display:flex;align-items:center;gap:7px"><i class="ph ph-instagram-logo" style="font-size:15px;color:#aab0c5"></i><span style="font-size:14px;font-weight:600;color:#f2f3fa">Stories</span></div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ stSub }}</div></div>
+<sc-if value="{{ hasStories }}">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"><sc-for list="{{ stStats }}" as="k" hint-placeholder-count="3"><div><div style="font-size:11.5px;color:#8a91a8">{{ k.label }}</div><div style="font-size:18px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums;margin-top:3px">{{ k.v }}</div><sc-if value="{{ k.hasDelta }}"><div style="{{ k.deltaStyle }}">{{ k.delta }}</div></sc-if></div></sc-for></div>
+<div style="display:flex;align-items:flex-end;gap:2px;height:90px"><sc-for list="{{ stBars }}" as="b" hint-placeholder-count="7"><div title="{{ b.title }}" style="{{ b.style }}"></div></sc-for></div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7289"><span>{{ stFrom }}</span><span>Vues de stories par jour</span><span>{{ stTo }}</span></div>
+</sc-if>
+<sc-if value="{{ noStories }}"><div style="font-size:12px;color:#8a91a8">Aucun compte Instagram dans la sélection.</div></sc-if>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px;min-width:0">
+<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Santé des comptes</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">Disponibilité moyenne sur la période</div></div><a href="Module%20Logs%20v1.dc.html" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap">Logs<i class="ph ph-arrow-up-right" style="font-size:12px"></i></a></div>
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:28px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ upTxt }}</span><span style="{{ upDeltaStyle }}">{{ upDelta }}</span></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><sc-for list="{{ hStats }}" as="k" hint-placeholder-count="3"><div style="padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)"><div style="font-size:18px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ k.v }}</div><div style="font-size:11px;color:#8a91a8;margin-top:2px">{{ k.label }}</div></div></sc-for></div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Indisponibles · {{ downCount }}</div>
+<sc-for list="{{ downList }}" as="d" hint-placeholder-count="3"><div onClick="{{ d.go }}" style="display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:8px;cursor:pointer;font-size:12px" style-hover="background:rgba(255,255,255,.04)"><i class="{{ d.platIcon }}" style="font-size:13px;color:#8a91a8"></i><span style="flex:1;min-width:0;color:#e8eaf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ d.handle }}</span><span style="{{ d.tagStyle }}">{{ d.tag }}</span></div></sc-for>
+<sc-if value="{{ downNone }}"><div style="font-size:12px;color:#8a91a8;padding:4px 0">Tous les comptes de la sélection sont opérationnels.</div></sc-if>
+</div>
+</div>
+</div>
+
+<div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Tous les comptes</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ tSub }}</div></div><div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 11px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);width:240px"><i class="ph ph-magnifying-glass" style="font-size:14px;color:#8a91a8"></i><input value="{{ tQ }}" onChange="{{ setTQ }}" placeholder="Rechercher un compte" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#e8eaf3;font-family:inherit;font-size:12.5px"></div></div>
+<div style="overflow-x:auto">
+<div style="min-width:1400px;display:grid;grid-template-columns:minmax(190px,1.8fr) 56px 96px repeat(10,minmax(72px,1fr)) 124px;gap:0 14px;align-items:center">
+<sc-for list="{{ tHeads }}" as="h" hint-placeholder-count="14"><div onClick="{{ h.go }}" style="{{ h.style }}" style-hover="color:#f2f3fa">{{ h.label }}<i class="{{ h.arrow }}" style="font-size:10px"></i></div></sc-for>
+<sc-for list="{{ tRows }}" as="r" hint-placeholder-count="8">
+<div onClick="{{ r.go }}" style="{{ r.cellFirst }}"><span style="{{ r.dot }}"></span><i class="{{ r.platIcon }}" style="font-size:13px;color:#8a91a8;flex:none"></i><div style="min-width:0"><div style="font-size:12.5px;font-weight:600;color:#f2f3fa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ r.handle }}</div><div style="font-size:11px;color:#6b7289">{{ r.persona }}</div></div></div>
+<div onClick="{{ r.go }}" style="{{ r.cellL }}">{{ r.mk }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cellL }}"><span style="{{ r.wfStyle }}">{{ r.wf }}</span></div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.f }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.net }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}"><span style="{{ r.growthStyle }}">{{ r.growth }}</span></div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.reach }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.er }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.visits }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.bio }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.tg }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.pub }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cell }}">{{ r.up }}</div>
+<div onClick="{{ r.go }}" style="{{ r.cellL }}"><span style="{{ r.stStyle }}">{{ r.st }}</span></div>
+</sc-for>
+</div>
+<sc-if value="{{ tNone }}"><div style="padding:20px 4px;font-size:12.5px;color:#8a91a8">Aucun compte ne correspond.</div></sc-if>
+</div>
+</div>
+
+</div>
+</sc-if>
+
+<div onClick="{{ scrollTop }}" title="Revenir en haut" style="{{ topBtnStyle }}" style-hover="background:rgba(124,108,246,.28);color:#ffffff;border-color:rgba(124,108,246,.6)"><i class="ph ph-arrow-up" style="font-size:17px"></i></div>
+<sc-if value="{{ hasToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:12px;background:rgba(20,23,38,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 36px rgba(0,0,0,.45);font-size:12.5px;color:#e8eaf3"><i class="ph ph-check-circle" style="font-size:16px;color:#2dd4a8"></i>{{ toast }}</div></sc-if></div>
+</div>
+</div>
+
+<sc-if value="{{ detOpen }}">
+<div onClick="{{ closeDet }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:min(1000px,100%);max-height:calc(100vh - 48px);overflow-y:auto;border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:center;gap:14px"><span style="width:40px;height:40px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.35)"><i class="{{ detIcon }}" style="font-size:19px"></i></span><div style="flex:1;min-width:0"><div style="font-size:20px;font-weight:600;color:#f2f3fa">{{ detTitle }}</div><div style="font-size:12.5px;color:#8a91a8;margin-top:3px">{{ detSub }}</div></div><span onClick="{{ closeDet }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1.3fr) repeat(4,minmax(0,1fr));gap:10px">
+<div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:30px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em;font-variant-numeric:tabular-nums">{{ detValue }}</span><sc-if value="{{ detHasDelta }}"><span style="{{ detDeltaStyle }}">{{ detDelta }}</span></sc-if></div><div style="font-size:11.5px;color:#8a91a8">{{ detPrevTxt }}</div></div>
+<sc-for list="{{ detExtras }}" as="x" hint-placeholder-count="4"><div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:11.5px;color:#8a91a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.label }}</span><span style="font-size:18px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums;white-space:nowrap">{{ x.v }}</span></div></sc-for>
+</div>
+<div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;color:#c5c9d8"><span style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:99px;background:#8b7cf6"></span>Période actuelle</span><sc-if value="{{ detHasPrev }}"><span style="display:flex;align-items:center;gap:7px"><span style="width:16px;border-top:2px dashed #6b7289"></span>Période précédente</span></sc-if><span style="flex:1"></span><span style="color:#8a91a8">{{ detBest }}</span></div>
+<div style="display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px">
+<div style="position:relative;height:180px"><sc-for list="{{ detY }}" as="y" hint-placeholder-count="3"><div style="{{ y.labelStyle }}">{{ y.label }}</div></sc-for></div>
+<div><div style="position:relative;height:180px"><sc-for list="{{ detY }}" as="y" hint-placeholder-count="3"><div style="{{ y.lineStyle }}"></div></sc-for><svg viewBox="0 0 1000 180" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><path d="{{ detArea }}" style="fill:rgba(124,108,246,.12);stroke:none"></path><path d="{{ detPrevD }}" style="fill:none;stroke:#6b7289;stroke-width:1.5;stroke-dasharray:5 5;vector-effect:non-scaling-stroke"></path><path d="{{ detD }}" style="fill:none;stroke:#8b7cf6;stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke"></path></svg></div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7289;margin-top:6px"><span>{{ detFrom }}</span><span>{{ detTo }}</span></div></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+<sc-for list="{{ detBreak }}" as="b" hint-placeholder-count="3"><div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:10px;min-width:0"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a91a8">{{ b.title }}</span><sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span style="{{ r.dot }}"></span><span style="flex:1;min-width:0;color:#e8eaf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</span><span style="color:#f2f3fa;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.v }}</span><sc-if value="{{ r.hasDelta }}"><span style="{{ r.deltaStyle }}">{{ r.delta }}</span></sc-if></div><div style="height:4px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden"><div style="{{ r.bar }}"></div></div></div></sc-for><sc-if value="{{ b.none }}"><span style="font-size:12px;color:#8a91a8">Aucune donnée</span></sc-if></div></sc-for>
+</div>
+<div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:6px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8a91a8;margin-bottom:4px">Top comptes · clique pour isoler</span>
+<sc-for list="{{ detTop }}" as="r" hint-placeholder-count="5"><div onClick="{{ r.go }}" style="display:grid;grid-template-columns:22px minmax(0,1fr) 160px 90px;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer" style-hover="background:rgba(255,255,255,.04)"><span style="font-size:12px;font-weight:600;color:#6b7289">{{ r.rank }}</span><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="{{ r.dot }}"></span><i class="{{ r.platIcon }}" style="font-size:13px;color:#8a91a8"></i><span style="font-size:12.5px;font-weight:600;color:#e8eaf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@{{ r.handle }}</span><span style="font-size:11px;color:#6b7289;white-space:nowrap">{{ r.sub }}</span></div><div style="height:4px;border-radius:99px;background:rgba(255,255,255,.05)"><div style="{{ r.bar }}"></div></div><span style="text-align:right;font-size:12.5px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ r.v }}</span></div></sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ goalsOpen }}">
+<div onClick="{{ closeGoals }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ goalsModalClick }}" style="width:min(760px,100%);max-height:calc(100vh - 48px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:16px;border-radius:22px;padding:22px 24px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:center;gap:14px"><div style="flex:1"><div style="font-size:20px;font-weight:600;color:#f2f3fa">Objectifs</div><div style="font-size:12.5px;color:#8a91a8;margin-top:4px;line-height:1.45">Choisis la donnée à suivre, sa fréquence (quotidien, 7 jours, 30 jours), puis active l’objectif persona par persona. Les volumes sont ramenés à la période affichée, les taux restent tels quels.</div></div><span onClick="{{ closeGoals }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<div style="overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:12px;margin:0 -6px;padding:2px 6px 6px">
+<sc-for list="{{ goalBlocks }}" as="gb" hint-placeholder-count="2">
+<div style="position:relative;border-radius:14px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025)">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+<div style="position:relative">
+<div onClick="{{ gb.toggleMenu }}" title="Changer la donnée suivie" style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;border:1px solid rgba(124,108,246,.5);background:rgba(124,108,246,.1);font-size:13px;font-weight:600;color:#f2f3fa;cursor:pointer;white-space:nowrap" style-hover="background:rgba(124,108,246,.18)"><i class="{{ gb.icon }}" style="font-size:15px"></i>{{ gb.label }}<i class="ph ph-caret-down" style="font-size:12px;color:#aab0c5"></i></div>
+<sc-if value="{{ gb.menuOpen }}"><div style="position:absolute;top:40px;left:0;z-index:5;width:250px;padding:6px;border-radius:12px;background:rgba(20,23,38,.98);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 44px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:1px"><sc-for list="{{ gb.opts }}" as="o" hint-placeholder-count="10"><div onClick="{{ o.go }}" style="{{ o.style }}" style-hover="background:rgba(255,255,255,.05)"><i class="{{ o.icon }}" style="font-size:14px;color:#aab0c5"></i><span style="flex:1">{{ o.label }}</span><span style="font-size:11px;color:#6b7289">{{ o.note }}</span></div></sc-for></div></sc-if>
+</div>
+<sc-if value="{{ gb.hasFreq }}"><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ gb.freqSeg }}" as="q" hint-placeholder-count="3"><div onClick="{{ q.go }}" style="{{ q.style }}" style-hover="color:#f2f3fa">{{ q.label }}</div></sc-for></div></sc-if>
+<span style="flex:1"></span>
+<span onClick="{{ gb.allOn }}" style="font-size:12px;font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Tout activer</span>
+<span onClick="{{ gb.allOff }}" style="font-size:12px;font-weight:600;color:#8a91a8;cursor:pointer" style-hover="color:#f2f3fa">Tout désactiver</span>
+<span onClick="{{ gb.remove }}" title="Supprimer l’objectif" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(244,114,140,.12);color:#fda4af;border-color:rgba(244,114,140,.35)"><i class="ph ph-trash" style="font-size:14px"></i></span>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto 170px;gap:6px 16px;align-items:center;padding:10px 14px 12px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7289">Persona · <span style="letter-spacing:0;text-transform:none;font-weight:500">{{ gb.count }}</span></span><span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7289">Actif</span><span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7289">Cible</span>
+<sc-for list="{{ gb.rows }}" as="g" hint-placeholder-count="6">
+<div style="{{ g.nameStyle }}"><span style="{{ g.dot }}"></span><span style="font-size:13px;font-weight:600;color:#f2f3fa">{{ g.name }}</span><span style="font-size:11.5px;color:#8a91a8">{{ g.mk }}</span></div>
+<div onClick="{{ g.toggle }}" style="{{ g.track }}"><div style="{{ g.knob }}"></div></div>
+<div style="{{ g.inputBox }}"><input value="{{ g.v }}" onChange="{{ g.setV }}" disabled="{{ g.off }}" inputMode="decimal" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#f2f3fa;font-family:inherit;font-size:13px;font-variant-numeric:tabular-nums"><span style="font-size:11.5px;color:#8a91a8;white-space:nowrap">{{ g.unit }}</span></div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{ goalsEmpty }}"><div style="padding:18px 4px;font-size:12.5px;color:#8a91a8">Aucun objectif pour l’instant.</div></sc-if>
+<sc-if value="{{ canAddGoal }}"><div onClick="{{ addGoal }}" style="display:flex;align-items:center;justify-content:center;gap:8px;height:44px;flex:none;border-radius:12px;border:1px dashed rgba(255,255,255,.16);font-size:12.5px;font-weight:600;color:#c5c9d8;cursor:pointer" style-hover="border-color:rgba(124,108,246,.6);color:#f2f3fa;background:rgba(124,108,246,.06)"><i class="ph ph-plus" style="font-size:14px"></i>Ajouter un objectif</div></sc-if>
+</div>
+<div style="display:flex;gap:10px;justify-content:flex-end"><div onClick="{{ closeGoals }}" style="display:flex;align-items:center;justify-content:center;height:38px;padding:0 18px;border-radius:10px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.1);color:#c5c9d8" style-hover="background:rgba(255,255,255,.05)">Annuler</div><div onClick="{{ saveGoals }}" style="display:flex;align-items:center;justify-content:center;height:38px;padding:0 18px;border-radius:10px;font-size:13px;cursor:pointer;gap:7px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-weight:600;box-shadow:0 4px 18px rgba(99,102,241,.35)"><i class="ph ph-check" style="font-size:14px"></i>Enregistrer</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ rulesOpen }}">
+<div onClick="{{ closeRules }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:min(560px,100%);max-height:calc(100vh - 48px);overflow-y:auto;border-radius:22px;padding:22px 24px;display:grid;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:center;gap:14px"><div style="flex:1"><div style="font-size:20px;font-weight:600;color:#f2f3fa">Règles d’anomalies</div><div style="font-size:12.5px;color:#8a91a8;margin-top:4px">Vérifiées chaque jour sur chaque compte actif</div></div><span onClick="{{ closeRules }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<div style="display:flex;flex-direction:column;border-radius:13px;border:1px solid rgba(255,255,255,.08);overflow:hidden">
+<sc-for list="{{ ruleRows }}" as="r" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:12px 14px;border-top:1px solid rgba(255,255,255,.05)"><div style="min-width:0"><div style="font-size:12.5px;font-weight:600;color:#e8eaf3">{{ r.label }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px;line-height:1.4">{{ r.desc }}</div></div><div style="display:flex;align-items:center;gap:4px"><span onClick="{{ r.dec }}" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-minus" style="font-size:12px"></i></span><span style="min-width:62px;text-align:center;font-size:13px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ r.v }}</span><span onClick="{{ r.inc }}" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.06)"><i class="ph ph-plus" style="font-size:12px"></i></span></div></div>
+</sc-for>
+</div>
+<div onClick="{{ toggleTg }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.08);cursor:pointer" style-hover="border-color:rgba(255,255,255,.16)"><i class="ph ph-telegram-logo" style="font-size:18px;color:#8db4fd"></i><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:#e8eaf3">Alerte Telegram</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px;line-height:1.4">Envoyée dans le groupe de production de la persona. Sans groupe, l’anomalie reste visible ici uniquement.</div></div><div style="{{ tgTrack }}"><div style="{{ tgKnob }}"></div></div></div>
+<div style="display:flex;gap:10px;justify-content:flex-end"><div onClick="{{ closeRules }}" style="display:flex;align-items:center;justify-content:center;height:38px;padding:0 18px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.05)">Annuler</div><div onClick="{{ saveRules }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 18px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(99,102,241,.35)"><i class="ph ph-check" style="font-size:14px"></i>Enregistrer</div></div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;chartStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;area&quot;,&quot;smooth&quot;,&quot;line&quot;,&quot;bars&quot;],&quot;default&quot;:&quot;smooth&quot;,&quot;tsType&quot;:&quot;'area' | 'smooth' | 'line' | 'bars'&quot;,&quot;section&quot;:&quot;Évolution&quot;}}">
+class Component extends DCLogic {
+  N = 180;
+  K = ['gain', 'lost', 'reach', 'impr', 'views', 'likes', 'comments', 'shares', 'saves', 'visits', 'bio', 'sv', 'exits', 'replies', 'tg', 'tgS', 'vip', 'plan', 'pub', 'cp', 'ban', 'sess'];
+  PL = { ig: ['Instagram', 'ph ph-instagram-logo', '#f472b6'], th: ['Threads', 'ph ph-threads-logo', '#c5c9d8'], x: ['X', 'ph ph-x-logo', '#8db4fd'] };
+  MK = { FR: ['France', '#8b7cf6'], US: ['États-Unis', '#4b9bf5'], ES: ['Espagne', '#f5c77e'] };
+  GM = { net: ['Abonnés nets', a => a.net, 0, 'ph ph-trend-up'], reach: ['Portée', a => a.reach, 0, 'ph ph-broadcast'], impr: ['Impressions', a => a.impr, 0, 'ph ph-eye'], ipp: ['Impressions / post', a => a.pub ? a.impr / a.pub : 0, 2, 'ph ph-chart-bar'], eng: ['Engagements', a => a.eng, 0, 'ph ph-heart'], er: ['Taux d’engagement', a => a.er, 1, 'ph ph-percent'], visits: ['Visites de profil', a => a.visits, 0, 'ph ph-user-focus'], bio: ['Clics en bio', a => a.bio, 0, 'ph ph-link'], tg: ['Nouveau Sub', a => a.tg, 0, 'ph ph-telegram-logo'], conv: ['Taux de conversion', a => a.bio ? a.tg / a.bio * 100 : 0, 1, 'ph ph-arrows-merge'], pub: ['Publications', a => a.pub, 0, 'ph ph-paper-plane-tilt'] };
+  goalSuggest(k, pid, f) { const a = this.agg(this.accs.filter(x => x.persona === pid), this.N - 30, this.N); const m = this.GM[k]; const v = m[1](a); if (m[2] === 1) return Math.max(.5, Math.round(v * 1.1 * 10) / 10); const t = v * 1.15 * (m[2] ? 1 : (f || 30) / 30); const mag = t >= 1e5 ? 1000 : t >= 1e4 ? 500 : t >= 1000 ? 100 : t >= 100 ? 10 : 1; return Math.max(mag, Math.round(t / mag) * mag); }
+  METRICS = [['followers', 'Abonnés'], ['net', 'Gain net'], ['reach', 'Portée'], ['eng', 'Engagements'], ['er', 'Taux d’eng.'], ['visits', 'Visites'], ['bio', 'Clics en bio'], ['tg', 'Nouveau Sub'], ['conv', 'Taux de conversion']];
+  state = { ready: false, period: 7, compare: true, mkt: 'all', plat: 'all', pers: [], acc: null, accOpen: false, accQ: '', metric: 'followers', split: 'total', hover: null, pSort: ['net', -1], tSort: ['net', -1], tQ: '', rank: 'growth', goals: [], goalsEd: null, rules: { drop: 2, reach: 40, er: 2, tg: true }, rulesEd: null, ignored: {}, toast: null, showTop: false, navCollapsed: false, mapReady: false };
+
+  startDrift(box) {
+    const cols = [[124, 108, 246], [75, 123, 245], [150, 122, 250], [96, 150, 240]];
+    const blobs = cols.map(c => { const el = document.createElement('div'); Object.assign(el.style, { position: 'absolute', left: '0', top: '0', width: '560px', height: '560px', marginLeft: '-280px', marginTop: '-280px', borderRadius: '50%', willChange: 'transform', background: 'radial-gradient(circle,rgba(' + c + ',.12),rgba(' + c + ',.04) 45%,transparent 70%)' }); box.appendChild(el); const R = () => (window.__slRand||Math.random)(); return { el, p: [R() * 6.28, R() * 6.28, R() * 6.28, R() * 6.28], f: [.00012 + R() * .00012, .00018 + R() * .00014, .0001 + R() * .00012, .00016 + R() * .00014] }; });
+    const dots = document.createElement('div'); Object.assign(dots.style, { position: 'absolute', inset: '0', backgroundImage: 'radial-gradient(rgba(200,192,255,.3) 1px,transparent 1.3px)', backgroundSize: '22px 22px' }); box.appendChild(dots);
+    const t0 = performance.now();
+    const tick = now => { const t = now - t0; const W = box.clientWidth, H = box.clientHeight; const m = blobs.map(b => { const x = W * (.5 + .38 * Math.sin(t * b.f[0] + b.p[0]) + .1 * Math.sin(t * b.f[1] + b.p[1])); const y = H * (.5 + .36 * Math.sin(t * b.f[2] + b.p[2]) + .1 * Math.sin(t * b.f[3] + b.p[3])); b.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; return 'radial-gradient(260px circle at ' + x.toFixed(0) + 'px ' + y.toFixed(0) + 'px,rgba(0,0,0,.55),transparent 70%)'; }).join(','); dots.style.webkitMaskImage = m; dots.style.maskImage = m; if (this._drift) this._drift.raf = requestAnimationFrame(tick); };
+    this._drift = { blobs, dots, raf: requestAnimationFrame(tick) };
+  }
+
+  componentDidMount() {
+    this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const acc = (H.get('acc') || '').replace(/^@/, ''), per = H.get('persona'); if (acc) this.setState({ acc, hover: null }); else if (per) this.setState({ pers: [per], acc: null, hover: null }); }; setTimeout(this._hash, 120); window.addEventListener('hashchange', this._hash);
+    const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
+    const boot = () => { this.build(); const D = window.SCALE_DATA; const per1 = {}, per2 = {}; D.personas.forEach(p => { per1[p.id] = { on: true, v: this.goalSuggest('net', p.id) }; per2[p.id] = { on: true, v: 4 }; }); this.setState({ ready: true, goals: [{ metric: 'net', freq: 30, per: per1 }, { metric: 'er', freq: 30, per: per2 }] }); };
+    if (window.SCALE_DATA) boot(); else this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); boot(); } }, 80);
+    this._mp = setInterval(() => { if (window.d3 && window.topojson) { clearInterval(this._mp); fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(r => r.json()).then(t => { this._countries = window.topojson.feature(t, t.objects.countries).features; this.setState({ mapReady: true }); }).catch(() => {}); } }, 120);
+    this._rs = () => { this._mapKey = null; this.drawMap(); }; window.addEventListener('resize', this._rs);
+    this._key = e => { if (e.key !== 'Escape') return; if (this.state.det) this.setState({ det: null }); else if (this.state.goalsEd) this.setState({ goalsEd: null }); else if (this.state.rulesEd) this.setState({ rulesEd: null }); else if (this.state.accOpen) this.setState({ accOpen: false }); }; window.addEventListener('keydown', this._key);
+  }
+  componentDidUpdate() { this.drawMap(); }
+  componentWillUnmount() { clearTimeout(this._tt); clearInterval(this._sd); clearInterval(this._mp); window.removeEventListener('resize', this._rs); window.removeEventListener('keydown', this._key); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
+
+  build() {
+    const D = window.SCALE_DATA; const N = this.N;
+    const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+    const fac = (seed, ar, sig, pB, bLo, bHi) => { let sd = hash(seed) % 2147483646 + 1; const R = () => (sd = sd * 16807 % 2147483647) / 2147483647; const gs = () => (R() + R() + R() - 1.5) * 2; const o = new Float64Array(N); let x = 0, b = 0, bm = 1; for (let d = 0; d < N; d++) { x = ar * x + sig * gs(); if (b > 0) b--; else if (R() < pB) { b = 1 + Math.floor(R() * 4); bm = R() < .35 ? .35 + R() * .3 : bLo + R() * (bHi - bLo); } o[d] = Math.exp(x) * (b > 0 ? bm : 1); } return o; };
+    const G = fac('global-algo', .9, .13, .02, 1.4, 2.1); const PF = {}; D.personas.forEach(p => { PF[p.id] = fac('pers-' + p.id, .82, .22, .04, 1.6, 3.4); });
+    this.accs = D.accounts.map(a => {
+      let sd = hash(a.handle) % 2147483646 + 1; const R = () => (sd = sd * 16807 % 2147483647) / 2147483647; const rg = (lo, hi) => lo + R() * (hi - lo);
+      const P = D.personas.find(p => p.id === a.persona); const mk = P.market; const W = a.workflow; const pl = a.plat;
+      const mm = { FR: 1, US: 1.7, ES: .9 }[mk]; const pm = { ig: 1, th: .55, x: .7 }[pl];
+      const b = { Actif: [7000, 42000], Warmup: [400, 1800], Onboarding: [30, 180], Pause: [2500, 14000] }[W];
+      const g = { Actif: [.002, .008], Warmup: [.009, .02], Onboarding: [.025, .05], Pause: [-.0012, .0003] }[W];
+      const created = W === 'Warmup' ? N - Math.round(rg(80, 150)) : W === 'Onboarding' ? N - Math.round(rg(18, 50)) : -1;
+      const tgShare = rg(.5, .72); const rate = rg(g[0], g[1]); const erB = rg(.012, .055); const rr = { ig: .28, th: .22, x: .34 }[pl] * rg(.7, 1.3);
+      let F = rg(b[0], b[1]) * mm * pm; let spike = 1;
+      const S = { F: new Float64Array(N), up: new Float64Array(N), alive: new Uint8Array(N) }; this.K.forEach(k => S[k] = new Float64Array(N));
+      const err = a.status === 'error', ses = a.status === 'session';
+      for (let d = 0; d < N; d++) {
+        if (d < created) continue; S.alive[d] = 1;
+        if (R() < .03 && W !== 'Pause') spike = rg(2.5, 7); else spike = 1 + (spike - 1) * .45;
+        const wk = (1 + .2 * Math.sin(d * 2 * Math.PI / 7)) * G[d] * (PF[a.persona] ? PF[a.persona][d] : 1);
+        let gain = Math.max(0, F * rate * rg(.5, 1.5) * wk * spike + (W === 'Onboarding' ? rg(0, 4) : 0)); if (W === 'Pause') gain = F * .0006 * R();
+        let lost = gain * rg(.12, .34) + F * .0003 * R() + (wk < .65 && W !== 'Pause' ? F * .0025 * R() : 0); let rf = wk;
+        if (err && d >= N - 3) { lost += F * (d === N - 1 ? .028 : .006); rf *= .35; }
+        if (ses && d >= N - 2) rf *= .45;
+        F = Math.max(0, F + gain - lost);
+        const reach = F * rr * rg(.7, 1.3) * (1 + (spike - 1) * .8) * rf * (W === 'Pause' ? .25 : 1);
+        const likes = reach * erB * rg(.75, 1.25);
+        S.F[d] = F; S.gain[d] = gain; S.lost[d] = lost; S.reach[d] = reach; S.impr[d] = reach * rg(1.35, 1.9);
+        S.views[d] = reach * { ig: 1.25, th: .45, x: .85 }[pl] * rg(.8, 1.2);
+        S.likes[d] = likes; S.comments[d] = likes * rg(.04, .09); S.shares[d] = likes * rg(.05, .12); S.saves[d] = likes * (pl === 'ig' ? rg(.08, .16) : rg(.01, .04));
+        S.visits[d] = reach * rg(.018, .04); S.bio[d] = S.visits[d] * rg(.07, .16); S.tg[d] = S.bio[d] * rg(.42, .66); S.vip[d] = S.tg[d] * rg(.05, .12); S.tgS[d] = S.tg[d] * tgShare * rg(.9, 1.1);
+        if (pl === 'ig' && W !== 'Pause') { S.sv[d] = F * rg(.04, .09) * rf; S.exits[d] = S.sv[d] * rg(.13, .24); S.replies[d] = S.sv[d] * rg(.003, .007); }
+        const pb = W === 'Pause' ? 0 : { ig: 1.3, th: 2, x: 3 }[pl] * (W === 'Actif' ? 1 : W === 'Warmup' ? .5 : .25);
+        const plan = Math.floor(pb + R()); let pub = plan; if (plan && R() < .06) pub--; if ((err && d >= N - 3) || (ses && d >= N - 2)) pub = 0;
+        S.plan[d] = plan; S.pub[d] = pub;
+        S.up[d] = err && d >= N - 3 ? rg(40, 70) : ses && d >= N - 2 ? rg(55, 80) : rg(97.2, 100);
+        S.cp[d] = (err && d === N - 3) || R() < .003 ? 1 : 0; S.ban[d] = R() < .0004 ? 1 : 0; S.sess[d] = (ses && d === N - 2) || R() < .004 ? 1 : 0;
+      }
+      return { handle: a.handle, persona: a.persona, P, mk, plat: pl, wf: W, status: a.status, created, s: S };
+    });
+  }
+  agg(list, from, to) {
+    const o = {}; this.K.forEach(k => o[k] = 0); let upS = 0, upN = 0, fE = 0, fS = 0; from = Math.max(0, from);
+    list.forEach(a => { const S = a.s; for (let d = from; d < to; d++) { for (let j = 0; j < this.K.length; j++) o[this.K[j]] += S[this.K[j]][d]; if (S.alive[d]) { upS += S.up[d]; upN++; } } fE += S.F[to - 1]; fS += from > 0 ? S.F[from - 1] : 0; });
+    o.net = o.gain - o.lost; o.eng = o.likes + o.comments + o.shares + o.saves; o.er = o.reach ? o.eng / o.reach * 100 : 0; o.up = upN ? upS / upN : null; o.fE = fE; o.fS = fS; o.growth = fS ? (fE - fS) / fS * 100 : null; o.n = list.length; return o;
+  }
+  dayVal(list, d, M) {
+    let v = 0, e = 0, r = 0;
+    list.forEach(a => { const S = a.s; if (M === 'followers') v += S.F[d]; else if (M === 'net') v += S.gain[d] - S.lost[d]; else if (M === 'conv') { e += S.tg[d]; r += S.bio[d]; } else if (M === 'eng' || M === 'er') { e += S.likes[d] + S.comments[d] + S.shares[d] + S.saves[d]; r += S.reach[d]; } else v += S[M][d]; });
+    return M === 'eng' ? e : M === 'er' || M === 'conv' ? (r ? e / r * 100 : 0) : v;
+  }
+
+  fN(n) { return (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR'); }
+  fC(n) { const a = Math.abs(n); const s = n < 0 ? '−' : ''; if (a >= 1e6) return s + (a / 1e6).toFixed(a >= 1e7 ? 1 : 2).replace('.', ',') + ' M'; if (a >= 1e4) return s + (a / 1e3).toFixed(a >= 1e5 ? 0 : 1).replace('.', ',') + ' k'; return s + Math.round(a).toLocaleString('fr-FR'); }
+  fP(x, d) { return (x < 0 ? '−' : '') + Math.abs(x).toFixed(d == null ? 1 : d).replace('.', ',') + ' %'; }
+  sg(n) { return n > 0 ? '+' : ''; }
+  dly(pct, pts, inv) { if (pct == null || !isFinite(pct)) return { hasDelta: false, delta: '', deltaStyle: {} }; const good = inv ? pct < 0 : pct > 0; const flat = Math.abs(pct) < .05; const txt = this.sg(pct) + (pts ? (pct < 0 ? '−' : '') + Math.abs(pct).toFixed(2).replace('.', ',') + ' pt' : this.fP(pct)); return { hasDelta: true, delta: txt, deltaStyle: { fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: flat ? '#8a91a8' : good ? '#86efac' : '#fda4af' } }; }
+  pct(c, p) { return p ? (c - p) / Math.abs(p) * 100 : null; }
+  segStyle(on) { return { display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px', borderRadius: 8, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#ffffff' : '#8a91a8', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'transparent' }; }
+  dotSt(c, sz) { return { width: sz || 8, height: sz || 8, flex: 'none', borderRadius: 99, background: c }; }
+  date(d) { const t = new Date(); t.setHours(0, 0, 0, 0); return new Date(t.getTime() - (this.N - 1 - d) * 864e5); }
+  dd(d, y) { return this.date(d).toLocaleDateString('fr-FR', y ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' }); }
+  toastMsg(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  inF(a, skip) { const s = this.state; return (skip === 'mkt' || s.mkt === 'all' || a.mk === s.mkt) && (skip === 'plat' || s.plat === 'all' || a.plat === s.plat) && (skip === 'pers' || !s.pers.length || s.pers.indexOf(a.persona) >= 0) && (skip === 'acc' || !s.acc || a.handle === s.acc); }
+  pickMkt(m) { this.setState(y => ({ mkt: y.mkt === m ? 'all' : m, acc: null, hover: null })); }
+
+  drawMap() {
+    const el = this._mapRef && this._mapRef.current; const d3 = window.d3; if (!el || !d3 || !this._countries || !this._mapData) return;
+    const W = el.clientWidth, H = el.clientHeight; const key = JSON.stringify(this._mapData) + W + 'x' + H; if (key === this._mapKey) return; this._mapKey = key;
+    const md = this._mapData; const ids = { '250': 'FR', '840': 'US', '724': 'ES' };
+    let svg = el.querySelector('svg.geo'); if (svg) svg.remove();
+    const root = d3.select(el).append('svg').attr('class', 'geo').attr('width', W).attr('height', H).style('position', 'absolute').style('inset', '0');
+    const proj = d3.geoNaturalEarth1().rotate([50, 0]).fitExtent([[18, 22], [W - 18, H - 22]], { type: 'MultiPoint', coordinates: [[-124, 26], [-68, 49], [-9.5, 36], [24, 52], [-96, 51]] });
+    const path = d3.geoPath(proj);
+    root.append('path').attr('d', path(d3.geoGraticule10())).attr('fill', 'none').attr('stroke', 'rgba(255,255,255,.035)');
+    const fill = c => { const m = md.mk[c]; if (!m) return 'rgba(255,255,255,.035)'; const dim = md.sel !== 'all' && md.sel !== c; const a = dim ? .12 : .22 + .55 * m.share; const col = { FR: '139,124,246', US: '75,155,245', ES: '245,199,126' }[c]; return 'rgba(' + col + ',' + a.toFixed(2) + ')'; };
+    root.selectAll('path.c').data(this._countries).join('path').attr('class', 'c').attr('d', path)
+      .attr('fill', f => fill(ids[f.id])).attr('stroke', f => ids[f.id] && md.sel === ids[f.id] ? 'rgba(255,255,255,.7)' : ids[f.id] ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.07)').attr('stroke-width', f => ids[f.id] ? 1 : .5)
+      .style('cursor', f => ids[f.id] ? 'pointer' : 'default').on('click', (e, f) => { if (ids[f.id]) this.pickMkt(ids[f.id]); });
+    const ctr = { US: [-98, 39], FR: [2.4, 46.6], ES: [-3.8, 40.2] }; const mx = Math.max(1, ...Object.values(md.mk).map(m => m.f));
+    Object.keys(md.mk).forEach(c => { const m = md.mk[c]; const p = proj(ctr[c]); if (!p) return; const r = 4 + (c === 'US' ? 16 : 9) * Math.sqrt(m.f / mx); const dim = md.sel !== 'all' && md.sel !== c;
+      const g = root.append('g').style('cursor', 'pointer').style('opacity', dim ? .45 : 1).on('click', () => this.pickMkt(c));
+      g.append('circle').attr('cx', p[0]).attr('cy', p[1]).attr('r', r).attr('fill', 'rgba(11,13,22,.35)').attr('stroke', { FR: '#a99bff', US: '#7cb6ff', ES: '#f5c77e' }[c]).attr('stroke-width', 1.5);
+      const L = { US: [p[0] + r + 8, p[1] - 2, 'start'], FR: [p[0] - r - 8, p[1] - r - 16, 'end'], ES: [p[0] - r - 8, p[1] + r + 6, 'end'] }[c]; const lx = L[0]; const anchor = L[2]; const ly = L[1];
+      g.append('text').attr('x', lx).attr('y', ly).attr('text-anchor', anchor).attr('fill', '#f2f3fa').attr('font-family', 'Manrope, sans-serif').attr('font-size', 12.5).attr('font-weight', 600).text(c + ' · ' + m.fTxt);
+      g.append('text').attr('x', lx).attr('y', ly + 15).attr('text-anchor', anchor).attr('fill', '#aab0c5').attr('font-family', 'Manrope, sans-serif').attr('font-size', 11).text(m.netTxt + ' sur la période'); });
+  }
+
+  smoothD(P2) { if (P2.length < 3) return 'M' + P2.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L'); let d = 'M' + P2[0][0].toFixed(1) + ',' + P2[0][1].toFixed(1); for (let i = 0; i < P2.length - 1; i++) { const p0 = P2[i - 1] || P2[i], p1 = P2[i], p2 = P2[i + 1], p3 = P2[i + 2] || p2; d += 'C' + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + ',' + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) + ' ' + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + ',' + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1); } return d; }
+  detailVals(out, s, sel, personas, pidsSel, from, to, pf, P, cmp) {
+    out.detOpen = !!s.det; out.closeDet = () => this.setState({ det: null });
+    if (!s.det) { Object.assign(out, { detExtras: [], detBreak: [], detTop: [], detY: [], detD: '', detArea: '', detPrevD: '' }); return; }
+    const pc = (a, b) => b ? a / b * 100 : 0; const dec = v => v.toFixed(2).replace('.', ',');
+    const DM = {
+      followers: ['Abonnés', 'ph ph-users-three', a => a.fE, 'n', c => [['Gagnés', this.fN(c.gain)], ['Perdus', this.fN(c.lost)], ['Gain net', this.sg(c.net) + this.fN(c.net)], ['Taux de désabonnement', this.fP(pc(c.lost, c.fS), 2)]]],
+      reach: ['Portée', 'ph ph-broadcast', a => a.reach, 'n', c => [['Impressions', this.fC(c.impr)], ['Impressions / post', c.pub ? this.fC(c.impr / c.pub) : '—'], ['Répétition', c.reach ? dec(c.impr / c.reach) + ' ×' : '—'], ['Portée / compte', c.n ? this.fC(c.reach / c.n) : '—']]],
+      eng: ['Engagements', 'ph ph-heart', a => a.eng, 'n', c => [['Likes', this.fC(c.likes)], ['Commentaires', this.fC(c.comments)], ['Partages', this.fC(c.shares)], ['Enregistrements', this.fC(c.saves)]]],
+      er: ['Taux d’engagement', 'ph ph-percent', a => a.er, 'p', c => [['Likes / portée', this.fP(pc(c.likes, c.reach), 2)], ['Commentaires / portée', this.fP(pc(c.comments, c.reach), 2)], ['Partages / portée', this.fP(pc(c.shares, c.reach), 2)], ['Enregistrements / portée', this.fP(pc(c.saves, c.reach), 2)]]],
+      visits: ['Visites de profil', 'ph ph-user-focus', a => a.visits, 'n', c => [['Part de la portée', this.fP(pc(c.visits, c.reach))], ['Visites / compte', c.n ? this.fC(c.visits / c.n) : '—'], ['Clics en bio', this.fC(c.bio)], ['CTR bio', this.fP(pc(c.bio, c.visits))]]],
+      bio: ['Clics en bio', 'ph ph-link', a => a.bio, 'n', c => [['CTR des visites', this.fP(pc(c.bio, c.visits))], ['Nouveau Sub', this.fN(c.tg)], ['Taux de conversion', this.fP(pc(c.tg, c.bio))], ['Clics / compte', c.n ? this.fC(c.bio / c.n) : '—']]],
+      sv: ['Stories vues', 'ph ph-circles-three', a => a.sv, 'n', c => [['Sorties', this.fC(c.exits)], ['Taux de sortie', this.fP(pc(c.exits, c.sv))], ['Réponses', this.fN(c.replies)], ['Vues / compte', c.n ? this.fC(c.sv / c.n) : '—']], true],
+      tg: ['Nouveau Sub', 'ph ph-telegram-logo', a => a.tg, 'n', c => [['Telegram', this.fN(Math.min(c.tgS, c.tg))], ['OF', this.fN(Math.max(0, c.tg - c.tgS))], ['Part Telegram', this.fP(pc(Math.min(c.tgS, c.tg), c.tg), 0)], ['Taux de conversion', this.fP(pc(c.tg, c.bio))]]],
+      conv: ['Taux de conversion', 'ph ph-arrows-merge', a => pc(a.tg, a.bio), 'p', c => [['Clics en bio', this.fC(c.bio)], ['Nouveau Sub', this.fN(c.tg)], ['Visites → Sub', this.fP(pc(c.tg, c.visits), 2)], ['Sub / 1 000 portée', c.reach ? dec(c.tg / c.reach * 1000) : '—']]],
+      s1k: ['Sub / 1 000 portée', 'ph ph-gauge', a => a.reach ? a.tg / a.reach * 1000 : 0, 'd', c => [['Portée', this.fC(c.reach)], ['Nouveau Sub', this.fN(c.tg)], ['Sub / 1 000 impressions', c.impr ? dec(c.tg / c.impr * 1000) : '—'], ['Taux de conversion', this.fP(pc(c.tg, c.bio))]]],
+      pub: ['Publications', 'ph ph-paper-plane-tilt', a => a.pub, 'n', c => [['Planifiées', this.fN(c.plan)], ['Non publiées', this.fN(c.plan - c.pub)], ['Taux de publication', this.fP(pc(c.pub, c.plan), 0)], ['Posts / compte / jour', c.n ? dec(c.pub / c.n / P) : '—']]],
+      up: ['Disponibilité', 'ph ph-heartbeat', a => a.up || 0, 'p', c => [['Checkpoints', String(c.cp)], ['Bans', String(c.ban)], ['Sessions expirées', String(c.sess)], ['Comptes indisponibles', String(sel.filter(a => a.status !== 'idle').length)]]]
+    }[s.det];
+    if (!DM) { out.detOpen = false; return; }
+    const L0 = DM[5] ? sel.filter(a => a.plat === 'ig') : sel; const V = DM[2]; const kind = DM[3];
+    const fm = v => kind === 'p' ? this.fP(v, 2) : kind === 'd' ? dec(v) : this.fC(v);
+    const dlt = (a, b) => kind === 'p' ? this.dly(cmp ? a - b : null, true) : this.dly(cmp ? this.pct(a, b) : null);
+    const cA = this.agg(L0, from, to), pA = this.agg(L0, pf, from); const cv = V(cA), pv = V(pA); const dd = dlt(cv, pv);
+    out.detTitle = DM[0]; out.detIcon = DM[1]; out.detValue = fm(cv); out.detHasDelta = dd.hasDelta; out.detDelta = dd.delta; out.detDeltaStyle = { ...dd.deltaStyle, fontSize: 13 };
+    out.detPrevTxt = cmp ? 'Période précédente : ' + fm(pv) : '';
+    out.detSub = 'Du ' + this.dd(from) + ' au ' + this.dd(to - 1, true) + ' · ' + L0.length + ' compte' + (L0.length > 1 ? 's' : '') + (DM[5] ? ' Instagram' : '');
+    out.detExtras = DM[4](cA, pA).map(x => ({ label: x[0], v: x[1] }));
+    const cur = Array.from({ length: P }, (_, i) => V(this.agg(L0, from + i, from + i + 1)));
+    const prv = cmp ? Array.from({ length: P }, (_, i) => V(this.agg(L0, pf + i, pf + i + 1))) : [];
+    const vals = cur.concat(prv); let mx = Math.max(...vals), mn = Math.min(...vals);
+    if (s.det !== 'followers' && s.det !== 'up' && kind !== 'p') mn = Math.min(0, mn); if (mx === mn) mx = mn + 1; const pad = (mx - mn) * .08; mx += pad; if (mn !== 0) mn -= pad;
+    const H = 180; const X = i => P === 1 ? 500 : i / (P - 1) * 1000, Y = v => H - (v - mn) / (mx - mn) * H;
+    out.detD = this.smoothD(cur.map((v, i) => [X(i), Y(v)])); out.detArea = out.detD + 'L1000,' + H + 'L0,' + H + 'Z'; out.detPrevD = prv.length ? this.smoothD(prv.map((v, i) => [X(i), Y(v)])) : ''; out.detHasPrev = !!prv.length;
+    out.detY = [0, 1, 2].map(i => { const v = mn + (mx - mn) * (2 - i) / 2; const top = i * 50 + '%'; return { label: kind === 'p' ? this.fP(v, 1) : kind === 'd' ? dec(v) : this.fC(v), labelStyle: { position: 'absolute', right: 0, top, transform: 'translateY(-50%)', fontSize: 11, color: '#6b7289', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }, lineStyle: { position: 'absolute', left: 0, right: 0, top, height: 1, background: i === 2 ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.04)' } }; });
+    out.detFrom = this.dd(from); out.detTo = this.dd(to - 1);
+    const bs = s.det === 'followers' ? Array.from({ length: P }, (_, i) => this.agg(L0, from + i, from + i + 1).net) : cur; let bi = 0; bs.forEach((v, i) => { if (v > bs[bi]) bi = i; });
+    out.detBest = P > 1 ? 'Meilleur jour : ' + this.dd(from + bi) + ' · ' + (s.det === 'followers' ? this.sg(bs[bi]) + this.fN(bs[bi]) + ' net' : fm(bs[bi])) : '';
+    const bk = (title, defs) => { const rows = defs.filter(x => x.list.length).map(x => ({ ...x, v: V(this.agg(x.list, from, to)), v0: V(this.agg(x.list, pf, from)) })).sort((a, b) => b.v - a.v); const m = Math.max(1e-9, ...rows.map(r => Math.abs(r.v))); return { title, none: !rows.length, rows: rows.map(r => ({ name: r.name, dot: this.dotSt(r.color), v: fm(r.v), ...dlt(r.v, r.v0), bar: { height: '100%', width: Math.abs(r.v) / m * 100 + '%', borderRadius: 99, background: r.color } })) }; };
+    out.detBreak = [bk('Par persona', pidsSel.map(id => { const pp = personas.find(x => x.id === id); return { name: pp.first, color: pp.color, list: L0.filter(a => a.persona === id) }; })), bk('Par marché', Object.keys(this.MK).map(k => ({ name: this.MK[k][0], color: this.MK[k][1], list: L0.filter(a => a.mk === k) }))), bk('Par plateforme', Object.keys(this.PL).map(k => ({ name: this.PL[k][0], color: this.PL[k][2], list: L0.filter(a => a.plat === k) })))];
+    const ar = L0.map(a => ({ a, v: V(this.agg([a], from, to)) })).sort((x, y) => y.v - x.v).slice(0, 5); const am = Math.max(1e-9, ...ar.map(r => Math.abs(r.v)));
+    out.detTop = ar.map((r, i) => ({ rank: String(i + 1), handle: r.a.handle, sub: r.a.P.first + ' · ' + r.a.mk, platIcon: this.PL[r.a.plat][1], dot: this.dotSt(r.a.P.color, 7), v: fm(r.v), bar: { height: '100%', width: Math.abs(r.v) / am * 100 + '%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' }, go: () => this.setState({ acc: r.a.handle, det: null, hover: null }) }));
+  }
+  shellVals() {
+    const s = this.state;
+    const nav = [['squares-four', 'Dashboard', 0, 'Module%20Dashboard%20v1.dc.html'], ['device-mobile', 'Comptes', 0, 'Module%20Comptes%20v1.dc.html'], ['user-circle', 'Personas', 0, 'Module%20Personas%20v1.dc.html'], ['target', 'Targets', 0, 'Module%20Targets%20v1.dc.html'], ['chart-line-up', 'Statistiques', 1], ['address-book', 'CRM', 0, 'Module%20CRM%20v1.dc.html'], ['link-simple', 'Liens', 0, 'Module%20Liens%20v1.dc.html'], ['paper-plane-tilt', 'Posting', 0, 'Module%20Posting%20v1.dc.html'], ['warning-circle', 'Logs', 0, 'Module%20Logs%20v1.dc.html'], ['magnifying-glass', 'Veille', 0, 'Module%20Veille%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], active: !!n[2], idle: !n[2], href: n[3] || '#' }));
+    const navBottom = [['flow-arrow', 'Scénarios', 'Module%20Scenarios%20v1.dc.html'], ['sliders-horizontal', 'Comportements', 'Module%20Comportements%20v1.dc.html'], ['globe-simple', 'Proxies', 'Module%20Proxies%20v1.dc.html'], ['devices', 'Parc d’iPhone', 'Module%20Parc%20iPhone%20v1.dc.html'], ['gear', 'Paramètres', 'Module%20Parametres%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], href: n[2] || '#' }));
+    const NI = { display: 'flex', alignItems: 'center', justifyContent: s.navCollapsed ? 'center' : 'flex-start', gap: 10, height: 34, padding: s.navCollapsed ? 0 : '0 10px', borderRadius: 10, cursor: 'pointer' };
+    return {
+      stopProp: e => e.stopPropagation(), fxRef: this._fxRef || (this._fxRef = React.createRef()), mainRef: this._mainRef || (this._mainRef = React.createRef()), mapRef: this._mapRef || (this._mapRef = React.createRef()),
+      onMainScroll: e => { const u = e.currentTarget.scrollTop > 280; if (u !== s.showTop) this.setState({ showTop: u }); }, scrollTop: () => { const el = this._mainRef && this._mainRef.current; if (el) el.scrollTo({ top: 0, behavior: 'smooth' }); },
+      topBtnStyle: { position: 'fixed', right: 28, bottom: 28, zIndex: 30, width: 42, height: 42, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#cfd3ff', background: 'rgba(20,23,38,.72)', border: '1px solid rgba(255,255,255,.1)', opacity: s.showTop ? 1 : 0, pointerEvents: s.showTop ? 'auto' : 'none' },
+      navStyle: { position: 'relative', zIndex: 1, width: s.navCollapsed ? 64 : 210, flex: 'none', display: 'flex', flexDirection: 'column', padding: '18px 12px 12px', background: 'rgba(255,255,255,.015)', borderRight: '1px solid rgba(255,255,255,.06)', transition: 'width .2s ease', overflow: 'hidden' },
+      brandRow: { flex: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '0 6px', marginBottom: 22 },
+      navItem: { ...NI, color: '#8a91a8' }, navItemActive: { ...NI, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff' }, navMain: nav, navBottom, navFull: !s.navCollapsed, toggleCollapse: () => this.setState({ navCollapsed: !s.navCollapsed }),
+      hasToast: !!s.toast, toast: s.toast || ''
+    };
+  }
+
+  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
+    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "Aucune donnée sur la période" });
+    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
+    out.wsEmpty = E; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false); return out; }
+  _rvE() {
+    const s0 = this.state; const s = { ...s0 };
+    if (!Array.isArray(s.goals)) { const old = s.goals || {}; const ids = Object.keys(old); s.goals = ids.length ? ['net', 'er'].map(k => { const per = {}; ids.forEach(id => { per[id] = { on: true, v: old[id][k] || (k === 'er' ? 4 : 0) }; }); return { metric: k, freq: 30, per }; }) : []; if (!this._fixG) { this._fixG = true; setTimeout(() => { this._fixG = false; this.setState({ goals: s.goals }); }, 0); } }
+    if (s.goalsEd && !Array.isArray(s.goalsEd.list)) { s.goalsEd = null; if (!this._fixE) { this._fixE = true; setTimeout(() => { this._fixE = false; this.setState({ goalsEd: null }); }, 0); } }
+    const out = this.shellVals(); const D = window.SCALE_DATA;
+    const P = s.period; const N = this.N; const from = N - P, to = N, pf = from - P;
+    out.periodSeg = [[7, '7 jours'], [30, '30 jours'], [90, '90 jours']].map(t => ({ label: t[1], style: this.segStyle(P === t[0]), go: () => this.setState({ period: t[0], hover: null }) }));
+    out.compareStyle = { display: 'flex', alignItems: 'center', gap: 7, height: 36, padding: '0 13px', borderRadius: 10, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', color: s.compare ? '#f2f3fa' : '#8a91a8', border: '1px solid ' + (s.compare ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.08)'), background: s.compare ? 'rgba(124,108,246,.12)' : 'transparent' };
+    out.compareIcon = s.compare ? 'ph-fill ph-check-square' : 'ph ph-square'; out.toggleCompare = () => this.setState({ compare: !s.compare });
+    out.subtitle = 'Du ' + this.dd(from) + ' au ' + this.dd(to - 1, true) + (s.compare ? ' · comparé au ' + this.dd(pf) + ' – ' + this.dd(from - 1) : '');
+    out.mktSeg = [['all', 'Tous marchés']].concat(Object.keys(this.MK).map(k => [k, k])).map(t => ({ label: t[1], style: this.segStyle(s.mkt === t[0]), go: () => this.setState({ mkt: t[0], acc: null, hover: null }) }));
+    out.platSeg = [['all', 'Toutes', 'ph ph-stack', 'Toutes les plateformes']].concat(Object.keys(this.PL).map(k => [k, '', this.PL[k][1], this.PL[k][0]])).map(t => ({ label: t[1], title: t[3], icon: t[2], style: this.segStyle(s.plat === t[0]), go: () => this.setState({ plat: t[0], acc: null, hover: null }) }));
+    const personas = D ? D.personas : [];
+    out.persChips = personas.map(p => { const on = s.pers.indexOf(p.id) >= 0; const dimmed = s.mkt !== 'all' && p.market !== s.mkt; return { name: p.first, dot: this.dotSt(p.color), go: () => this.setState(y => ({ pers: on ? y.pers.filter(x => x !== p.id) : y.pers.concat([p.id]), acc: null, hover: null })), style: { display: 'flex', alignItems: 'center', gap: 7, height: 32, padding: '0 11px', borderRadius: 99, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#f2f3fa' : '#aab0c5', opacity: dimmed && !on ? .45 : 1, border: '1px solid ' + (on ? p.color : 'rgba(255,255,255,.08)'), background: on ? 'rgba(255,255,255,.06)' : 'transparent' } }; });
+    out.accLabel = s.acc ? '@' + s.acc : 'Tous les comptes'; out.accOpen = s.accOpen; out.accQ = s.accQ;
+    out.accBtnStyle = { display: 'flex', alignItems: 'center', gap: 7, height: 34, padding: '0 11px', borderRadius: 10, fontSize: 12.5, fontWeight: s.acc ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: s.acc ? '#f2f3fa' : '#c5c9d8', border: '1px solid ' + (s.acc ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.08)'), background: s.acc ? 'rgba(124,108,246,.12)' : 'rgba(255,255,255,.02)' };
+    out.toggleAcc = () => this.setState({ accOpen: !s.accOpen, accQ: '' }); out.closeAcc = () => this.setState({ accOpen: false }); out.setAccQ = e => this.setState({ accQ: e.target.value }); out.clearAcc = () => this.setState({ acc: null, accOpen: false, hover: null });
+    out.hasFilters = s.mkt !== 'all' || s.plat !== 'all' || s.pers.length > 0 || !!s.acc; out.resetFilters = () => this.setState({ mkt: 'all', plat: 'all', pers: [], acc: null, hover: null });
+    out.goalsOpen = !!s.goalsEd; out.rulesOpen = !!s.rulesEd;
+    if (!this.accs) { Object.assign(out, { ready: false, accItems: [], accNone: false, selCount: '', mapLoading: true }); return out; }
+    out.ready = true; out.mapLoading = !s.mapReady;
+
+    const q = s.accQ.replace('@', '').trim().toLowerCase();
+    const accPool = this.accs.filter(a => this.inF(a, 'acc') && (!q || a.handle.indexOf(q) >= 0));
+    out.accItems = accPool.map(a => ({ handle: a.handle, mk: a.mk, platIcon: this.PL[a.plat][1], dot: this.dotSt(a.P.color, 7), go: () => this.setState({ acc: a.handle, accOpen: false, hover: null }), style: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer', color: s.acc === a.handle ? '#f2f3fa' : '#c5c9d8', background: s.acc === a.handle ? 'rgba(124,108,246,.14)' : 'transparent' } }));
+    out.accNone = !accPool.length;
+
+    const sel = this.accs.filter(a => this.inF(a));
+    const c = this.agg(sel, from, to); const p = this.agg(sel, pf, from); const cmp = s.compare;
+    const nP = new Set(sel.map(a => a.persona)).size;
+    out.selCount = sel.length + ' compte' + (sel.length > 1 ? 's' : '') + ' · ' + nP + ' persona' + (nP > 1 ? 's' : '');
+    const dl = (cu, pr, pts, inv) => cmp ? this.dly(pts ? cu - pr : this.pct(cu, pr), pts, inv) : this.dly(null);
+
+    const goalOn = s.plat === 'all' && !s.acc; const pidsSel = [...new Set(sel.map(a => a.persona))];
+    const goalNet = pidsSel.reduce((t, id) => t + ((s.goals[id] || {}).net || 0), 0) * P / 30;
+    const gp = goalNet ? c.net / goalNet * 100 : 0;
+    const kp = (label, icon, value, sub, d, extra) => Object.assign({ label, icon, value, sub, hasGoal: false }, d, extra || {});
+    out.kpis = [
+      kp('Abonnés', 'ph ph-users-three', this.fC(c.fE), this.fN(c.gain) + ' gagnés · ' + this.fN(c.lost) + ' perdus · ' + this.sg(c.net) + this.fN(c.net) + ' net', cmp && c.growth != null ? this.dly(c.growth) : this.dly(null), false && goalNet ? { hasGoal: true, goalBar: { height: '100%', width: Math.min(100, Math.max(0, gp)) + '%', borderRadius: 99, background: gp >= 100 ? '#4ade80' : 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' }, goalText: Math.round(gp) + ' % de l’objectif (' + this.fC(goalNet) + ')' } : {}),
+      kp('Portée', 'ph ph-broadcast', this.fC(c.reach), 'Impressions ' + this.fC(c.impr) + ' · ' + (c.pub ? this.fC(c.impr / c.pub) : '—') + ' / post', dl(c.reach, p.reach)),
+      kp('Engagements', 'ph ph-heart', this.fC(c.eng), this.fC(c.likes) + ' likes · ' + this.fC(c.comments) + ' commentaires', dl(c.eng, p.eng)),
+      kp('Taux d’engagement', 'ph ph-percent', this.fP(c.er, 2), this.fC(c.shares) + ' partages · ' + this.fC(c.saves) + ' enregistrements', dl(c.er, p.er, true)),
+      kp('Visites de profil', 'ph ph-user-focus', this.fC(c.visits), (c.reach ? this.fP(c.visits / c.reach * 100) : '—') + ' de la portée', dl(c.visits, p.visits)),
+      kp('Clics en bio', 'ph ph-link', this.fC(c.bio), 'CTR ' + (c.visits ? this.fP(c.bio / c.visits * 100) : '—') + ' des visites', dl(c.bio, p.bio)),
+      kp('Stories vues', 'ph ph-circles-three', c.sv ? this.fC(c.sv) : '—', c.sv ? 'Sortie ' + this.fP(c.exits / c.sv * 100) + ' · ' + this.fN(c.replies) + ' réponses' : 'Instagram uniquement', c.sv ? dl(c.sv, p.sv) : this.dly(null)),
+      kp('Nouveau Sub', 'ph ph-telegram-logo', this.fN(c.tg), c.tg ? 'Telegram ' + this.fP(Math.min(c.tgS, c.tg) / c.tg * 100, 0) + ' · OF ' + this.fP(Math.max(0, c.tg - c.tgS) / c.tg * 100, 0) : 'Telegram — · OF —', dl(c.tg, p.tg)),
+      kp('Taux de conversion', 'ph ph-arrows-merge', c.bio ? this.fP(c.tg / c.bio * 100) : '—', 'Nouveau Sub ÷ clics en bio', c.bio && p.bio ? dl(c.tg / c.bio * 100, p.tg / p.bio * 100, true) : this.dly(null)),
+      kp('Sub / 1 000 portée', 'ph ph-gauge', c.reach ? (c.tg / c.reach * 1000).toFixed(2).replace('.', ',') : '—', 'Nouveaux subs pour 1 000 personnes touchées', c.reach && p.reach ? dl(c.tg / c.reach, p.tg / p.reach) : this.dly(null)),
+      kp('Publications', 'ph ph-paper-plane-tilt', this.fN(c.pub) + ' / ' + this.fN(c.plan), (c.plan ? this.fP(c.pub / c.plan * 100, 0) : '—') + ' des posts planifiés', dl(c.pub, p.pub)),
+      kp('Disponibilité', 'ph ph-heartbeat', c.up != null ? this.fP(c.up) : '—', c.cp + ' checkpoint' + (c.cp > 1 ? 's' : '') + ' · ' + c.ban + ' ban' + (c.ban > 1 ? 's' : ''), c.up != null && p.up != null ? dl(c.up, p.up, true) : this.dly(null))
+    ];
+
+    const KK = { 'Abonnés': 'followers', 'Portée': 'reach', 'Engagements': 'eng', 'Taux d’engagement': 'er', 'Visites de profil': 'visits', 'Clics en bio': 'bio', 'Stories vues': 'sv', 'Nouveau Sub': 'tg', 'Taux de conversion': 'conv', 'Sub / 1 000 portée': 's1k', 'Publications': 'pub' };
+    out.kpis.forEach(k => { const key = KK[k.label]; k.clickable = !!key; k.fixed = !key; k.open = () => { if (key) this.setState({ det: key }); }; });
+    this.detailVals(out, s, sel, personas, pidsSel, from, to, pf, P, cmp);
+    // chart
+    const M = s.metric; const Mlabel = this.METRICS.find(m => m[0] === M)[1];
+    let groups = [];
+    if (s.split === 'total') groups = [{ name: 'Sélection', color: '#8b7cf6', list: sel, area: true }];
+    else if (s.split === 'persona') groups = pidsSel.map(id => { const pp = personas.find(x => x.id === id); return { name: pp.first, color: pp.color, list: sel.filter(a => a.persona === id) }; });
+    else if (s.split === 'market') groups = Object.keys(this.MK).filter(k => sel.some(a => a.mk === k)).map(k => ({ name: this.MK[k][0], color: this.MK[k][1], list: sel.filter(a => a.mk === k) }));
+    else groups = Object.keys(this.PL).filter(k => sel.some(a => a.plat === k)).map(k => ({ name: this.PL[k][0], color: this.PL[k][2], list: sel.filter(a => a.plat === k) }));
+    groups.forEach(g => { g.v = Array.from({ length: P }, (_, i) => this.dayVal(g.list, from + i, M)); });
+    if (s.split === 'total' && cmp) groups.push({ name: 'Période précédente', color: '#6b7289', dash: true, list: sel, v: Array.from({ length: P }, (_, i) => this.dayVal(sel, pf + i, M)) });
+    const hid = s.hidden || {}; const allG = groups; groups = groups.filter(g => !hid[s.split + ':' + g.name]);
+    const all = [].concat(...groups.map(g => g.v)); let mx = all.length ? Math.max(...all) : 1, mn = all.length ? Math.min(...all) : 0;
+    const isRate = M === 'er' || M === 'conv'; if (M !== 'followers' && !isRate) mn = Math.min(0, mn); if (isRate) mn = Math.max(0, mn * .85);
+    if (mx === mn) mx = mn + 1; const pad = (mx - mn) * .08; mx += pad; if (M === 'followers') mn -= pad;
+    const CS = this.props.chartStyle || 'area'; const bars = CS === 'bars'; const XP = i => bars ? (i + .5) / P * 100 : P === 1 ? 50 : i / (P - 1) * 100;
+    const X = i => XP(i) * 10, Y = v => 260 - (v - mn) / (mx - mn) * 260;
+    const fmtV = v => isRate ? this.fP(v, 2) : M === 'net' ? this.sg(v) + this.fN(v) : this.fN(v);
+    const solid = groups.filter(g => !g.dash); const bw = 1000 / P * .74 / Math.max(1, solid.length); const base = mn < 0 ? Y(0) : 260;
+    out.series = groups.map(g => { const P2 = g.v.map((v, i) => [X(i), Y(v)]); let d;
+      if (CS === 'smooth' && P2.length > 2) { d = 'M' + P2[0][0].toFixed(1) + ',' + P2[0][1].toFixed(1); for (let i = 0; i < P2.length - 1; i++) { const p0 = P2[i - 1] || P2[i], p1 = P2[i], p2 = P2[i + 1], p3 = P2[i + 2] || p2; d += 'C' + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + ',' + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) + ' ' + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + ',' + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1); } }
+      else d = 'M' + P2.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
+      const isBar = bars && !g.dash; const k = solid.indexOf(g);
+      const barD = isBar ? P2.map(q => { const x0 = q[0] - bw * solid.length / 2 + k * bw; const y0 = Math.min(q[1], base), hh = Math.max(1, Math.abs(base - q[1])); return 'M' + x0.toFixed(1) + ',' + y0.toFixed(1) + 'h' + (bw * .86).toFixed(2) + 'v' + hh.toFixed(1) + 'h-' + (bw * .86).toFixed(2) + 'Z'; }).join('') : '';
+      const showArea = !g.dash && (CS === 'area' || CS === 'smooth'); const hx = g.color.replace('#', ''); const rgb = [0, 2, 4].map(i => parseInt(hx.substr(i, 2), 16)).join(','); const al = groups.length > 3 ? .06 : groups.length > 2 ? .08 : .1; return { d: isBar ? '' : d, area: isBar ? barD : showArea ? d + 'L' + X(P - 1).toFixed(1) + ',260L' + X(0).toFixed(1) + ',260Z' : '', areaStyle: { fill: isBar ? 'rgba(' + rgb + ',.85)' : showArea ? 'rgba(' + rgb + ',' + al + ')' : 'none', stroke: 'none' }, lineStyle: { fill: 'none', stroke: g.color, strokeWidth: g.dash ? 1.5 : 2, strokeDasharray: g.dash ? '5 5' : 'none', vectorEffect: 'non-scaling-stroke', strokeLinejoin: 'round', strokeLinecap: 'round' } }; });
+    out.yTicks = [0, 1, 2, 3, 4].map(i => { const v = mn + (mx - mn) * (4 - i) / 4; const top = i * 25 + '%'; return { label: isRate ? this.fP(v, 1) : this.fC(v), labelStyle: { position: 'absolute', right: 0, top, transform: 'translateY(-50%)', fontSize: 11, color: '#6b7289', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }, lineStyle: { position: 'absolute', left: 0, right: 0, top, height: 1, background: i === 4 ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.04)' } }; });
+    const step = P <= 7 ? 1 : P <= 30 ? 5 : 15; const xi = []; for (let i = P - 1; i >= 0; i -= step) xi.unshift(i);
+    out.xTicks = xi.map(i => ({ label: this.dd(from + i), style: { position: 'absolute', left: XP(i) + '%', transform: !bars && i === 0 ? 'none' : !bars && i === P - 1 ? 'translateX(-100%)' : 'translateX(-50%)', fontSize: 11, color: '#6b7289', whiteSpace: 'nowrap' } }));
+    out.pointDots = P <= 7 && !bars ? [].concat(...groups.filter(g => !g.dash).map(g => g.v.map((v, i) => ({ position: 'absolute', left: X(i) / 10 + '%', top: Y(v) / 2.6 + '%', width: 7, height: 7, marginLeft: -3.5, marginTop: -3.5, borderRadius: 99, background: '#0b0d16', border: '2px solid ' + g.color, pointerEvents: 'none' })))) : [];
+    out.legend = allG.map(g => { const hk = s.split + ':' + g.name; const off = !!hid[hk]; const tot = M === 'followers' ? g.v[g.v.length - 1] : isRate ? (() => { const A = g.dash ? p : this.agg(g.list, from, to); return M === 'er' ? A.er : (A.bio ? A.tg / A.bio * 100 : 0); })() : g.v.reduce((t, v) => t + v, 0); return { name: g.name, total: fmtV(tot), go: () => this.setState(y => ({ hidden: { ...(y.hidden || {}), [hk]: !off } })), style: { display: 'flex', alignItems: 'center', gap: 7, height: 28, padding: '0 10px', borderRadius: 99, fontSize: 12, color: '#c5c9d8', cursor: 'pointer', userSelect: 'none', opacity: off ? .35 : 1, textDecoration: off ? 'line-through' : 'none', border: '1px solid rgba(255,255,255,.07)' }, sw: g.dash ? { width: 16, height: 0, borderTop: '2px dashed ' + g.color } : { width: 16, height: 3, borderRadius: 99, background: g.color } }; });
+    out.chartSub = Mlabel + ' par jour' + (M === 'followers' ? ' (total en fin de journée)' : '') + ' · survole la courbe pour le détail';
+    out.metricSeg = this.METRICS.map(m => ({ label: m[1], style: this.segStyle(M === m[0]), go: () => this.setState({ metric: m[0] }) }));
+    out.splitSeg = [['total', 'Total'], ['persona', 'Personas'], ['market', 'Marchés'], ['plat', 'Plateformes']].map(t => ({ label: t[1], style: this.segStyle(s.split === t[0]), go: () => this.setState({ split: t[0] }) }));
+    out.onPlotMove = e => { const r = e.currentTarget.getBoundingClientRect(); const i = Math.max(0, Math.min(P - 1, (bars ? Math.floor((e.clientX - r.left) / r.width * P) : Math.round((e.clientX - r.left) / r.width * (P - 1))))); if (i !== s.hover) this.setState({ hover: i }); };
+    out.onPlotLeave = () => this.setState({ hover: null });
+    const h = s.hover != null && s.hover < P ? s.hover : null; out.hasHover = h != null;
+    if (h != null) { const lp = XP(h);
+      out.hoverLine = bars ? { position: 'absolute', top: 0, bottom: 0, left: h / P * 100 + '%', width: 100 / P + '%', background: 'rgba(255,255,255,.05)', borderRadius: 6, pointerEvents: 'none' } : { position: 'absolute', top: 0, bottom: 0, left: lp + '%', width: 1, background: 'rgba(255,255,255,.18)', pointerEvents: 'none' };
+      out.hoverDots = bars ? [] : groups.map(g => ({ position: 'absolute', left: lp + '%', top: Y(g.v[h]) / 2.6 + '%', width: 9, height: 9, marginLeft: -4.5, marginTop: -4.5, borderRadius: 99, background: g.color, boxShadow: '0 0 0 3px rgba(11,13,22,.9)', pointerEvents: 'none' }));
+      out.tipStyle = { position: 'absolute', top: 8, left: lp > 60 ? 'auto' : 'calc(' + lp + '% + 14px)', right: lp > 60 ? 'calc(' + (100 - lp) + '% + 14px)' : 'auto', minWidth: 190, padding: '10px 12px', borderRadius: 12, background: 'rgba(20,23,38,.94)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,.12)', boxShadow: '0 14px 36px rgba(0,0,0,.45)', pointerEvents: 'none', zIndex: 3 };
+      out.tip = { date: this.date(from + h).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + (cmp && s.split === 'total' ? ' · vs ' + this.dd(pf + h) : ''), rows: groups.map(g => ({ name: g.name, v: fmtV(g.v[h]), sw: this.dotSt(g.color) })) };
+    } else { out.hoverLine = {}; out.hoverDots = []; out.tipStyle = {}; out.tip = { date: '', rows: [] }; }
+
+    // markets
+    const mSel = this.accs.filter(a => this.inF(a, 'mkt')); const mTot = mSel.reduce((t, a) => t + a.s.F[to - 1], 0) || 1; const md = { sel: s.mkt, mk: {} };
+    out.markets = Object.keys(this.MK).map(k => { const L = mSel.filter(a => a.mk === k); const mc = this.agg(L, from, to), mp = this.agg(L, pf, from); md.mk[k] = { f: Math.round(mc.fE), share: mc.fE / mTot, fTxt: this.fC(mc.fE), netTxt: this.sg(mc.net) + this.fC(mc.net) }; const on = s.mkt === k; const dimmed = s.mkt !== 'all' && !on;
+      return { name: this.MK[k][0], n: L.length + ' compte' + (L.length > 1 ? 's' : ''), f: this.fC(mc.fE), net: this.sg(mc.net) + this.fC(mc.net), reach: this.fC(mc.reach), er: this.fP(mc.er, 2), tg: this.fN(mc.tg), dot: this.dotSt(this.MK[k][1]), ...(cmp && mc.growth != null ? this.dly(mc.growth) : this.dly(null)), go: () => this.pickMkt(k), style: { display: 'flex', flexDirection: 'column', gap: 7, padding: '11px 12px', borderRadius: 12, cursor: 'pointer', opacity: dimmed ? .5 : 1, border: '1px solid ' + (on ? this.MK[k][1] : 'rgba(255,255,255,.07)'), background: on ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.015)' } }; });
+    this._mapData = md;
+
+    // anomalies
+    const R = s.rules; const an = [];
+    sel.forEach(a => { const S = a.s; if (!S.alive[N - 1] || S.F[N - 2] < 200 || a.wf === 'Pause') return;
+      const push = (k, sev, icon, text) => { if (s.ignored[a.handle + k]) return; an.push({ a, k, sev, icon, text }); };
+      const df = (S.F[N - 1] - S.F[N - 2]) / S.F[N - 2] * 100; if (df <= -R.drop) push('drop', 3, 'ph ph-trend-down', 'Abonnés ' + this.fP(df) + ' en 24 h (' + this.fN(S.F[N - 1] - S.F[N - 2]) + ')');
+      let av = 0; for (let d = N - 8; d < N - 1; d++) av += S.reach[d]; av /= 7; const dr = av ? (S.reach[N - 1] - av) / av * 100 : 0; if (dr <= -R.reach) push('reach', 2, 'ph ph-broadcast', 'Portée ' + this.fP(dr, 0) + ' vs moyenne des 7 derniers jours');
+      const w = this.agg([a], N - 7, N); if (w.reach > 300 && w.er < R.er) push('er', 1, 'ph ph-heart-break', 'Taux d’engagement à ' + this.fP(w.er, 2) + ' sur 7 jours (seuil ' + this.fP(R.er, 1) + ')'); });
+    an.sort((x, y) => y.sev - x.sev);
+    const sevC = { 3: ['#fda4af', 'rgba(244,114,140,.12)', 'rgba(244,114,140,.35)'], 2: ['#f5c77e', 'rgba(245,199,126,.1)', 'rgba(245,199,126,.32)'], 1: ['#c4b5fd', 'rgba(124,108,246,.12)', 'rgba(124,108,246,.32)'] };
+    out.anomalies = an.map(x => { const tg = R.tg && !!x.a.P.tg; return { handle: x.a.handle, persona: x.a.P.first, platIcon: this.PL[x.a.plat][1], icon: x.icon, text: x.text, tg, tgText: 'Alerte envoyée · ' + (x.a.P.tg || ''), iconBox: { width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: sevC[x.sev][0], background: sevC[x.sev][1], border: '1px solid ' + sevC[x.sev][2] }, focus: () => this.setState({ acc: x.a.handle, hover: null }), ignore: () => { this.setState(y => ({ ignored: { ...y.ignored, [x.a.handle + x.k]: true } })); this.toastMsg('Anomalie ignorée'); } }; });
+    out.anNone = !an.length; out.anCount = String(an.length); out.anCountStyle = { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, color: an.length ? '#fda4af' : '#86efac', background: an.length ? 'rgba(244,114,140,.12)' : 'rgba(74,222,128,.1)' };
+    out.anSub = 'Dernières 24 h · seuils : abonnés −' + this.fP(R.drop, 1) + ', portée −' + this.fP(R.reach, 0) + ', engagement < ' + this.fP(R.er, 1);
+    out.openRules = () => this.setState({ rulesEd: { ...s.rules } });
+
+    // personas
+    const pPool = this.accs.filter(a => this.inF(a, 'pers'));
+    let pr = personas.filter(pp => pPool.some(a => a.persona === pp.id)).map(pp => { const L = pPool.filter(a => a.persona === pp.id); const a1 = this.agg(L, from, to), a0 = this.agg(L, pf, from); const gl = (s.goals || []).filter(g => g.per && g.per[pp.id] && g.per[pp.id].on).map(g => { const m = this.GM[g.metric]; const tgt = m[2] ? g.per[pp.id].v : g.per[pp.id].v * P / (g.freq || 30); const act = m[1](a1); return { metric: g.metric, m, tgt, act, pct: tgt ? act / tgt * 100 : 0 }; }); return { pp, L, a1, a0, gl, gpct: gl.length ? gl.reduce((t, x) => t + Math.min(150, x.pct), 0) / gl.length : -1 }; });
+    const pKey = { n: r => r.L.length, f: r => r.a1.fE, net: r => r.a1.net, growth: r => r.a1.growth || 0, reach: r => r.a1.reach, er: r => r.a1.er, tg: r => r.a1.tg, goal: r => r.gpct, name: r => r.pp.first };
+    const ps = s.pSort; pr.sort((x, y) => { const u = pKey[ps[0]](x), v = pKey[ps[0]](y); return (u > v ? 1 : u < v ? -1 : 0) * ps[1]; });
+    const maxNet = Math.max(1, ...pr.map(r => Math.abs(r.a1.net)));
+    const head = (key, label, cur, set, right) => ({ label, go: () => set(cur[0] === key ? [key, -cur[1]] : [key, -1]), arrow: cur[0] === key ? (cur[1] < 0 ? 'ph ph-caret-down' : 'ph ph-caret-up') : '', style: { display: 'flex', alignItems: 'center', justifyContent: right ? 'flex-end' : 'flex-start', gap: 4, padding: '6px 0 9px', borderBottom: '1px solid rgba(255,255,255,.07)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', cursor: 'pointer', color: cur[0] === key ? '#f2f3fa' : '#8a91a8' } });
+    const setP = v => this.setState({ pSort: v });
+    out.pHeads = [['name', 'Persona'], ['n', 'Comptes', 1], ['f', 'Abonnés', 1], ['net', 'Gain net', 1], ['growth', 'Croiss.', 1], ['reach', 'Portée', 1], ['er', 'Taux eng.', 1], ['tg', 'Nouveau Sub', 1], ['goal', 'Objectifs']].map(x => head(x[0], x[1], ps, setP, x[2]));
+    out.pRows = pr.map(r => { const on = s.pers.indexOf(r.pp.id) >= 0; const dim = s.pers.length && !on; const base = { display: 'flex', alignItems: 'center', minHeight: 56, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.045)', cursor: 'pointer', opacity: dim ? .45 : 1, fontSize: 12.5, color: '#e8eaf3', fontVariantNumeric: 'tabular-nums' };
+      const erG = r.gl.find(x => x.metric === 'er'); const erOk = !erG || r.a1.er >= erG.tgt;
+      return { name: r.pp.name, initial: r.pp.first[0], mk: this.MK[r.pp.market][0], plats: [...new Set(r.L.map(a => a.plat))].map(k => this.PL[k][1]), n: String(r.L.length), f: this.fC(r.a1.fE), net: this.sg(r.a1.net) + this.fC(r.a1.net), growth: r.a1.growth != null ? this.sg(r.a1.growth) + this.fP(r.a1.growth) : '—', growthStyle: { color: (r.a1.growth || 0) >= 0 ? '#86efac' : '#fda4af', fontWeight: 600 }, reach: this.fC(r.a1.reach), er: this.fP(r.a1.er, 2) + (erOk ? '' : ' ↓'), tg: this.fN(r.a1.tg),
+        netBar: { height: '100%', width: Math.abs(r.a1.net) / maxNet * 100 + '%', borderRadius: 99, background: r.a1.net >= 0 ? r.pp.color : '#f4728c' },
+        goals: r.gl.map(x => { const fmt = v => x.m[2] === 1 ? this.fP(v, 1) : this.fC(v); const pc = x.pct; return { label: x.m[0], pct: Math.round(pc) + ' %', pctStyle: { fontWeight: 600, whiteSpace: 'nowrap', color: pc >= 100 ? '#86efac' : pc >= 70 ? '#f2f3fa' : '#f5c77e' }, text: fmt(x.act) + ' / ' + fmt(x.tgt), bar: { height: '100%', width: Math.min(100, Math.max(0, pc)) + '%', borderRadius: 99, background: pc >= 100 ? '#4ade80' : 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' } }; }), noGoals: !r.gl.length,
+        avatar: { width: 32, height: 32, flex: 'none', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#0b0d16', background: r.pp.color },
+        cellFirst: { ...base, gap: 10, minWidth: 0 }, cell: { ...base, justifyContent: 'flex-end', textAlign: 'right' },
+        go: () => this.setState(y => ({ pers: on ? y.pers.filter(x => x !== r.pp.id) : y.pers.concat([r.pp.id]), acc: null, hover: null })) }; });
+    out.persSub = 'Clique une persona pour filtrer la page · objectifs ramenés à ' + P + ' jours';
+    out.openGoals = () => this.setState({ goalsEd: { list: JSON.parse(JSON.stringify(s.goals)), menu: null } });
+
+    // per-account rows
+    const rows = sel.map(a => { const a1 = this.agg([a], from, to); return { a, a1 }; });
+    const rk = s.rank; const rv = { growth: r => r.a1.growth == null ? -1e9 : r.a1.growth, net: r => r.a1.net, er: r => r.a1.er, reach: r => r.a1.reach }[rk];
+    const rfmt = { growth: v => v <= -1e9 ? 'nouveau' : this.sg(v) + this.fP(v), net: v => this.sg(v) + this.fC(v), er: v => this.fP(v, 2), reach: v => this.fC(v) }[rk];
+    const ranked = rows.filter(r => r.a.s.alive[from] || rk !== 'growth').slice().sort((x, y) => rv(y) - rv(x));
+    const top = ranked.slice(0, 5), flop = ranked.slice(-5).reverse().filter(r => top.indexOf(r) < 0);
+    const rmax = Math.max(1e-9, ...ranked.map(r => Math.abs(rv(r)))) ;
+    const rrow = (r, i, good) => { const v = rv(r); return { rank: String(i + 1), handle: r.a.handle, sub: r.a.P.first + ' · ' + r.a.mk, platIcon: this.PL[r.a.plat][1], dot: this.dotSt(r.a.P.color, 7), v: rfmt(v), vStyle: { textAlign: 'right', fontSize: 12.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: rk === 'growth' || rk === 'net' ? (v >= 0 ? '#86efac' : '#fda4af') : '#f2f3fa' }, bar: { height: '100%', width: Math.min(100, Math.abs(v) / rmax * 100) + '%', borderRadius: 99, background: good ? 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' : 'rgba(244,114,140,.7)' }, go: () => this.setState({ acc: r.a.handle, hover: null }) }; };
+    out.ranks = [{ first: true, title: 'Top comptes', icon: 'ph ph-arrow-circle-up', iconStyle: { fontSize: 17, color: '#86efac' }, rows: top.map((r, i) => rrow(r, i, true)) }, { first: false, title: 'Flop comptes', icon: 'ph ph-arrow-circle-down', iconStyle: { fontSize: 17, color: '#fda4af' }, rows: flop.map((r, i) => rrow(r, ranked.length - 1 - i, false)) }];
+    out.ranks[1].rows.forEach((x, i) => { x.rank = String(ranked.length - i); });
+    out.rankSeg = [['growth', 'Croissance'], ['net', 'Gain net'], ['er', 'Taux eng.'], ['reach', 'Portée']].map(t => ({ label: t[1], style: this.segStyle(rk === t[0]), go: () => this.setState({ rank: t[0] }) }));
+
+    // publication
+    const pubP = Object.keys(this.PL).filter(k => sel.some(a => a.plat === k)).map(k => ({ k, a: this.agg(sel.filter(a => a.plat === k), from, to) })).filter(x => x.a.plan > 0);
+    out.pubRows = pubP.map(x => { const r = x.a.pub / x.a.plan * 100; const miss = x.a.plan - x.a.pub; return { name: this.PL[x.k][0], icon: this.PL[x.k][1], txt: this.fN(x.a.pub) + ' / ' + this.fN(x.a.plan) + ' · ' + this.fP(r, 0), bar: { height: '100%', width: r + '%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' }, miss: miss ? miss + ' non publié' + (miss > 1 ? 's' : '') + ' (échec ou compte indisponible)' : 'Tout est publié' }; });
+    out.pubNone = !pubP.length; out.pubRate = c.plan ? this.fP(c.pub / c.plan * 100, 0) : '—'; out.pubSub = this.fN(c.pub) + ' posts publiés sur ' + this.fN(c.plan) + ' planifiés';
+
+    // stories
+    const igSel = sel.filter(a => a.plat === 'ig'); const st = this.agg(igSel, from, to), st0 = this.agg(igSel, pf, from);
+    out.hasStories = st.sv > 0; out.noStories = !out.hasStories; out.stSub = igSel.length + ' compte' + (igSel.length > 1 ? 's' : '') + ' Instagram dans la sélection';
+    out.stStats = [{ label: 'Vues', v: this.fC(st.sv), ...dl(st.sv, st0.sv) }, { label: 'Taux de sortie', v: st.sv ? this.fP(st.exits / st.sv * 100) : '—', ...(st.sv && st0.sv ? dl(st.exits / st.sv * 100, st0.exits / st0.sv * 100, true, true) : this.dly(null)) }, { label: 'Réponses', v: this.fN(st.replies), ...dl(st.replies, st0.replies) }];
+    const sb = Array.from({ length: P }, (_, i) => this.dayVal(igSel, from + i, 'sv')); const sbm = Math.max(1, ...sb);
+    out.stBars = sb.map((v, i) => ({ title: this.dd(from + i) + ' · ' + this.fN(v) + ' vues', style: { flex: 1, minWidth: 1, height: Math.max(2, v / sbm * 100) + '%', borderRadius: P > 30 ? 1 : 4, background: i === P - 1 ? 'linear-gradient(180deg,#8b7cf6,#4b7bf5)' : 'rgba(124,108,246,.38)' } }));
+    out.stFrom = this.dd(from); out.stTo = this.dd(to - 1);
+
+    // health
+    out.upTxt = c.up != null ? this.fP(c.up) : '—'; const ud = c.up != null && p.up != null ? dl(c.up, p.up, true) : this.dly(null); out.upDelta = ud.delta; out.upDeltaStyle = ud.deltaStyle;
+    out.hStats = [{ label: 'Checkpoints', v: String(c.cp) }, { label: 'Bans', v: String(c.ban) }, { label: 'Sessions expirées', v: String(c.sess) }];
+    const down = sel.filter(a => a.status === 'error' || a.status === 'session');
+    out.downList = down.slice(0, 6).map(a => ({ handle: a.handle, platIcon: this.PL[a.plat][1], tag: a.status === 'error' ? 'Checkpoint' : 'Session expirée', tagStyle: { fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', color: a.status === 'error' ? '#fda4af' : '#f5c77e', background: a.status === 'error' ? 'rgba(244,114,140,.12)' : 'rgba(245,199,126,.1)' }, go: () => this.setState({ acc: a.handle, hover: null }) }));
+    out.downCount = String(down.length); out.downNone = !down.length;
+
+    // table
+    const tq = s.tQ.replace('@', '').trim().toLowerCase(); const ts = s.tSort;
+    const tKey = { handle: r => r.a.handle, mk: r => r.a.mk, wf: r => r.a.wf, f: r => r.a1.fE, net: r => r.a1.net, growth: r => r.a1.growth == null ? -1e9 : r.a1.growth, reach: r => r.a1.reach, views: r => r.a1.views, er: r => r.a1.er, visits: r => r.a1.visits, bio: r => r.a1.bio, tg: r => r.a1.tg, pub: r => r.a1.plan ? r.a1.pub / r.a1.plan : -1, up: r => r.a1.up || 0, st: r => r.a.status };
+    const tr = rows.filter(r => !tq || r.a.handle.indexOf(tq) >= 0).sort((x, y) => { const u = tKey[ts[0]](x), v = tKey[ts[0]](y); return (u > v ? 1 : u < v ? -1 : 0) * ts[1]; });
+    const setT = v => this.setState({ tSort: v });
+    out.tHeads = [['handle', 'Compte'], ['mk', 'Marché'], ['wf', 'Workflow'], ['f', 'Abonnés', 1], ['net', 'Gain net', 1], ['growth', 'Croiss.', 1], ['reach', 'Portée', 1], ['er', 'Taux eng.', 1], ['visits', 'Visites', 1], ['bio', 'Clics bio', 1], ['tg', 'Nouveau Sub', 1], ['pub', 'Publiés', 1], ['up', 'Uptime', 1], ['st', 'Statut']].map(x => head(x[0], x[1], ts, setT, x[2]));
+    const WF = { Actif: ['#86efac', 'rgba(74,222,128,.1)'], Warmup: ['#f5c77e', 'rgba(245,199,126,.1)'], Onboarding: ['#8db4fd', 'rgba(75,123,245,.12)'], Pause: ['#aab0c5', 'rgba(255,255,255,.06)'] };
+    const ST = { idle: ['Opérationnel', '#86efac', 'rgba(74,222,128,.1)'], error: ['Checkpoint', '#fda4af', 'rgba(244,114,140,.12)'], session: ['Session expirée', '#f5c77e', 'rgba(245,199,126,.1)'] };
+    const pill = (c1, c2) => ({ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', color: c1, background: c2 });
+    out.tRows = tr.map(r => { const a = r.a, x = r.a1; const on = s.acc === a.handle; const base = { display: 'flex', alignItems: 'center', minHeight: 48, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.045)', cursor: 'pointer', fontSize: 12.5, color: '#e8eaf3', fontVariantNumeric: 'tabular-nums', background: on ? 'rgba(124,108,246,.08)' : 'transparent' }; const stt = a.wf === 'Pause' && a.status === 'idle' ? ['En pause', '#aab0c5', 'rgba(255,255,255,.06)'] : ST[a.status] || ST.idle;
+      return { handle: a.handle, persona: a.P.first, dot: this.dotSt(a.P.color, 7), platIcon: this.PL[a.plat][1], mk: a.mk, wf: a.wf, wfStyle: pill(WF[a.wf][0], WF[a.wf][1]), f: this.fC(x.fE), net: this.sg(x.net) + this.fC(x.net), growth: x.growth == null ? 'nouveau' : this.sg(x.growth) + this.fP(x.growth), growthStyle: { fontWeight: 600, color: x.growth == null ? '#8db4fd' : x.growth >= 0 ? '#86efac' : '#fda4af' }, reach: this.fC(x.reach), views: this.fC(x.views), er: this.fP(x.er, 2), visits: this.fC(x.visits), bio: this.fC(x.bio), tg: this.fN(x.tg), pub: x.plan ? x.pub + ' / ' + x.plan : '—', up: x.up != null ? this.fP(x.up) : '—', st: stt[0], stStyle: pill(stt[1], stt[2]),
+        cellFirst: { ...base, gap: 8, minWidth: 0 }, cellL: { ...base }, cell: { ...base, justifyContent: 'flex-end', textAlign: 'right' }, go: () => this.setState({ acc: on ? null : a.handle, hover: null }) }; });
+    out.tNone = !tr.length; out.tQ = s.tQ; out.setTQ = e => this.setState({ tQ: e.target.value });
+    out.tSub = 'Chiffres sur la période · clique une ligne pour isoler le compte';
+
+    // goals modal
+    if (s.goalsEd) { const E = s.goalsEd; const GM = this.GM;
+      const setE = fn => this.setState(y => ({ goalsEd: fn(y.goalsEd) }));
+      const updG = (gi, fn) => setE(ed => ({ ...ed, list: ed.list.map((g, i) => i === gi ? fn(g) : g) }));
+      const used = new Set(E.list.map(g => g.metric));
+      const tog = { width: 36, height: 20, flex: 'none', borderRadius: 99, padding: 2, display: 'flex', cursor: 'pointer' };
+      out.goalBlocks = E.list.map((g, gi) => { const m = GM[g.metric]; const nOn = personas.filter(pp => (g.per[pp.id] || {}).on).length;
+        const setAll = on => updG(gi, x => { const per = {}; personas.forEach(pp => { const c = x.per[pp.id] || {}; per[pp.id] = { on, v: c.v != null && c.v !== '' ? c.v : this.goalSuggest(x.metric, pp.id, x.freq) }; }); return { ...x, per }; });
+        return { label: m[0], icon: m[3], count: nOn + ' / ' + personas.length + ' personas' + (m[2] === 1 ? ' · taux sur la période' : m[2] === 2 ? ' · moyenne sur la période' : ''), menuOpen: E.menu === gi, hasFreq: !m[2],
+          freqSeg: [[1, 'Quotidien'], [7, '7 jours'], [30, '30 jours']].map(q => ({ label: q[1], style: this.segStyle((g.freq || 30) === q[0]), go: e => { e.stopPropagation(); updG(gi, x => { const of = x.freq || 30; if (of === q[0]) return x; const per = {}; Object.keys(x.per).forEach(id => { const n = parseFloat(String(x.per[id].v).replace(',', '.')); per[id] = { ...x.per[id], v: isNaN(n) ? this.goalSuggest(x.metric, id, q[0]) : Math.max(1, Math.round(n * q[0] / of)) }; }); return { ...x, freq: q[0], per }; }); } })),
+          toggleMenu: e => { e.stopPropagation(); setE(ed => ({ ...ed, menu: ed.menu === gi ? null : gi })); },
+          opts: Object.keys(GM).map(k => { const taken = used.has(k) && k !== g.metric; const cur = k === g.metric; return { label: GM[k][0], icon: GM[k][3], note: cur ? 'actuel' : taken ? 'déjà suivi' : '', style: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, fontSize: 12.5, cursor: taken ? 'default' : 'pointer', opacity: taken ? .4 : 1, color: cur ? '#f2f3fa' : '#c5c9d8', background: cur ? 'rgba(124,108,246,.14)' : 'transparent' }, go: e => { e.stopPropagation(); if (taken) return; updG(gi, x => { const per = {}; personas.forEach(pp => { per[pp.id] = { on: !!(x.per[pp.id] || {}).on, v: this.goalSuggest(k, pp.id, x.freq) }; }); return { ...x, metric: k, per }; }); setE(ed => ({ ...ed, menu: null })); } }; }),
+          allOn: () => setAll(true), allOff: () => setAll(false), remove: () => setE(ed => ({ ...ed, menu: null, list: ed.list.filter((_, i) => i !== gi) })),
+          rows: personas.map(pp => { const c = g.per[pp.id] || { on: false, v: '' }; const on = !!c.on;
+            return { name: pp.first, mk: pp.market, dot: this.dotSt(pp.color), v: String(c.v == null ? '' : c.v).replace('.', ','), unit: m[2] === 1 ? '%' : m[2] === 2 ? 'par post' : { 1: '/ jour', 7: '/ 7 j', 30: '/ 30 j' }[g.freq || 30], off: !on,
+              nameStyle: { display: 'flex', alignItems: 'center', gap: 9, opacity: on ? 1 : .5 },
+              toggle: () => updG(gi, x => ({ ...x, per: { ...x.per, [pp.id]: { v: (x.per[pp.id] || {}).v != null ? x.per[pp.id].v : this.goalSuggest(x.metric, pp.id, x.freq), on: !on } } })),
+              setV: e => { const v = String(e.target.value).replace(/[^\d,.]/g, ''); updG(gi, x => ({ ...x, per: { ...x.per, [pp.id]: { ...(x.per[pp.id] || {}), v } } })); },
+              track: { ...tog, justifyContent: on ? 'flex-end' : 'flex-start', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(255,255,255,.1)' }, knob: { width: 16, height: 16, borderRadius: 99, background: '#ffffff' },
+              inputBox: { display: 'flex', alignItems: 'center', gap: 6, height: 34, borderRadius: 9, padding: '0 11px', background: 'rgba(255,255,255,.035)', border: '1px solid rgba(255,255,255,.08)', opacity: on ? 1 : .35 } }; }) }; });
+      const free = Object.keys(GM).filter(k => !used.has(k));
+      out.canAddGoal = free.length > 0; out.goalsEmpty = !E.list.length;
+      out.addGoal = e => { if (e) e.stopPropagation(); const k = free[0]; if (!k) return; const per = {}; personas.forEach(pp => { per[pp.id] = { on: false, v: this.goalSuggest(k, pp.id, 30) }; }); setE(ed => ({ ...ed, menu: ed.list.length, list: ed.list.concat([{ metric: k, freq: 30, per }]) })); };
+      out.goalsModalClick = e => { e.stopPropagation(); if (E.menu != null) setE(ed => ({ ...ed, menu: null })); };
+      out.closeGoals = () => this.setState({ goalsEd: null });
+      out.saveGoals = () => { const list = E.list.map(g => { const per = {}; Object.keys(g.per).forEach(id => { const n = parseFloat(String(g.per[id].v).replace(',', '.')); per[id] = { on: !!g.per[id].on && !isNaN(n) && n > 0, v: isNaN(n) ? 0 : n }; }); return { metric: g.metric, freq: g.freq || 30, per }; }); this.setState({ goals: list, goalsEd: null }); this.toastMsg('Objectifs enregistrés'); };
+    } else { out.goalBlocks = []; out.canAddGoal = false; out.goalsEmpty = false; out.addGoal = () => {}; out.goalsModalClick = () => {}; out.closeGoals = () => {}; out.saveGoals = () => {}; }
+
+    // rules modal
+    if (s.rulesEd) { const E = s.rulesEd; const up = pp => this.setState(y => ({ rulesEd: { ...y.rulesEd, ...pp } }));
+      out.ruleRows = [['drop', 'Chute d’abonnés', 'Perte nette sur 24 h, en % des abonnés', .5, .5, 20, v => '−' + this.fP(v, 1)], ['reach', 'Chute de portée', 'Portée du jour comparée à la moyenne des 7 jours précédents', 5, 10, 90, v => '−' + this.fP(v, 0)], ['er', 'Engagement faible', 'Taux d’engagement sur 7 jours sous ce seuil', .5, .5, 10, v => '< ' + this.fP(v, 1)]].map(r => ({ label: r[1], desc: r[2], v: r[6](E[r[0]]), dec: () => up({ [r[0]]: Math.max(r[4], +(E[r[0]] - r[3]).toFixed(1)) }), inc: () => up({ [r[0]]: Math.min(r[5], +(E[r[0]] + r[3]).toFixed(1)) }) }));
+      out.toggleTg = () => up({ tg: !E.tg });
+      out.tgTrack = { width: 38, height: 22, flex: 'none', borderRadius: 99, padding: 2, display: 'flex', justifyContent: E.tg ? 'flex-end' : 'flex-start', background: E.tg ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(255,255,255,.1)' };
+      out.tgKnob = { width: 18, height: 18, borderRadius: 99, background: '#ffffff' };
+      out.closeRules = () => this.setState({ rulesEd: null }); out.saveRules = () => { this.setState({ rules: { ...E }, rulesEd: null }); this.toastMsg('Règles d’anomalies enregistrées'); };
+    } else { out.ruleRows = []; out.toggleTg = () => {}; out.tgTrack = {}; out.tgKnob = {}; out.closeRules = () => {}; out.saveRules = () => {}; }
+    return out;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;background:#0b0d16}@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.2s;animation-timing-function:ease-in-out}</style>
+<script>
+// Deterministic blob positions across pages
+(function(){
+  try{
+    var k='__sl_blob_seed',s=sessionStorage,v=s.getItem(k);
+    if(!v){v=String(Math.random());s.setItem(k,v)}
+    var seed=parseFloat(v)*233280,i=0;
+    window.__slRand=function(){seed=(seed*9301+49297)%233280;return seed/233280};
+  }catch(e){window.__slRand=Math.random}
+})();
+</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="api-data.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; background: #0b0d16; }
+* { scrollbar-width: none; box-sizing: border-box; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+a { color: #8db4fd; text-decoration: none; }
+a:hover { color: #b9d0ff; }
+input::placeholder { color: #5b6175; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.55); } 70% { box-shadow: 0 0 0 7px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+</style>
+</helmet>
+
+<div style="position:relative;display:flex;height:100vh;min-width:1280px;background:#0b0d16;color:#e8eaf3;font-family:'Manrope',system-ui,sans-serif;overflow:hidden">
+<div style="position:absolute;inset:0;z-index:0;pointer-events:none">
+<div style="position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.3px);background-size:22px 22px"></div>
+<div style="position:absolute;inset:0;background:radial-gradient(1100px 420px at 60% -10%,rgba(99,102,241,.06),transparent 60%)"></div>
+<div ref="{{ fxRef }}" style="position:absolute;inset:0;overflow:hidden"></div>
+</div>
+
+<div style="{{ navStyle }}">
+<div onClick="{{ toggleCollapse }}" style="{{ brandRow }}">
+<span style="width:28px;height:28px;flex:none;border-radius:9px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(99,102,241,.4)">S</span>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap">Scale Lab</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8;white-space:nowrap">Organic growth</div></div></sc-if>
+</div>
+<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navMain }}" as="it" hint-placeholder-count="9">
+<sc-if value="{{ it.active }}"><div title="{{ it.label }}" style="{{ navItemActive }}"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ it.label }}</span></sc-if></div></sc-if>
+<sc-if value="{{ it.idle }}"><a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a></sc-if>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#5b6175;padding:0 10px 7px">Système</div></sc-if>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ navBottom }}" as="it" hint-placeholder-count="4"><a href="{{ it.href }}" title="{{ it.label }}" style="{{ navItem }}" style-hover="background:rgba(255,255,255,.04);color:#c5c9d8"><i class="{{ it.icon }}" style="font-size:16px;flex:none"></i><sc-if value="{{ navFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;font-weight:500;white-space:nowrap">{{ it.label }}</span></sc-if></a></sc-for>
+</div>
+</div>
+</div>
+
+<div ref="{{ mainRef }}" onScroll="{{ onMainScroll }}" style="position:relative;z-index:1;flex:1;min-width:0;overflow:auto">
+<div style="padding:26px 32px 120px;display:flex;flex-direction:column;gap:18px;max-width:1480px">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px">
+<div>
+<div style="font-size:12px;color:#5b6175;margin-bottom:6px">Workspace France</div>
+<div style="font-size:26px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa;line-height:1.15">Logs</div>
+<div style="font-size:13px;color:#8a91a8;margin-top:5px">{{ subtitle }}</div>
+</div>
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:4px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa"><i class="{{ t.icon }}" style="font-size:15px"></i>{{ t.label }}<span style="{{ t.countStyle }}">{{ t.count }}</span></div></sc-for>
+</div>
+</div>
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-warning-circle" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Journal vide</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Les événements de tous les modules apparaîtront ici dès que les comptes tournent dans leurs environnements. Les règles d’alerte restent réglables à l’avance.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<a href="Module%20Parametres%20v1.dc.html#tab=int" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-cube" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Connecter un environnement : GoLogin, GeeLark ou un iPhone</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-device-mobile" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter des comptes</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
+
+<sc-if value="{{ isJournal }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Journal" style="display:flex;flex-direction:column;gap:18px">
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+<sc-for list="{{ health }}" as="h" hint-placeholder-count="5">
+<div onClick="{{ h.filter }}" style="{{ h.card }}" style-hover="border-color:rgba(255,255,255,.18)">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="{{ h.iconBox }}"><i class="{{ h.icon }}" style="font-size:16px"></i></span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.label }}</div><div style="font-size:11px;color:#6b7289;margin-top:2px">{{ h.last }}</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:7px"><span style="{{ h.stDot }}"></span><span style="{{ h.stText }}">{{ h.stLabel }}</span></div>
+<div title="Activité des 12 dernières heures" style="display:flex;align-items:flex-end;gap:3px;height:28px"><sc-for list="{{ h.bars }}" as="b" hint-placeholder-count="12"><span title="{{ b.title }}" style="{{ b.style }}"></span></sc-for></div>
+<div style="display:flex;gap:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)"><sc-for list="{{ h.counts }}" as="c" hint-placeholder-count="3"><span title="{{ c.title }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:12px"></i>{{ c.v }}</span></sc-for></div>
+</div>
+</sc-for>
+</div>
+
+<div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%);overflow:hidden">
+<div style="display:flex;align-items:center;gap:10px;padding:14px 18px"><i class="ph ph-siren" style="font-size:17px;color:#f4728c"></i><div style="font-size:14px;font-weight:600;color:#f2f3fa">Incidents en cours</div><span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;background:rgba(244,114,140,.14);color:#fda4af">{{ openCount }}</span><span style="font-size:11.5px;color:#8a91a8">{{ openSplit }}</span><span style="flex:1"></span><span onClick="{{ goIncidents }}" style="font-size:12.5px;font-weight:500;color:#8db4fd;cursor:pointer">Tous les incidents →</span></div>
+<sc-for list="{{ openIncs }}" as="i" hint-placeholder-count="4">
+<div style="border-top:1px solid rgba(255,255,255,.05)">
+<div onClick="{{ i.toggle }}" style="{{ i.row }}" style-hover="background:rgba(255,255,255,.02)">
+<sc-if value="{{ i.selectable }}"><span onClick="{{ i.toggleSel }}" style="{{ i.cb }}"><sc-if value="{{ i.sel }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
+<span style="{{ i.lvlBox }}"><i class="{{ i.lvlIcon }}" style="font-size:15px"></i></span>
+<div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:13px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.title }}</span><span style="{{ i.countStyle }}">×{{ i.count }}</span></div><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a91a8;margin-top:3px"><i class="{{ i.modIcon }}" style="font-size:12px"></i>{{ i.mod }} · {{ i.target }}</div><sc-if value="{{ i.hasParent }}"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#f5c77e;margin-top:3px"><i class="ph ph-arrow-bend-down-right" style="font-size:12px"></i>{{ i.parentLabel }}</div></sc-if><sc-if value="{{ i.hasKids }}"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#c4b5fd;margin-top:3px"><i class="ph ph-tree-structure" style="font-size:12px"></i>{{ i.kidsLabel }}</div></sc-if></div>
+<div style="font-size:11.5px;color:#8a91a8;text-align:right;white-space:nowrap"><div>{{ i.since }}</div><div style="color:#5b6175;margin-top:2px">{{ i.lastLabel }}</div></div>
+<span style="{{ i.stStyle }}">{{ i.stLabel }}</span>
+<div onClick="{{ stopProp }}" style="display:flex;gap:6px;justify-content:flex-end">
+<sc-if value="{{ i.canAck }}"><span onClick="{{ i.ack }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-eye" style="font-size:13px"></i>Acquitter</span></sc-if>
+<sc-if value="{{ i.canResolve }}"><span onClick="{{ i.resolve }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#86efac;border:1px solid rgba(74,222,128,.45);cursor:pointer;white-space:nowrap" style-hover="background:rgba(74,222,128,.1)"><i class="ph ph-wrench" style="font-size:13px"></i>Résoudre</span></sc-if>
+<sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
+</div>
+</div>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ noOpen }}"><div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-top:1px solid rgba(255,255,255,.05);font-size:12.5px;color:#86efac"><i class="ph ph-check-circle" style="font-size:16px"></i>Aucun incident en cours. Tout tourne normalement.</div></sc-if>
+</div>
+
+<div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.04),rgba(255,255,255,.012) 40%)">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05)">
+<div style="font-size:14px;font-weight:600;color:#f2f3fa;margin-right:4px">Flux</div>
+<div onClick="{{ toggleLive }}" style="{{ liveBtn }}"><span style="{{ liveDot }}"></span>{{ liveLabel }}</div>
+<div style="width:1px;height:22px;background:rgba(255,255,255,.08)"></div>
+<sc-for list="{{ lvlChips }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.go }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:13px"></i>{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div></sc-for>
+<div style="width:1px;height:22px;background:rgba(255,255,255,.08)"></div>
+<sc-for list="{{ modChips }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.go }}" title="{{ c.title }}" style="{{ c.style }}"><sc-if value="{{ c.hasIcon }}"><i class="{{ c.icon }}" style="font-size:13px"></i></sc-if>{{ c.label }}</div></sc-for>
+<span style="flex:1"></span>
+<div style="position:relative;width:220px"><i class="ph ph-magnifying-glass" style="position:absolute;left:11px;top:10px;font-size:14px;color:#5b6175"></i><input value="{{ q }}" onChange="{{ setQ }}" placeholder="Rechercher (compte, proxy…)" style="width:100%;height:34px;padding:0 10px 0 32px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16)"></div>
+</div>
+<sc-if value="{{ hasPending }}"><div onClick="{{ flushPending }}" style="display:flex;align-items:center;justify-content:center;gap:8px;height:34px;margin:10px 18px 0;border-radius:9px;border:1px solid rgba(124,108,246,.45);background:rgba(124,108,246,.1);font-size:12.5px;font-weight:600;color:#dcd8ff;cursor:pointer"><i class="ph ph-arrow-up" style="font-size:13px"></i>{{ pendingLabel }}</div></sc-if>
+<div style="display:flex;flex-direction:column;padding:6px 0 10px">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column">
+<div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:10px 18px 6px;background:linear-gradient(180deg,rgba(16,18,31,.96),rgba(16,18,31,.82));backdrop-filter:blur(8px)"><span style="font-size:12.5px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ g.label }}</span><span style="font-size:11.5px;color:#5b6175">{{ g.sub }}</span><span style="flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)"></span><sc-for list="{{ g.mix }}" as="m" hint-placeholder-count="3"><span style="{{ m.style }}">{{ m.v }}</span></sc-for></div>
+<sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="6">
+<div onClick="{{ r.open }}" style="{{ r.row }}" style-hover="background:rgba(255,255,255,.03)">
+<span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:#6b7289">{{ r.time }}</span>
+<span style="{{ r.lvlStyle }}"><i class="{{ r.lvlIcon }}" style="font-size:12px"></i>{{ r.lvl }}</span>
+<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#aab0c5;min-width:0"><i class="{{ r.modIcon }}" style="font-size:13px;flex:none"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.mod }}</span></span>
+<span style="font-size:12.5px;color:#e8eaf3;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.msg }}</span>
+<sc-if value="{{ r.hasInc }}"><span onClick="{{ r.openInc }}" title="Voir l’incident" style="{{ r.incStyle }}"><i class="ph ph-siren" style="font-size:11px"></i>×{{ r.incCount }}</span></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<sc-if value="{{ fluxEmpty }}"><div style="padding:40px;text-align:center;font-size:13px;color:#8a91a8">Aucun événement pour ces filtres</div></sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isIncidents }}">
+<div data-screen-label="Incidents" style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ incSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div><div style="font-size:12px;color:#8a91a8">Les erreurs répétées sur une même cible sont regroupées. Coche plusieurs incidents pour agir en une fois (optionnel).</div></div>
+<sc-if value="{{ bulkOn }}"><div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;border:1px solid rgba(124,108,246,.45);background:rgba(20,23,40,.92);backdrop-filter:blur(12px);box-shadow:0 12px 30px rgba(0,0,0,.4)"><span style="font-size:12.5px;font-weight:600;color:#f2f3fa">{{ bulkLabel }}</span><span style="font-size:11.5px;color:#8a91a8">{{ bulkHint }}</span><span style="flex:1"></span><sc-for list="{{ bulkFixes }}" as="x" hint-placeholder-count="2"><div onClick="{{ x.go }}" title="{{ x.title }}" style="{{ x.style }}"><i class="ph ph-play" style="font-size:12px"></i>{{ x.label }}</div></sc-for><div onClick="{{ bulkAck }}" style="height:32px;padding:0 12px;border-radius:9px;display:flex;align-items:center;gap:6px;font-size:12px;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer"><i class="ph ph-eye" style="font-size:13px"></i>Acquitter</div><div onClick="{{ bulkClear }}" style="height:32px;padding:0 10px;display:flex;align-items:center;font-size:12px;color:#8a91a8;cursor:pointer">Annuler</div></div></sc-if>
+<div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%);overflow:hidden">
+<sc-for list="{{ allIncs }}" as="i" hint-placeholder-count="6">
+<div style="{{ i.wrap }}">
+<div onClick="{{ i.toggle }}" style="{{ i.row }}" style-hover="background:rgba(255,255,255,.02)">
+<sc-if value="{{ i.selectable }}"><span onClick="{{ i.toggleSel }}" style="{{ i.cb }}"><sc-if value="{{ i.sel }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
+<span style="{{ i.lvlBox }}"><i class="{{ i.lvlIcon }}" style="font-size:15px"></i></span>
+<div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:13px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.title }}</span><span style="{{ i.countStyle }}">×{{ i.count }}</span></div><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a91a8;margin-top:3px"><i class="{{ i.modIcon }}" style="font-size:12px"></i>{{ i.mod }} · {{ i.target }}</div><sc-if value="{{ i.hasParent }}"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#f5c77e;margin-top:3px"><i class="ph ph-arrow-bend-down-right" style="font-size:12px"></i>{{ i.parentLabel }}</div></sc-if><sc-if value="{{ i.hasKids }}"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#c4b5fd;margin-top:3px"><i class="ph ph-tree-structure" style="font-size:12px"></i>{{ i.kidsLabel }}</div></sc-if></div>
+<div style="font-size:11.5px;color:#8a91a8;text-align:right;white-space:nowrap"><div>{{ i.since }}</div><div style="color:#5b6175;margin-top:2px">{{ i.lastLabel }}</div></div>
+<span style="{{ i.stStyle }}">{{ i.stLabel }}</span>
+<div onClick="{{ stopProp }}" style="display:flex;gap:6px;justify-content:flex-end">
+<sc-if value="{{ i.canAck }}"><span onClick="{{ i.ack }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-eye" style="font-size:13px"></i>Acquitter</span></sc-if>
+<sc-if value="{{ i.canResolve }}"><span onClick="{{ i.resolve }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#86efac;border:1px solid rgba(74,222,128,.45);cursor:pointer;white-space:nowrap" style-hover="background:rgba(74,222,128,.1)"><i class="ph ph-wrench" style="font-size:13px"></i>Résoudre</span></sc-if>
+<sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
+</div>
+</div>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ incEmpty }}"><div style="padding:40px;text-align:center;font-size:13px;color:#8a91a8">Aucun incident dans cette catégorie</div></sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAlerts }}">
+<div data-screen-label="Alertes Telegram" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%)">
+<span style="width:40px;height:40px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#8db4fd;background:rgba(141,180,253,.12);border:1px solid rgba(141,180,253,.35)"><i class="ph ph-telegram-logo" style="font-size:19px"></i></span>
+<div style="flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<label style="display:block"><span style="display:block;font-size:11px;font-weight:500;color:#8a91a8;margin-bottom:5px">Bot</span><input value="{{ bot }}" onChange="{{ setBot }}" placeholder="@bot_alertes" style="width:100%;height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:rgba(148,163,184,.55)"></label>
+<label style="display:block"><span style="display:block;font-size:11px;font-weight:500;color:#8a91a8;margin-bottom:5px">Groupe / topic</span><input value="{{ chat }}" onChange="{{ setChat }}" placeholder="Ops · Alertes" style="width:100%;height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:rgba(148,163,184,.55)"></label>
+</div>
+</div>
+<div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%);overflow:hidden">
+<div style="display:flex;align-items:center;gap:10px;padding:14px 18px"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Règles d’alerte</div><span style="font-size:11.5px;color:#8a91a8">{{ rulesSub }}</span><span style="flex:1"></span><div onClick="{{ openAddRule }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:9px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12px;font-weight:600;cursor:pointer"><i class="ph ph-plus" style="font-size:12px"></i>Ajouter une règle</div></div>
+<sc-for list="{{ rules }}" as="r" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto auto auto 30px;gap:12px;align-items:center;padding:10px 18px;border-top:1px solid rgba(255,255,255,.05)">
+<span style="{{ r.modBox }}"><i class="{{ r.modIcon }}" style="font-size:15px"></i></span>
+<div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">{{ r.label }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">{{ r.sub }}</div></div>
+<span onClick="{{ r.cycleTh }}" title="{{ r.thTitle }}" style="{{ r.thStyle }}"><i class="ph ph-funnel-simple" style="font-size:12px"></i>{{ r.th }}</span>
+<span style="{{ r.lvlStyle }}"><i class="{{ r.lvlIcon }}" style="font-size:12px"></i>{{ r.lvl }}</span>
+<div onClick="{{ r.toggle }}" style="{{ r.sw }}"><span style="{{ r.knob }}"></span></div>
+<span onClick="{{ r.remove }}" title="Retirer" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer" style-hover="background:rgba(244,114,140,.14);color:#fda4af"><i class="ph ph-trash" style="font-size:14px"></i></span>
+</div>
+</sc-for>
+<sc-if value="{{ noRules }}"><div style="padding:22px 18px;border-top:1px solid rgba(255,255,255,.05);font-size:12.5px;color:#8a91a8">Aucune règle : aucune alerte ne sera envoyée.</div></sc-if>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%)">
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Résumé quotidien</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">Un message récapitulatif chaque jour</div></div><div onClick="{{ dg.toggle }}" style="{{ dg.sw }}"><span style="{{ dg.knob }}"></span></div></div>
+<div style="{{ dg.body }}">
+<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#8a91a8">Envoi à</span><div style="display:flex;align-items:center;height:34px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);width:120px"><span onClick="{{ dg.dec }}" style="width:30px;height:32px;display:flex;align-items:center;justify-content:center;color:#aab0c5;cursor:pointer"><i class="ph ph-minus" style="font-size:11px"></i></span><span style="flex:1;text-align:center;font-size:13px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ dg.hour }}</span><span onClick="{{ dg.inc }}" style="width:30px;height:32px;display:flex;align-items:center;justify-content:center;color:#aab0c5;cursor:pointer"><i class="ph ph-plus" style="font-size:11px"></i></span></div></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#8a91a8">Niveau de détail</span><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ dg.detailSeg }}" as="t" hint-placeholder-count="2"><div onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</div></sc-for></div></div>
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:7px">Contenu</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ dg.secs }}" as="c" hint-placeholder-count="5"><div onClick="{{ c.go }}" style="{{ c.style }}">{{ c.label }}</div></sc-for></div></div>
+<div><div style="font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:7px">Aperçu</div>
+<div style="padding:12px 14px;border-radius:14px 14px 14px 4px;background:rgba(40,46,74,.75);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px">
+<div style="font-size:11px;font-weight:600;color:#8db4fd">{{ bot }}</div>
+<div style="font-size:12.5px;font-weight:600;color:#f2f3fa">{{ dg.title }}</div>
+<sc-for list="{{ dg.blocks }}" as="b" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:2px;margin-top:2px"><div style="font-size:12px;line-height:1.5;color:#e8eaf3">{{ b.head }}</div><sc-for list="{{ b.items }}" as="it" hint-placeholder-count="2"><div style="font-size:11.5px;line-height:1.45;color:#aab0c5;padding-left:16px">• {{ it }}</div></sc-for></div></sc-for>
+</div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<div onClick="{{ scrollTop }}" title="Revenir en haut" style="{{ topBtnStyle }}" style-hover="background:rgba(124,108,246,.28);color:#ffffff;border-color:rgba(124,108,246,.6)"><i class="ph ph-arrow-up" style="font-size:17px"></i></div>
+
+<sc-if value="{{ hasToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:12px;background:rgba(20,23,38,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 36px rgba(0,0,0,.45);font-size:12.5px;color:#e8eaf3"><i class="{{ toastIcon }}" style="{{ toastIconStyle }}"></i>{{ toast }}</div></sc-if></div>
+
+</div>
+</div>
+
+<sc-if value="{{ addOpen }}">
+<div onClick="{{ closeAdd }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" data-modal-scroll="1" style="width:min(640px,100%);max-height:calc(100vh - 48px);overflow-y:auto;border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px"><div><div style="font-size:20px;font-weight:600;color:#f2f3fa">Ajouter une règle</div><div style="font-size:12.5px;color:#8a91a8;margin-top:5px">Choisis les événements qui déclenchent une alerte Telegram</div></div><span onClick="{{ closeAdd }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<sc-for list="{{ catalog }}" as="m" hint-placeholder-count="5">
+<div><div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#c5c9d8;margin-bottom:7px"><i class="{{ m.icon }}" style="font-size:14px"></i>{{ m.label }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ m.types }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}"><span style="{{ t.dot }}"></span>{{ t.label }}<sc-if value="{{ t.added }}"><i class="ph ph-check" style="font-size:12px"></i></sc-if></div></sc-for></div></div>
+</sc-for>
+<div style="display:flex;justify-content:flex-end"><div onClick="{{ closeAdd }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13px;font-weight:600;cursor:pointer">Terminé</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ resOpen }}">
+<div onClick="{{ resClose }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:min(1080px,100%);height:calc(100vh - 48px);max-height:760px;display:flex;flex-direction:column;border-radius:22px;overflow:hidden;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:20px 24px 16px;border-bottom:1px solid rgba(255,255,255,.07)"><span style="{{ rs.lvlBox }}"><i class="{{ rs.lvlIcon }}" style="font-size:20px"></i></span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:19px;font-weight:600;color:#f2f3fa">{{ rs.title }}</span><span style="{{ rs.stStyle }}">{{ rs.stLabel }}</span></div><div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#8a91a8;margin-top:4px"><i class="{{ rs.modIcon }}" style="font-size:13px"></i>{{ rs.mod }} · {{ rs.target }}</div></div><span onClick="{{ resClose }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span></div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)">
+<div data-modal-scroll="1" style="min-width:0;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px;border-right:1px solid rgba(255,255,255,.07)">
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><sc-for list="{{ rs.facts }}" as="k" hint-placeholder-count="4"><div style="padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6b7289">{{ k.k }}</div><div style="font-size:13px;font-weight:600;color:#f2f3fa;margin-top:3px">{{ k.v }}</div></div></sc-for></div>
+<div><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8;margin-bottom:8px">Occurrences</div>
+<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ rs.occ }}" as="o" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:62px auto minmax(0,1fr);gap:10px;align-items:center;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.022)"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289">{{ o.time }}</span><span style="font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:5px;color:#fda4af;background:rgba(244,114,140,.1)">{{ o.code }}</span><span style="font-size:12px;color:#c5c9d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.msg }}</span></div></sc-for></div>
+</div>
+</div>
+<div data-modal-scroll="1" style="min-width:0;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ rs.hasDiag }}"><div style="display:flex;flex-direction:column;gap:9px;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))">
+<div style="display:flex;align-items:center;gap:8px"><i class="ph ph-stethoscope" style="font-size:15px;color:#cbd5e1"></i><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Diagnostic</span><span style="flex:1"></span><span style="font-family:'Geist Mono',monospace;font-size:10.5px;color:#8a91a8">{{ rs.code }}</span></div>
+<div style="font-size:15px;font-weight:600;color:#f2f3fa">{{ rs.cause }}</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:#8a91a8;white-space:nowrap">Confiance</span><div style="flex:1;height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden"><div style="{{ rs.confBar }}"></div></div><span style="font-size:12px;font-weight:600;color:#e8eaf3;font-variant-numeric:tabular-nums">{{ rs.conf }}</span></div>
+<div style="display:flex;flex-direction:column;gap:3px"><sc-for list="{{ rs.evidence }}" as="ev" hint-placeholder-count="2"><div style="display:flex;gap:7px;font-size:12px;line-height:1.5;color:#aab0c5"><i class="ph ph-dot-outline" style="font-size:14px;flex:none;margin-top:1px"></i>{{ ev }}</div></sc-for></div>
+<sc-if value="{{ rs.hasOthers }}"><div style="font-size:11.5px;color:#6b7289">{{ rs.others }}</div></sc-if>
+</div></sc-if>
+<sc-if value="{{ rs.hasParent }}"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(245,176,76,.4);background:rgba(245,176,76,.07)"><i class="ph ph-arrow-bend-left-up" style="font-size:16px;color:#f5c77e"></i><div style="flex:1;font-size:12.5px;line-height:1.5;color:#f5c77e">{{ rs.parentText }}</div><div onClick="{{ rs.goParent }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;font-size:12px;font-weight:600;color:#f5c77e;border:1px solid rgba(245,176,76,.5);cursor:pointer;white-space:nowrap">Voir l’incident source</div></div></sc-if>
+<sc-if value="{{ rs.hasKids }}"><div style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:12px;border:1px solid rgba(124,108,246,.35);background:rgba(124,108,246,.06)"><div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#dcd8ff"><i class="ph ph-tree-structure" style="font-size:15px"></i>{{ rs.kidsHead }}</div><sc-for list="{{ rs.kids }}" as="k" hint-placeholder-count="2"><div onClick="{{ k.go }}" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c5c9d8;cursor:pointer" style-hover="color:#f2f3fa"><i class="{{ k.icon }}" style="font-size:12px"></i>{{ k.label }}</div></sc-for><div style="font-size:11.5px;color:#8a91a8">{{ rs.kidsNote }}</div></div></sc-if>
+<sc-if value="{{ rs.isResolved }}"><div style="display:flex;align-items:center;gap:9px;padding:12px 14px;border-radius:12px;border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.07);font-size:12.5px;color:#86efac"><i class="ph ph-check-circle" style="font-size:16px"></i>{{ rs.resolvedLabel }}</div></sc-if>
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Solutions</div>
+<sc-for list="{{ rs.fixes }}" as="x" hint-placeholder-count="2">
+<div style="{{ x.card }}">
+<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13.5px;font-weight:600;color:#f2f3fa">{{ x.label }}</span><sc-if value="{{ x.rec }}"><span style="height:20px;padding:0 7px;border-radius:5px;display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:#dcd8ff;background:rgba(124,108,246,.2);border:1px solid rgba(124,108,246,.45)"><i class="ph ph-sparkle" style="font-size:10px"></i>Recommandé</span></sc-if></div><div style="font-size:12px;line-height:1.5;color:#8a91a8;margin-top:3px">{{ x.desc }}</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap"><span style="{{ x.statStyle }}"><i class="ph ph-chart-bar" style="font-size:11px"></i>{{ x.stat }}</span><sc-if value="{{ x.safe }}"><span onClick="{{ x.toggleAuto }}" style="{{ x.autoStyle }}"><i class="ph ph-lightning" style="font-size:11px"></i>{{ x.autoLabel }}</span></sc-if></div></div>
+<sc-if value="{{ x.canRun }}"><div onClick="{{ x.go }}" style="flex:none;display:flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:9px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap"><i class="ph ph-play" style="font-size:12px"></i>{{ x.btnLabel }}</div></sc-if></div>
+<sc-if value="{{ x.hasInput }}"><input value="{{ x.input }}" onChange="{{ x.setInput }}" placeholder="{{ x.inputPh }}" style="height:34px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.1);color:#e8eaf3;font-family:'Geist Mono',monospace;font-size:12.5px;outline:none" style-focus="border-color:rgba(148,163,184,.55)"></sc-if>
+<sc-if value="{{ x.running }}"><div style="display:flex;flex-direction:column;gap:5px"><sc-for list="{{ x.steps }}" as="st" hint-placeholder-count="3"><div style="{{ st.style }}"><i class="{{ st.icon }}" style="font-size:12px"></i>{{ st.t }}</div></sc-for></div></sc-if>
+<sc-if value="{{ x.hasRes }}"><div style="{{ x.resStyle }}">{{ x.resMsg }}</div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px;padding:14px 22px;border-top:1px solid rgba(255,255,255,.07)">
+<sc-if value="{{ rs.canAck }}"><div onClick="{{ rs.ack }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-eye" style="font-size:14px"></i>Acquitter</div></sc-if>
+<sc-if value="{{ rs.canManual }}"><div onClick="{{ rs.manual }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-check" style="font-size:14px"></i>Marquer résolu sans action</div></sc-if>
+<sc-if value="{{ rs.canReopen }}"><div onClick="{{ rs.reopen }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:14px"></i>Rouvrir</div></sc-if>
+<span style="flex:1"></span>
+<div onClick="{{ resClose }}" style="height:38px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;color:#c5c9d8;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa">Fermer</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ evOpen }}">
+<div onClick="{{ evClose }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:min(560px,100%);border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="display:flex;align-items:flex-start;gap:12px"><span style="{{ ev.lvlStyle }}"><i class="{{ ev.lvlIcon }}" style="font-size:12px"></i>{{ ev.lvl }}</span><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:600;line-height:1.4;color:#f2f3fa">{{ ev.msg }}</div><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8a91a8;margin-top:5px"><i class="{{ ev.modIcon }}" style="font-size:13px"></i>{{ ev.mod }} · {{ ev.when }}</div></div><span onClick="{{ evClose }}" style="width:32px;height:32px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)"><i class="ph ph-x" style="font-size:15px"></i></span></div>
+<div style="display:flex;flex-direction:column;gap:1px;border-radius:12px;overflow:hidden"><sc-for list="{{ ev.ctx }}" as="c" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:8px 12px;background:rgba(255,255,255,.03)"><span style="font-size:11.5px;color:#8a91a8">{{ c.k }}</span><span style="{{ c.vStyle }}">{{ c.v }}</span></div></sc-for></div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><sc-if value="{{ ev.hasLink }}"><a href="{{ ev.href }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);color:#c5c9d8;font-size:12.5px;font-weight:500"><i class="ph ph-arrow-square-out" style="font-size:14px"></i>{{ ev.linkLabel }}</a></sc-if><span style="flex:1"></span><sc-if value="{{ ev.hasInc }}"><div onClick="{{ ev.openInc }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer"><i class="ph ph-wrench" style="font-size:14px"></i>{{ ev.incLabel }}</div></sc-if></div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  LV = { success: ['Succès', '#4ade80', 'ph ph-check-circle'], info: ['Info', '#8db4fd', 'ph ph-info'], warn: ['Avertissement', '#f5c77e', 'ph ph-warning'], error: ['Erreur', '#f4728c', 'ph ph-x-circle'] };
+  LORD = ['success', 'info', 'warn', 'error'];
+  MODS = [['comptes', 'Comptes', 'ph ph-device-mobile', 3], ['posting', 'Posting', 'ph ph-paper-plane-tilt', 5], ['planner', 'Planner stories', 'ph ph-film-strip', 4], ['veille', 'Veille', 'ph ph-magnifying-glass', 2], ['infra', 'Proxies & appareils', 'ph ph-globe-simple', 2], ['liens', 'Liens', 'ph ph-link-simple', 2]];
+  CAT = {
+    comptes: [['login', 'Connexion réussie', 'success', 'acc', t => '@' + t + ' connecté'], ['warmup', 'Warmup terminé', 'info', 'acc', t => '@' + t + ' passe en Actif'], ['session', 'Session expirée', 'warn', 'accE', t => 'Session expirée sur @' + t], ['checkpoint', 'Checkpoint', 'error', 'accE', t => 'Checkpoint demandé sur @' + t], ['ban', 'Compte suspendu', 'error', 'accE', t => '@' + t + ' suspendu par la plateforme']],
+    posting: [['pub', 'Publication réussie', 'success', 'acc', t => 'Post publié sur @' + t], ['fail', 'Échec de publication', 'error', 'accE', t => 'Échec de publication sur @' + t], ['wave', 'Vague de campagne lancée', 'info', 'coll', t => 'Vague lancée · ' + t], ['wavedone', 'Vague terminée', 'success', 'coll', t => 'Vague terminée · ' + t]],
+    planner: [['story', 'Story publiée', 'success', 'acc', t => 'Story publiée sur @' + t], ['hl', 'Story à la une ajoutée', 'success', 'acc', t => 'À la une mise à jour sur @' + t], ['cap', 'Capacité dépassée', 'warn', 'plan', t => 'Capacité dépassée · ' + t], ['storyfail', 'Story non publiée', 'error', 'accE', t => 'Story non publiée sur @' + t]],
+    veille: [['done', 'Veille terminée', 'success', 'plat', t => 'Veille ' + t + ' terminée'], ['snipe', 'Snipe détecté', 'info', 'comp', t => 'Post au-dessus du seuil chez @' + t], ['rate', 'Scraper limité', 'warn', 'scr', t => t + ' · rate limit'], ['cookie', 'Cookie scraper expiré', 'error', 'scrE', t => t + ' · cookie expiré']],
+    liens: [['created', 'Lien créé', 'success', 'link', t => 'Lien créé · ' + t], ['deadacc', 'Lien sur compte indisponible', 'warn', 'linkE', t => t + ' · le compte qui le porte est indisponible'], ['domnear', 'Domaine bientôt plein', 'warn', 'dom', t => t + ' · seuil d’alerte dépassé'], ['domfull', 'Domaine plein', 'error', 'domE', t => t + ' · limite de liens atteinte, aucun nouveau lien possible']],
+    infra: [['rotate', 'Rotation d’IP', 'info', 'proxy', t => t + ' · nouvelle IP'], ['slow', 'Proxy lent', 'warn', 'proxyE', t => t + ' · latence élevée'], ['down', 'Proxy hors ligne', 'error', 'proxyE', t => t + ' hors ligne'], ['device', 'iPhone déconnecté', 'error', 'devE', t => t + ' déconnecté du parc']]
+  };
+  CAUSES = {
+    'posting.fail': [['media', 'Média refusé par la plateforme', 3, 'MEDIA_REJECTED', ['Réponse plateforme : 400 · unsupported media', 'Fichier : vidéo 1080×1350, codec HEVC'], [['reconv', 'Reconvertir le média et relancer', 'Conversion en H.264 9:16, puis nouvel envoi', 1, .92], ['swap', 'Remplacer par un autre média de la collection', 'Tire un média compatible et republie', 0, .85], ['skip', 'Abandonner cette publication', 'Libère le créneau, rien n’est republié', 0, 1]]], ['block', 'Action bloquée sur le compte', 2, 'ACTION_BLOCKED', ['Réponse : 403 · feedback_required', 'Dernière action réussie sur @{t} il y a 2 h'], [['pause', 'Mettre le compte en pause 24 h', 'Ses publications sont reportées au lendemain', 1, .95], ['device', 'Relancer depuis un autre iPhone', 'Même post, envoyé depuis un autre appareil du parc', 0, .6]]], ['session', 'Session expirée au moment de l’envoi', 1, 'LOGIN_REQUIRED', ['Réponse : 401 · login_required', 'Cookie de session daté de 9 jours'], [['relog', 'Reconnecter la session et relancer', 'Reconnexion automatique puis nouvel envoi', 1, .9]]], ['net', 'Délai dépassé via le proxy', 1, 'TIMEOUT', ['Pas de réponse après 30 s', 'Proxy utilisé : proxy-fr-12 · latence 2,8 s'], [['retry', 'Relancer l’ordre', 'Nouvel envoi sur le même proxy', 0, .7], ['proxy', 'Relancer via un autre proxy', 'Bascule sur proxy-fr-04 puis nouvel envoi', 1, .93]]]],
+    'planner.storyfail': [['sticker', 'Sticker lien refusé', 2, 'STICKER_LINK_BLOCKED', ['Réponse : 403 · link sticker not allowed', 'Template : sticker lien vers le profil'], [['nosticker', 'Retirer le sticker lien et republier', 'Même story, sans le lien', 1, .95], ['other', 'Publier un autre template de la collection', 'Tire un template sans lien', 0, .9]]], ['media', 'Média de fond introuvable', 1, 'MEDIA_NOT_FOUND', ['Média supprimé de la médiathèque', 'Template toujours actif dans la collection'], [['other', 'Publier un autre template de la collection', 'Tire un template disponible', 1, .95], ['skip', 'Passer ce créneau', 'La prochaine story suit le plan normalement', 0, 1]]], ['acc', 'Compte en checkpoint', 1, 'CHECKPOINT', ['Le compte @{t} attend une vérification', 'Aucune action possible avant validation'], [['later', 'Reporter la story au prochain créneau', 'Republication automatique après le checkpoint', 1, .9]]]],
+    'planner.cap': [['cap', 'Pas assez de médias uniques pour la fréquence', 1, 'CAPACITY', ['Demandé : 7 stories / sem', 'Possible avec l’anti-repeat : 5 / sem'], [['freq', 'Réduire la fréquence à la capacité', 'La règle passe à 5 stories / sem', 1, 1], ['tpl', 'Ajouter des templates à la collection', 'Ouvre la collection dans Story Builder', 0, 1]]]],
+    'comptes.checkpoint': [['sms', 'Code SMS demandé', 2, 'CHALLENGE_SMS', ['Challenge : SMS vers le numéro du compte', 'Déclenché à la connexion de @{t}'], [['code', 'Saisir le code reçu', 'Le code est transmis à l’appareil du compte', 1, .97, 'Code à 6 chiffres'], ['phone', 'Ouvrir le checkpoint sur l’iPhone', 'Crée une tâche pour valider à la main', 0, .9]]], ['ip', 'Connexion depuis une nouvelle IP', 2, 'SUSPICIOUS_LOGIN', ['Challenge : confirmation de connexion', 'IP différente de la précédente session'], [['stable', 'Fixer une IP stable puis valider', 'Assigne une IP résidentielle fixe au compte', 1, .92], ['phone', 'Ouvrir le checkpoint sur l’iPhone', 'Crée une tâche pour valider à la main', 0, .9]]], ['email', 'Validation par e-mail', 1, 'CHALLENGE_EMAIL', ['Challenge : code envoyé par e-mail'], [['mail', 'Saisir le code e-mail', 'Le code est transmis à l’appareil du compte', 1, .96, 'Code e-mail']]]],
+    'comptes.ban': [['temp', 'Suspension temporaire', 2, 'TEMP_BLOCK', ['Réponse : restriction 24 h', 'Levée prévue demain vers la même heure'], [['pause', 'Passer le compte en Pause jusqu’à la levée', 'Ses publications sont reportées', 1, 1], ['reassign', 'Réaffecter ses campagnes à d’autres comptes', 'Les autres comptes de la persona prennent le relais', 0, 1]]], ['perm', 'Désactivation définitive', 1, 'ACCOUNT_DISABLED', ['Réponse : compte désactivé', 'Aucune date de levée'], [['retire', 'Retirer le compte et réaffecter ses campagnes', 'Le compte passe en Kill, ses campagnes sont réparties', 1, 1], ['appeal', 'Déposer un recours', 'Ouvre la procédure de recours de la plateforme', 0, .4]]]],
+    'comptes.session': [['cookie', 'Cookies de session expirés', 2, 'SESSION_EXPIRED', ['Cookie daté de plus de 30 jours'], [['relog', 'Relancer la connexion', 'Reconnexion automatique avec les identifiants', 1, .92]]], ['other', 'Déconnecté depuis un autre appareil', 1, 'LOGGED_OUT_ELSEWHERE', ['Session fermée par une connexion extérieure'], [['pw', 'Changer le mot de passe puis reconnecter', 'Évite une nouvelle déconnexion', 1, .95, 'Nouveau mot de passe'], ['relog', 'Relancer la connexion', 'Reconnexion avec les identifiants actuels', 0, .6]]]],
+    'veille.cookie': [['exp', 'Cookie du scraper expiré', 1, 'AUTH_EXPIRED', ['Réponse : 401 sur toutes les requêtes', 'Cookie ajouté il y a 34 jours'], [['update', 'Mettre à jour les cookies', 'Le scraper reprend avec le nouveau cookie', 1, .98, 'auth_token'], ['switch', 'Basculer sur un autre compte scraper', 'Les veilles passent sur un scraper actif', 0, .9]]]],
+    'veille.rate': [['rate', 'Quota de requêtes atteint', 1, 'RATE_LIMIT_429', ['Réponse : 429 · too many requests', 'Fenêtre de reprise : 15 min'], [['wait', 'Reprendre automatiquement après la fenêtre', 'Rien à faire, reprise dans 15 min', 1, 1], ['spread', 'Répartir la charge sur les autres scrapers', 'Divise les requêtes entre scrapers actifs', 0, .9]]]],
+    'liens.deadacc': [['checkpoint', 'Compte en checkpoint', 2, 'ACCOUNT_CHECKPOINT', ['Lien en bio de @{acc}', 'Les visiteurs voient un profil bloqué, les clics chutent'], [['reassign', 'Réassigner le lien à un autre compte de la persona', 'Le lien passe sur un compte actif de la même plateforme', 1, .94], ['disable', 'Désactiver le lien', 'Le lien renvoie vers la page de secours jusqu’au retour du compte', 0, 1]]], ['ban', 'Compte suspendu', 1, 'ACCOUNT_SUSPENDED', ['Lien en bio de @{acc}', 'Compte suspendu par la plateforme'], [['reassign', 'Réassigner le lien à un autre compte de la persona', 'Le lien passe sur un compte actif de la même plateforme', 1, .94], ['disable', 'Désactiver le lien', 'Plus aucun clic n’est compté sur ce lien', 0, 1]]], ['session', 'Session expirée', 1, 'LOGIN_REQUIRED', ['Lien en bio de @{acc}', 'Le compte ne peut plus être vérifié'], [['relog', 'Reconnecter la session du compte', 'Le lien reprend dès que le compte est de nouveau actif', 1, .9]]]],
+    'liens.domfull': [['full', 'Limite de liens actifs atteinte', 1, 'DOMAIN_FULL', ['{t} : tous les emplacements sont pris', 'Les nouveaux liens sur ce domaine sont refusés'], [['raise', 'Augmenter la limite du domaine', 'Ajoute 5 emplacements au domaine', 1, .98], ['inactive', 'Supprimer les liens désactivés du domaine', 'Libère les emplacements des liens inactifs', 0, .8], ['other', 'Créer les prochains liens sur un autre domaine', 'Le domaine suivant non plein devient le choix par défaut', 0, 1]]]],
+    'liens.domnear': [['near', 'Seuil d’alerte dépassé', 1, 'DOMAIN_NEAR_FULL', ['{t} : plus de 85 % des emplacements utilisés'], [['raise', 'Augmenter la limite du domaine', 'Ajoute 5 emplacements au domaine', 1, .98], ['ack', 'Ignorer jusqu’au domaine plein', 'L’alerte repassera en erreur à 100 %', 0, 1]]]],
+    'infra.down': [['rot', 'Rotation d’IP en cours au moment de la requête', 2, 'CONN_RESET', ['Rotation démarrée 2 s avant la requête', 'Nouvelle IP active 4 s après'], [['retry', 'Relancer l’ordre', 'La requête repart sur la nouvelle IP', 1, .96], ['proxy', 'Changer de proxy', 'Utile seulement si l’erreur se répète', 0, .95]]], ['out', 'Proxy injoignable (panne fournisseur)', 2, 'PROXY_UNREACHABLE', ['Ping : 3 échecs sur 3', 'Statut fournisseur : incident en cours'], [['proxy', 'Basculer ses comptes sur un proxy de secours', 'Les comptes liés passent sur proxy-fr-04', 1, .95], ['retry', 'Relancer l’ordre', 'Peu de chances tant que le proxy est en panne', 0, .25]]], ['auth', 'Identifiants proxy refusés', 1, 'HTTP_407', ['Réponse : 407 · proxy authentication required'], [['creds', 'Mettre à jour les identifiants', 'Le proxy repart avec les nouveaux identifiants', 1, .97, 'utilisateur:mot de passe'], ['proxy', 'Changer de proxy', 'Les comptes liés passent sur un autre proxy', 0, .95]]]],
+    'infra.slow': [['load', 'Proxy surchargé', 2, 'LATENCY_HIGH', ['Latence moyenne : 2,4 s sur 10 min', '11 comptes actifs sur ce proxy'], [['move', 'Déplacer les comptes les plus actifs', 'Répartit la charge sur les proxies du pool', 1, .9], ['watch', 'Surveiller sans agir', 'L’incident se ferme si la latence redescend', 0, 1]]], ['geo', 'Sortie IP hors du pays du compte', 1, 'GEO_MISMATCH', ['IP de sortie localisée hors du marché du compte'], [['geo', 'Forcer une sortie dans le bon pays', 'Nouvelle IP dans le pays du compte', 1, .93]]]],
+    'infra.device': [['agent', 'Agent planté sur l’iPhone', 2, 'AGENT_CRASH', ['Dernier signal il y a 6 min', 'Wi-Fi et batterie OK'], [['restart', 'Redémarrer l’agent', 'Relance l’agent sans redémarrer l’appareil', 1, .9], ['reboot', 'Redémarrer l’iPhone', 'Plus long, mais règle la plupart des cas', 0, .95]]], ['net', 'iPhone hors réseau', 1, 'NO_NETWORK', ['Wi-Fi déconnecté', 'Batterie 64 %'], [['move', 'Déplacer ses comptes sur un autre iPhone', 'Les comptes reprennent sur un appareil en ligne', 1, .95], ['reboot', 'Redémarrer l’iPhone', 'Peut suffire si le Wi-Fi revient', 0, .6]]], ['bat', 'Batterie vide', 1, 'BATTERY_0', ['Batterie 0 % · appareil éteint'], [['move', 'Déplacer ses comptes sur un autre iPhone', 'Les comptes reprennent sur un appareil en ligne', 1, .95]]]]
+  };
+  SAFE = ['infra.down.rot.retry', 'veille.rate.rate.wait', 'infra.device.agent.restart', 'comptes.session.cookie.relog'];
+  TH = [[1, 1, 'À chaque fois'], [3, 5, '3 erreurs sur 5 actions'], [3, 10, '3 erreurs sur 10 actions'], [5, 15, '5 erreurs sur 15 actions']];
+  OKTYPE = { 'posting.fail': 'pub', 'planner.storyfail': 'story', 'planner.cap': 'story', 'comptes.checkpoint': 'login', 'comptes.ban': 'login', 'comptes.session': 'login', 'veille.cookie': 'done', 'veille.rate': 'done', 'infra.down': 'rotate', 'infra.slow': 'rotate', 'infra.device': 'rotate' };
+  targetWindow(ev, n) { const ok = this.OKTYPE[ev.mod + '.' + ev.type]; const same = this.state.events.filter(e => e.mod === ev.mod && e.target === ev.target && (e.type === ev.type || e.type === ok)); return [ev].concat(same).slice(0, n); }
+  hsh(s) { let h = 7; String(s).split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) % 100000; }); return h; }
+  proxyOf(handle) { const P = this.pools(); const i = P.accE.indexOf(handle); if (i >= 0) return P.proxyE[i % P.proxyE.length]; return P.proxy[this.hsh(handle) % P.proxy.length]; }
+  seedStats() { const o = {}; Object.keys(this.CAUSES).forEach(k => this.CAUSES[k].forEach(c => c[5].forEach(fx => { const n = 4 + this.hsh(k + c[0] + fx[0]) % 9; o[k + '.' + c[0] + '.' + fx[0]] = { ok: Math.round(n * fx[4]), fail: n - Math.round(n * fx[4]) }; }))); return o; }
+  parentOf(inc) { if (!inc || inc.mod === 'infra') return null; const d = this.diag(inc); if (!d || ['net', 'ip'].indexOf(d.c[0]) < 0) return null; const px = this.proxyOf(inc.target); return Object.values(this.state.incs).find(i => i.mod === 'infra' && (i.type === 'down' || i.type === 'slow') && i.target === px && (i.status !== 'resolved' || inc.status === 'resolved')) || null; }
+  kidsOf(inc) { if (!inc || inc.mod !== 'infra') return []; return Object.values(this.state.incs).filter(i => i.status !== 'resolved' && i.key !== inc.key && (this.parentOf(i) || {}).key === inc.key); }
+  causesOf(ev) { return this.CAUSES[ev.mod + '.' + ev.type] || null; }
+  state = this.init();
+
+  rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  pools() {
+    const D = window.SCALE_DATA || { accounts: [], collections: [], personas: [] };
+    const accs = D.accounts.map(a => a.handle); const colls = D.collections.map(c => c.name); const pers = D.personas.map(p => p.first + ' · Lifestyle');
+    return { acc: accs, accE: accs.filter((_, i) => i % 7 === 2).slice(0, 5), coll: colls, plan: pers.slice(0, 3), plat: ['X', 'Instagram', 'Threads'], comp: ['emma.lifts', 'coachmarie', 'sarah.moves', 'the.clara.way', 'miafitclub'], scr: ['Scraper FR #1', 'US main', 'IG reader US'], scrE: ['US main', 'IG reader US'], proxy: ['proxy-fr-04', 'proxy-fr-12', 'proxy-us-03', 'proxy-es-07'], proxyE: ['proxy-fr-12', 'proxy-us-03'], devE: ['iPhone #07', 'iPhone #11'], link: ['go.velvetlinks.co/lea.moves', 'tap.lnkhub.io/sofia.x', 'gms.fyi/maya-ig', 'my.sunbio.me/clara'] };
+  }
+  mkEvent(r, t, P) {
+    const tot = this.MODS.reduce((a, m) => a + m[3], 0); let x = r() * tot; const mod = this.MODS.find(m => (x -= m[3]) < 0) || this.MODS[0];
+    const types = this.CAT[mod[0]]; const w = types.map(ty => mod[0] === 'liens' && ty[0] !== 'created' ? 0 : ty[2] === 'error' ? 1.1 : ty[2] === 'warn' ? 1.8 : 6); let y = r() * w.reduce((a, b) => a + b, 0); const ty = types.find((_, i) => (y -= w[i]) < 0) || types[0];
+    const pool = P[ty[3]] || ['—']; const target = pool[Math.floor(r() * pool.length)] || '—';
+    const C = this.CAUSES[mod[0] + '.' + ty[0]]; let cause = null; if (C) { let z = r() * C.reduce((a, c) => a + c[2], 0); cause = C.find(c => (z -= c[2]) < 0) || C[0]; }
+    return { id: 'e' + Math.floor(t) + Math.floor(r() * 1e6), t, mod: mod[0], type: ty[0], lvl: ty[2], target, cause: cause ? cause[0] : null, code: cause ? cause[3] : null, msg: ty[4](target) + (cause ? ' · ' + cause[1].charAt(0).toLowerCase() + cause[1].slice(1) : ''), key: ty[2] === 'error' || ty[2] === 'warn' ? mod[0] + '|' + ty[0] + '|' + target : null };
+  }
+  addToInc(incs, ev) { if (!ev.key) return incs; const cur = incs[ev.key]; const ty = this.CAT[ev.mod].find(x => x[0] === ev.type); const cz = cur ? { ...(cur.causes || {}) } : {}; if (ev.cause) cz[ev.cause] = (cz[ev.cause] || 0) + 1;
+    const next = cur ? { ...cur, causes: cz, count: cur.count + 1, last: Math.max(cur.last, ev.t), first: Math.min(cur.first, ev.t), status: cur.status === 'resolved' ? 'open' : cur.status, events: [ev.id].concat(cur.events).slice(0, 30) } : { key: ev.key, mod: ev.mod, type: ev.type, lvl: ev.lvl, title: ty[1], target: ev.target, count: 1, first: ev.t, last: ev.t, status: 'open', causes: cz, events: [ev.id] }; return { ...incs, [ev.key]: next }; }
+  init() {
+    const r = this.rng(20260929); const P = this.pools(); const now = Date.now(); const evs = [];
+    for (let i = 0; i < 190; i++) evs.push(this.mkEvent(r, now - Math.pow(r(), 1.2) * 12 * 36e5, P));
+    const SDx = window.SCALE_DATA || { accounts: [], personas: [] }; const slug = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); this._slugAcc = {};
+    const mkL = (type, target, cause, ago) => { const ty = this.CAT.liens.find(x => x[0] === type); const C = (this.CAUSES['liens.' + type] || []).find(c => c[0] === cause); return { id: 'e' + Math.floor(now - ago) + Math.floor(r() * 1e6), t: now - ago, mod: 'liens', type, lvl: ty[2], target, cause: C ? C[0] : null, code: C ? C[3] : null, msg: ty[4](target) + (C ? ' · ' + C[1].charAt(0).toLowerCase() + C[1].slice(1) : ''), key: 'liens|' + type + '|' + target }; };
+    const forced = [mkL('domfull', 'my.sunbio.me', 'full', 40 * 6e4), mkL('domfull', 'my.sunbio.me', 'full', 95 * 6e4), mkL('domnear', 'tap.lnkhub.io', 'near', 3 * 36e5)];
+    SDx.personas.forEach(p => SDx.accounts.filter(a => a.persona === p.id).slice(0, 3).forEach(a => { this._slugAcc[slug(a.handle)] = a.handle; if (a.status === 'error' || a.status === 'session') { const tg = 'go.velvetlinks.co/' + slug(a.handle); forced.push(mkL('deadacc', tg, a.status === 'session' ? 'session' : 'checkpoint', r() * 4 * 36e5)); } }));
+    forced.forEach(e => evs.push(e));
+    evs.sort((a, b) => b.t - a.t);
+    let incs = {}; evs.slice().reverse().forEach(e => { incs = this.addToInc(incs, e); });
+    Object.values(incs).forEach((inc, k) => { if (inc.mod === 'liens' && inc.type !== 'created') { inc.status = 'open'; return; } if (now - inc.last > 6 * 36e5) inc.status = 'resolved'; else if (k % 4 === 1) inc.status = 'ack'; });
+    const rule = (mod, type, on, th) => ({ id: mod + '_' + type, mod, type, on, th: th || 0 });
+    return { tab: 'journal', navCollapsed: false, events: evs, buffer: [], incs, live: true, lvlOn: { success: true, info: true, warn: true, error: true }, modF: 'all', q: '', incF: 'open', openInc: null,
+      rules: [rule('comptes', 'checkpoint', true, 0), rule('comptes', 'ban', true), rule('posting', 'fail', true, 1), rule('infra', 'slow', true, 2), rule('infra', 'down', true), rule('infra', 'device', true), rule('veille', 'cookie', true), rule('planner', 'cap', false), rule('liens', 'deadacc', true), rule('liens', 'domfull', true), rule('liens', 'domnear', false)],
+      fixStats: this.seedStats(), autoFix: { 'veille.rate.rate': 'wait' }, sel: {}, evView: null,
+      bot: '@scalelab_alerts_bot', chat: 'Ops · Alertes', digest: { on: true, hour: 9, detail: 'full', secs: { inc: true, pub: true, story: true, veille: true, acc: true, infra: true, rules: true } }, addOpen: false, toast: null, toastLvl: 'success', showTop: false };
+  }
+  pad(n) { return String(n).padStart(2, '0'); }
+  hms(t) { const d = new Date(t); return this.pad(d.getHours()) + ':' + this.pad(d.getMinutes()) + ':' + this.pad(d.getSeconds()); }
+  ago(t) { const m = Math.max(0, Math.round((Date.now() - t) / 6e4)); return m < 1 ? 'à l’instant' : m < 60 ? 'il y a ' + m + ' min' : m < 1440 ? 'il y a ' + Math.floor(m / 60) + ' h' : 'il y a ' + Math.floor(m / 1440) + ' j'; }
+  badge(c) { return { display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', color: c, background: c + '1a', border: '1px solid ' + c + '3d' }; }
+  segStyle(on) { return { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#ffffff' : '#8a91a8', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'transparent' }; }
+  chip(on, c) { return { display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 9, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#f7f7fb' : '#6b7289', background: on ? (c ? c + '1f' : 'rgba(124,108,246,.16)') : 'transparent', border: '1px solid ' + (on ? (c ? c + '66' : 'rgba(124,108,246,.5)') : 'rgba(255,255,255,.08)') }; }
+  sw(on) { return [{ width: 40, height: 22, flex: 'none', borderRadius: 99, padding: 3, cursor: 'pointer', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(255,255,255,.1)', boxShadow: on ? '0 0 12px rgba(99,102,241,.4)' : 'none', transition: 'background .2s' }, { display: 'block', width: 16, height: 16, borderRadius: 99, background: '#ffffff', transform: on ? 'translateX(18px)' : 'none', transition: 'transform .2s' }]; }
+  mod(id) { return this.MODS.find(m => m[0] === id) || this.MODS[0]; }
+  toastMsg(msg, lvl) { clearTimeout(this._tt); this.setState({ toast: msg, toastLvl: lvl || 'success' }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  setInc(key, status) { this.setState(x => ({ incs: { ...x.incs, [key]: { ...x.incs[key], status } } })); this.toastMsg(status === 'resolved' ? 'Incident résolu' : status === 'ack' ? 'Incident acquitté' : 'Incident rouvert', status === 'resolved' ? 'success' : 'info'); }
+
+  tick() {
+    const r = this.rng(Date.now() % 1e9); const ev = this.mkEvent(r, Date.now(), this.pools());
+    const st = this.state; const rule = ev.key && st.rules.find(x => x.on && x.mod === ev.mod && x.type === ev.type);
+    const ck = ev.cause ? ev.mod + '.' + ev.type + '.' + ev.cause : null; const auto = ck && st.autoFix[ck];
+    let extra = []; let autoRes = null;
+    if (auto) { const S = st.fixStats[ck + '.' + auto] || { ok: 1, fail: 0 }; const fx = this.CAUSES[ev.mod + '.' + ev.type].find(c => c[0] === ev.cause)[5].find(x => x[0] === auto); const ok = Math.random() < fx[4]; autoRes = { ok, fx };
+      if (ok) extra = [{ id: 'e' + (Date.now() + 1), t: Date.now() + 1, mod: ev.mod, type: 'resolved', lvl: 'success', target: ev.target, msg: 'Résolu automatiquement · ' + fx[1] + ' · ' + ev.target, key: null }]; }
+    this.setState(x => { let incs = this.addToInc(x.incs, ev); if (autoRes && autoRes.ok && ev.key) incs = { ...incs, [ev.key]: { ...incs[ev.key], status: 'resolved', resolution: { label: 'auto · ' + autoRes.fx[1], at: Date.now() } } }; const fs = autoRes ? { ...x.fixStats, [ck + '.' + auto]: { ok: (x.fixStats[ck + '.' + auto] || { ok: 0 }).ok + (autoRes.ok ? 1 : 0), fail: (x.fixStats[ck + '.' + auto] || { fail: 0 }).fail + (autoRes.ok ? 0 : 1) } } : x.fixStats; const add = extra.concat([ev]); return x.live ? { events: add.concat(x.events).slice(0, 600), incs, fixStats: fs } : { buffer: add.concat(x.buffer), incs, fixStats: fs }; });
+    if (autoRes && !autoRes.ok) this.toastMsg('Résolution automatique échouée · ' + ev.msg, 'warn');
+    else if (rule && !(autoRes && autoRes.ok)) { const T = this.TH[rule.th || 0]; const win = this.targetWindow(ev, T[1]); const errs = win.filter(e => e.type === ev.type).length; const prev = this.targetWindow(win[1] || ev, T[1]).filter(e => e.type === ev.type).length; if (T[0] === 1 || (errs >= T[0] && prev < T[0])) this.toastMsg('Alerte Telegram envoyée · ' + (T[0] > 1 ? (/^[a-z0-9._]+$/.test(ev.target) && ev.mod !== 'infra' && ev.mod !== 'veille' ? '@' : '') + ev.target + ' · ' + errs + ' erreur' + (errs > 1 ? 's' : '') + ' « ' + (this.CAT[ev.mod].find(t => t[0] === ev.type) || [0, ''])[1].toLowerCase() + ' » sur ses ' + win.length + ' dernières actions' : ev.msg), ev.lvl); }
+  }
+  startDrift(box) {
+    const cols = [[124, 108, 246], [75, 123, 245], [150, 122, 250], [96, 150, 240]];
+    const blobs = cols.map(c => { const el = document.createElement('div'); Object.assign(el.style, { position: 'absolute', left: '0', top: '0', width: '560px', height: '560px', marginLeft: '-280px', marginTop: '-280px', borderRadius: '50%', willChange: 'transform', background: 'radial-gradient(circle,rgba(' + c + ',.12),rgba(' + c + ',.04) 45%,transparent 70%)' }); box.appendChild(el); const R = () => (window.__slRand||Math.random)(); return { el, p: [R() * 6.28, R() * 6.28, R() * 6.28, R() * 6.28], f: [.00012 + R() * .00012, .00018 + R() * .00014, .0001 + R() * .00012, .00016 + R() * .00014] }; });
+    const dots = document.createElement('div'); Object.assign(dots.style, { position: 'absolute', inset: '0', backgroundImage: 'radial-gradient(rgba(200,192,255,.3) 1px,transparent 1.3px)', backgroundSize: '22px 22px' }); box.appendChild(dots);
+    const t0 = performance.now();
+    const tick = now => { const t = now - t0; const W = box.clientWidth, H = box.clientHeight; const m = blobs.map(b => { const x = W * (.5 + .38 * Math.sin(t * b.f[0] + b.p[0]) + .1 * Math.sin(t * b.f[1] + b.p[1])); const y = H * (.5 + .36 * Math.sin(t * b.f[2] + b.p[2]) + .1 * Math.sin(t * b.f[3] + b.p[3])); b.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; return 'radial-gradient(260px circle at ' + x.toFixed(0) + 'px ' + y.toFixed(0) + 'px,rgba(0,0,0,.55),transparent 70%)'; }).join(','); dots.style.webkitMaskImage = m; dots.style.maskImage = m; if (this._drift) this._drift.raf = requestAnimationFrame(tick); };
+    this._drift = { blobs, dots, raf: requestAnimationFrame(tick) };
+  }
+  _emptyReset = (window.SCALE_DATA && window.SCALE_DATA.empty) ? (Object.assign(this.state, { events: [], buffer: [], incs: {} }), 1) : 0;
+  componentDidMount() {
+    if (window.SCALE_DATA && window.SCALE_DATA.empty) setTimeout(() => this.setState({ events: [], buffer: [], incs: {} }), 0);
+    document.documentElement.style.setProperty('--app-font', "'Manrope'");
+    const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
+    if (!(window.SCALE_DATA && window.SCALE_DATA.empty)) this._live = setInterval(() => this.tick(), 4200);
+    this._clock = setInterval(() => this.forceUpdate(), 30000);
+    this._key = e => { if (e.key !== 'Escape') return; if (this.state.evView) this.setState({ evView: null }); else if (this.state.resolve) { clearInterval(this._run); this.setState({ resolve: null }); } else if (this.state.addOpen) this.setState({ addOpen: false }); };
+    window.addEventListener('keydown', this._key);
+    this._hash = () => { const h = decodeURIComponent(location.hash || ''); const mq = h.match(/[#&]q=([^&]+)/); if (mq) { this.setState({ tab: 'journal', q: mq[1] }); return; } const ml = h.match(/(link|dom)=([^&]+)/); if (ml) { const u2 = ml[2]; const inc2 = Object.values(this.state.incs).filter(i => i.mod === 'liens' && (i.target === u2 || (ml[1] === 'link' && i.target.split('/').pop() === u2.split('/').pop())) && (ml[1] === 'dom' ? i.type !== 'created' : i.type === 'deadacc')).sort((a, b) => (a.status === 'resolved') - (b.status === 'resolved') || b.last - a.last)[0]; if (inc2) this.setState({ tab: 'incidents', incF: inc2.status === 'resolved' ? 'resolved' : inc2.status, resolve: { key: inc2.key, run: null, step: 0, result: null, input: {} } }); else this.setState({ tab: 'journal', q: u2 }); return; } const m = h.match(/acc=([^&]+)/); if (!m) return; const u = m[1].replace('@', ''); const inc = Object.values(this.state.incs).filter(i => i.target === u).sort((a, b) => (a.status === 'resolved') - (b.status === 'resolved') || b.last - a.last)[0]; if (inc) this.setState({ tab: 'incidents', incF: inc.status === 'resolved' ? 'resolved' : inc.status, resolve: { key: inc.key, run: null, step: 0, result: null, input: {} } }); else this.setState({ tab: 'journal', q: u }); };
+    setTimeout(this._hash, 200); window.addEventListener('hashchange', this._hash);
+    if (!window.SCALE_DATA) { this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); this.setState(this.init()); } }, 80); }
+  }
+  componentWillUnmount() { clearInterval(this._run); clearInterval(this._live); clearInterval(this._clock); clearInterval(this._sd); clearTimeout(this._tt); window.removeEventListener('keydown', this._key); window.removeEventListener('hashchange', this._hash); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
+
+  evVals() {
+    const s = this.state; const e = s.evView && (s.events.find(x => x.id === s.evView) || s.buffer.find(x => x.id === s.evView)); if (!e) return { evOpen: false };
+    const L = this.LV[e.lvl] || this.LV.info; const m = this.mod(e.mod); const C = e.cause && this.CAUSES[e.mod + '.' + e.type]; const c = C && C.find(x => x[0] === e.cause); const inc = e.key && s.incs[e.key];
+    const isAcc = /^[a-z0-9._]+$/.test(e.target) && ['comptes', 'posting', 'planner'].indexOf(e.mod) >= 0;
+    const ctx = [['Cible', isAcc ? '@' + e.target : e.target], ['Horodatage', new Date(e.t).toLocaleString('fr-FR')], ['Code', e.code || '—']].concat(c ? [['Cause', c[1]]].concat(c[4].map((x, k) => [k ? '' : 'Détail', x.replace('{t}', e.target).replace('{acc}', (this._slugAcc || {})[String(e.target).split('/').pop()] || String(e.target).split('/').pop())])) : []).concat(isAcc ? [['Proxy', this.proxyOf(e.target)]] : []).concat([['ID', e.id]]);
+    const link = e.mod === 'comptes' || (isAcc && e.mod !== 'posting' && e.mod !== 'planner') ? ['Module%20Comptes%20v1.dc.html', 'Ouvrir le compte'] : e.mod === 'posting' || e.mod === 'planner' ? ['Module%20Posting%20v1.dc.html', 'Ouvrir dans Posting'] : e.mod === 'veille' ? ['Module%20Veille%20v1.dc.html', 'Ouvrir la Veille'] : null;
+    return { evOpen: true, evClose: () => this.setState({ evView: null }), ev: { msg: e.msg, lvl: L[0], lvlIcon: L[2], lvlStyle: { ...this.badge(L[1]), flex: 'none', marginTop: 2 }, mod: m[1], modIcon: m[2], when: this.ago(e.t),
+      ctx: ctx.map(x => ({ k: x[0], v: x[1], vStyle: { fontSize: 12, lineHeight: 1.5, color: '#e8eaf3', fontFamily: x[0] === 'Code' || x[0] === 'ID' ? "'Geist Mono',monospace" : 'inherit' } })),
+      hasLink: !!link, href: link ? link[0] : '#', linkLabel: link ? link[1] : '', hasInc: !!inc, incLabel: inc ? (inc.status === 'resolved' ? 'Voir l’incident (résolu)' : 'Résoudre l’incident') : '', openInc: () => { this.setState({ evView: null }); this.openRes(e.key); } } };
+  }
+  openRes(key) { this.setState({ resolve: { key, run: null, step: 0, result: null, input: {} } }); }
+  diag(inc) { const C = this.CAUSES[inc.mod + '.' + inc.type]; if (!C) return null; const cz = inc.causes || {}; const tot = Object.values(cz).reduce((a, b) => a + b, 0) || 1; const id = Object.keys(cz).sort((a, b) => cz[b] - cz[a])[0] || C[0][0]; const c = C.find(x => x[0] === id) || C[0]; return { c, conf: Math.max(55, Math.round((cz[id] || 1) / tot * 100)), others: C.filter(x => x[0] !== c[0] && cz[x[0]]).map(x => x[1] + ' (' + cz[x[0]] + '×)') }; }
+  runFix(fx) {
+    const s = this.state; const R0 = s.resolve; const inc = s.incs[R0.key]; if (!inc || R0.run) return;
+    if (fx[5] && !String((R0.input || {})[fx[0]] || '').trim()) { this.toastMsg('Renseigne ' + fx[5].toLowerCase() + ' pour appliquer cette solution', 'warn'); return; }
+    const kidsN = this.kidsOf(inc).reduce((a, k) => a + k.count, 0); const steps = ['Exécution : ' + fx[1].charAt(0).toLowerCase() + fx[1].slice(1) + '…', 'Vérification sur ' + (inc.target.match(/^[a-z0-9._]+$/) ? '@' : '') + inc.target + '…'].concat(kidsN ? ['Relance des ' + kidsN + ' ordres bloqués par cet incident…'] : ['Contrôle de la prochaine action…']);
+    this.setState(x => ({ resolve: { ...x.resolve, run: fx[0], step: 0, steps, result: null } }));
+    let k = 0; clearInterval(this._run);
+    this._run = setInterval(() => { k++; if (k < steps.length) { this.setState(x => ({ resolve: x.resolve ? { ...x.resolve, step: k } : x.resolve })); return; } clearInterval(this._run);
+      const ok = Math.random() < fx[4]; const d0 = this.diag(inc); const sk = inc.mod + '.' + inc.type + '.' + (d0 ? d0.c[0] : '') + '.' + fx[0]; const kids = this.kidsOf(inc);
+      this.setState(x => ({ fixStats: { ...x.fixStats, [sk]: { ok: (x.fixStats[sk] || { ok: 0 }).ok + (ok ? 1 : 0), fail: (x.fixStats[sk] || { fail: 0 }).fail + (ok ? 0 : 1) } } }));
+      if (ok && kids.length) { const nOrd = kids.reduce((a, k) => a + k.count, 0); const kev = { id: 'e' + (Date.now() + 2), t: Date.now() + 1, mod: 'posting', type: 'relaunch', lvl: 'success', target: inc.target, msg: nOrd + ' ordre' + (nOrd > 1 ? 's' : '') + ' bloqué' + (nOrd > 1 ? 's' : '') + ' relancé' + (nOrd > 1 ? 's' : '') + ' après résolution de ' + inc.target, key: null }; this.setState(x => { const incs = { ...x.incs }; kids.forEach(k => { incs[k.key] = { ...incs[k.key], status: 'resolved', resolution: { label: 'ordres relancés après ' + inc.target, at: Date.now() } }; }); return { incs, events: [kev].concat(x.events) }; }); }
+      if (ok) { const ev = { id: 'e' + Date.now(), t: Date.now(), mod: inc.mod, type: 'resolved', lvl: 'success', target: inc.target, msg: 'Incident résolu · ' + inc.title + ' · ' + fx[1], key: null };
+        this.setState(x => ({ events: [ev].concat(x.events), incs: { ...x.incs, [inc.key]: { ...x.incs[inc.key], status: 'resolved', resolution: { label: fx[1], at: Date.now() } } }, resolve: x.resolve ? { ...x.resolve, run: null, result: { ok: true, fx: fx[0], msg: 'Résolu. ' + fx[2] + '.' } } : null }));
+        this.toastMsg('Incident résolu · ' + fx[1], 'success'); }
+      else this.setState(x => ({ resolve: x.resolve ? { ...x.resolve, run: null, result: { ok: false, fx: fx[0], msg: 'L’erreur est revenue après l’action. Essaie une autre solution.' } } : null }));
+    }, 750);
+  }
+  resVals() {
+    const s = this.state; const R0 = s.resolve; const inc = R0 && s.incs[R0.key]; if (!inc) return { resOpen: false };
+    const L = this.LV[inc.lvl]; const m = this.mod(inc.mod); const d = this.diag(inc); const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status];
+    const occ = inc.events.slice(0, 10).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
+    const tgt = ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.match(/^[a-z0-9._]+$/) ? '@' + inc.target : inc.target;
+    const impact = inc.mod === 'posting' ? inc.count + ' publication' + (inc.count > 1 ? 's' : '') + ' non envoyée' + (inc.count > 1 ? 's' : '') : inc.mod === 'planner' ? inc.count + ' stor' + (inc.count > 1 ? 'ies' : 'y') + ' non publiée' + (inc.count > 1 ? 's' : '') : inc.mod === 'comptes' ? 'Publications de ' + tgt + ' suspendues' : inc.mod === 'infra' ? (inc.type === 'device' ? '4 comptes' : '6 comptes') + ' dépendent de ' + tgt : 'Veilles ralenties sur ce scraper';
+    const base = inc.mod + '.' + inc.type + '.' + (d ? d.c[0] : ''); const rate = fx => { const S = s.fixStats[base + '.' + fx[0]] || { ok: 0, fail: 0 }; const n = S.ok + S.fail; return { n, r: n ? S.ok / n : fx[4], S }; };
+    const fixes = d ? d.c[5].slice().sort((a, b) => (rate(b).n >= 3 ? rate(b).r : b[3]) - (rate(a).n >= 3 ? rate(a).r : a[3]) || b[3] - a[3]) : []; const bestId = fixes[0] ? fixes[0][0] : null;
+    const par = this.parentOf(inc); const kids = this.kidsOf(inc); const nOrd = kids.reduce((a, k) => a + k.count, 0);
+    return { resOpen: true, resClose: () => { clearInterval(this._run); this.setState({ resolve: null }); },
+      rs: { title: inc.title, target: tgt, mod: m[1], modIcon: m[2], lvlIcon: L[2], lvlBox: { width: 42, height: 42, flex: 'none', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: L[1], background: L[1] + '1a', border: '1px solid ' + L[1] + '44' }, stLabel: ST[0], stStyle: this.badge(ST[1]),
+        facts: [['Occurrences', inc.count + '×'], ['Première', this.ago(inc.first)], ['Dernière', this.ago(inc.last)], ['Impact', impact]].map(x => ({ k: x[0], v: x[1] })),
+        occ: occ.map(e => ({ time: this.hms(e.t), code: e.code || '—', msg: e.msg })),
+        hasDiag: !!d, cause: d ? d.c[1] : '', code: d ? d.c[3] : '', conf: d ? d.conf + ' %' : '', confBar: { width: (d ? d.conf : 0) + '%', height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' },
+        evidence: d ? d.c[4].map(x => x.replace('{t}', inc.target).replace('{acc}', (this._slugAcc || {})[String(inc.target).split('/').pop()] || String(inc.target).split('/').pop())) : [], hasOthers: !!(d && d.others.length), others: d ? 'Aussi observé : ' + d.others.join(', ') : '',
+        isResolved: inc.status === 'resolved', resolvedLabel: inc.resolution ? 'Résolu via « ' + inc.resolution.label + ' » ' + this.ago(inc.resolution.at) : 'Marqué résolu manuellement',
+        fixes: fixes.map(fx => { const running = R0.run === fx[0]; const res = R0.result && R0.result.fx === fx[0] ? R0.result : null; const RT = rate(fx); const safe = this.SAFE.indexOf(base + '.' + fx[0]) >= 0; const autoOn = s.autoFix[base] === fx[0]; return { stat: RT.n ? RT.S.ok + ' réussite' + (RT.S.ok > 1 ? 's' : '') + ' sur ' + RT.n + ' chez vous' : 'Jamais appliquée', statStyle: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: RT.n ? (RT.r >= .8 ? '#86efac' : RT.r >= .5 ? '#f5c77e' : '#fda4af') : '#6b7289' }, safe, autoLabel: autoOn ? 'Automatique · activé' : 'Appliquer automatiquement', toggleAuto: () => this.setState(x => { const a = { ...x.autoFix }; if (autoOn) delete a[base]; else a[base] = fx[0]; return { autoFix: a }; }), autoStyle: { display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', color: autoOn ? '#0b0d16' : '#dcd8ff', background: autoOn ? '#a5a0f5' : 'transparent', border: '1px solid rgba(165,160,245,.5)' },
+          label: fx[1], desc: fx[2], rec: fx[0] === bestId, hasInput: !!fx[5], inputPh: fx[5] || '', input: (R0.input || {})[fx[0]] || '', setInput: e => { const v = e.target.value; this.setState(x => ({ resolve: { ...x.resolve, input: { ...(x.resolve.input || {}), [fx[0]]: v } } })); },
+          running, steps: running ? (R0.steps || []).map((t, k) => ({ t, style: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: k < R0.step ? '#86efac' : k === R0.step ? '#dcd8ff' : '#5b6175' }, icon: k < R0.step ? 'ph ph-check' : k === R0.step ? 'ph ph-circle-notch' : 'ph ph-circle' })) : [],
+          hasRes: !!res, resMsg: res ? res.msg : '', resStyle: { fontSize: 12, lineHeight: 1.5, color: res && res.ok ? '#86efac' : '#fda4af' },
+          canRun: inc.status !== 'resolved' && !R0.run, go: () => this.runFix(fx), btnLabel: running ? 'En cours…' : 'Appliquer',
+          card: { display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid ' + (fx[0] === bestId ? 'rgba(124,108,246,.5)' : 'rgba(255,255,255,.08)'), background: fx[0] === bestId ? 'rgba(124,108,246,.07)' : 'rgba(255,255,255,.022)' } }; }),
+        hasParent: !!par, parentText: par ? 'Cause probable en amont : ' + par.target + ' · ' + par.title.toLowerCase() + '. Résoudre l’incident source relancera aussi les ordres bloqués ici.' : '', goParent: () => par && this.openRes(par.key),
+        hasKids: kids.length > 0, kidsHead: kids.length + ' incident' + (kids.length > 1 ? 's' : '') + ' lié' + (kids.length > 1 ? 's' : '') + ' · ' + nOrd + ' ordre' + (nOrd > 1 ? 's' : '') + ' bloqué' + (nOrd > 1 ? 's' : ''), kids: kids.map(k => ({ label: k.title + ' · @' + k.target + ' ×' + k.count, icon: this.mod(k.mod)[2], go: () => this.openRes(k.key) })), kidsNote: 'Une fois cet incident résolu, les ordres bloqués sont relancés et ces incidents se ferment.',
+        canAck: inc.status === 'open', ack: () => this.setInc(inc.key, 'ack'), canManual: inc.status !== 'resolved', manual: () => { this.setState(x => ({ incs: { ...x.incs, [inc.key]: { ...x.incs[inc.key], status: 'resolved', resolution: { label: 'résolution manuelle', at: Date.now() } } } })); this.toastMsg('Incident marqué résolu', 'success'); },
+        canReopen: inc.status === 'resolved', reopen: () => this.setInc(inc.key, 'open') } };
+  }
+  incRow(inc, full) {
+    const s = this.state; const L = this.LV[inc.lvl]; const m = this.mod(inc.mod); const open = s.openInc === inc.key;
+    const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status];
+    const occ = inc.events.slice(0, 8).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
+    const res = inc.resolution; const par = this.parentOf(inc); const kids = this.kidsOf(inc); const sel = !!s.sel[inc.key]; return { hasParent: !!par && inc.status !== 'resolved', parentLabel: par ? 'Probablement causé par ' + par.target + ' · ' + par.title.toLowerCase() : '', hasKids: kids.length > 0, kidsLabel: kids.length + ' incident' + (kids.length > 1 ? 's' : '') + ' lié' + (kids.length > 1 ? 's' : '') + ' · ' + kids.reduce((a, k) => a + k.count, 0) + ' ordres bloqués',
+      selectable: !!full, sel, toggleSel: e => { e.stopPropagation(); this.setState(x => { const o = { ...x.sel }; if (o[inc.key]) delete o[inc.key]; else o[inc.key] = true; return { sel: o }; }); }, cb: { width: 18, height: 18, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', border: '1.5px solid ' + (sel ? '#7c6cf6' : 'rgba(255,255,255,.3)'), background: sel ? '#7c6cf6' : 'transparent' },
+      key: inc.key, title: inc.title, target: (res && inc.status === 'resolved' ? 'résolu via « ' + res.label + ' » · ' : '') + ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.indexOf(' ') < 0 && inc.target.indexOf('-') < 0 && inc.target.indexOf('#') < 0 ? '@' + inc.target : inc.target, count: inc.count, mod: m[1], modIcon: m[2], since: 'depuis ' + this.ago(inc.first).replace('il y a ', ''), lastLabel: 'dernier ' + this.ago(inc.last).replace('il y a ', ''),
+      lvlIcon: L[2], lvlBox: { width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: L[1], background: L[1] + '1a', border: '1px solid ' + L[1] + '44' },
+      countStyle: { fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 5, color: inc.count > 3 ? '#fda4af' : '#c5c9d8', background: inc.count > 3 ? 'rgba(244,114,140,.14)' : 'rgba(255,255,255,.06)', fontVariantNumeric: 'tabular-nums' },
+      stLabel: ST[0], stStyle: this.badge(ST[1]), canAck: inc.status === 'open', canResolve: inc.status !== 'resolved', canReopen: inc.status === 'resolved',
+      ack: () => this.setInc(inc.key, 'ack'), resolve: () => this.openRes(inc.key), reopen: () => this.setInc(inc.key, 'open'),
+      open: false, toggle: () => this.openRes(inc.key), occ: occ.map(e => ({ time: new Date(e.t).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + this.hms(e.t), msg: e.msg })),
+      wrap: { borderTop: '1px solid rgba(255,255,255,.05)', opacity: inc.status === 'resolved' ? .7 : 1 },
+      row: { display: 'grid', gridTemplateColumns: (full ? '18px ' : '') + '34px minmax(0,1fr) 120px 96px 220px', gap: 14, alignItems: 'center', padding: '12px 18px', cursor: 'pointer' } };
+  }
+  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
+    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "" });
+    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
+    const s = this.state; const dataEmpty = (s.events || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false);
+    return out; }
+  _rvE() {
+    const s = this.state; const now = Date.now(); const incs = Object.values(s.incs);
+    const nOpen = incs.filter(i => i.status === 'open').length, nAck = incs.filter(i => i.status === 'ack').length;
+    const nav = [['squares-four', 'Dashboard', 0, 'Module%20Dashboard%20v1.dc.html'], ['device-mobile', 'Comptes', 0, 'Module%20Comptes%20v1.dc.html'], ['user-circle', 'Personas', 0, 'Module%20Personas%20v1.dc.html'], ['target', 'Targets', 0, 'Module%20Targets%20v1.dc.html'], ['chart-line-up', 'Statistiques', 0, 'Module%20Statistiques%20v1.dc.html'], ['address-book', 'CRM', 0, 'Module%20CRM%20v1.dc.html'], ['link-simple', 'Liens', 0, 'Module%20Liens%20v1.dc.html'], ['paper-plane-tilt', 'Posting', 0, 'Module%20Posting%20v1.dc.html'], ['warning-circle', 'Logs', 1], ['magnifying-glass', 'Veille', 0, 'Module%20Veille%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], active: !!n[2], idle: !n[2], href: n[3] || '#' }));
+    const last24 = s.events.filter(e => now - e.t < 24 * 36e5);
+    const out = {
+      stopProp: e => e.stopPropagation(), fxRef: this._fxRef || (this._fxRef = React.createRef()), mainRef: this._mainRef || (this._mainRef = React.createRef()),
+      onMainScroll: e => { const up = e.currentTarget.scrollTop > 280; if (up !== s.showTop) this.setState({ showTop: up }); },
+      scrollTop: () => { const el = this._mainRef && this._mainRef.current; if (el) el.scrollTo({ top: 0, behavior: 'smooth' }); },
+      topBtnStyle: { position: 'fixed', right: 28, bottom: 28, zIndex: 30, width: 42, height: 42, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#cfd3ff', background: 'rgba(20,23,38,.72)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 8px 24px rgba(0,0,0,.4)', transition: 'opacity .2s, transform .2s', opacity: s.showTop ? 1 : 0, transform: s.showTop ? 'none' : 'translateY(10px)', pointerEvents: s.showTop ? 'auto' : 'none' },
+      navStyle: { position: 'relative', zIndex: 1, width: s.navCollapsed ? 64 : 210, flex: 'none', display: 'flex', flexDirection: 'column', padding: '18px 12px 12px', background: 'rgba(255,255,255,.015)', borderRight: '1px solid rgba(255,255,255,.06)', transition: 'width .2s ease', overflow: 'hidden' },
+      brandRow: { flex: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '0 6px', marginBottom: 22 },
+      navItem: { display: 'flex', alignItems: 'center', justifyContent: s.navCollapsed ? 'center' : 'flex-start', gap: 10, height: 34, padding: s.navCollapsed ? 0 : '0 10px', borderRadius: 10, color: '#8a91a8', cursor: 'pointer' },
+      navItemActive: { display: 'flex', alignItems: 'center', justifyContent: s.navCollapsed ? 'center' : 'flex-start', gap: 10, height: 34, padding: s.navCollapsed ? 0 : '0 10px', borderRadius: 10, cursor: 'pointer', background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff', boxShadow: '0 4px 18px rgba(99,102,241,.35)' },
+      navMain: nav, navBottom: [['flow-arrow', 'Scénarios'], ['sliders-horizontal', 'Comportements'], ['globe-simple', 'Proxies'], ['devices', 'Parc d’iPhone'], ['gear', 'Paramètres', 'Module%20Parametres%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], href: ({ 'Scénarios': 'Module%20Scenarios%20v1.dc.html', Comportements: 'Module%20Comportements%20v1.dc.html', Proxies: 'Module%20Proxies%20v1.dc.html', 'Parc d’iPhone': 'Module%20Parc%20iPhone%20v1.dc.html', 'Paramètres': 'Module%20Parametres%20v1.dc.html' })[n[1]] || '#' })), navFull: !s.navCollapsed, toggleCollapse: () => this.setState({ navCollapsed: !s.navCollapsed }),
+      subtitle: last24.length + ' événements sur 24 h · ' + (nOpen + nAck) + ' incident' + (nOpen + nAck > 1 ? 's' : '') + ' en cours (' + nOpen + ' ouvert' + (nOpen > 1 ? 's' : '') + ', ' + nAck + ' acquitté' + (nAck > 1 ? 's' : '') + ') · ' + (s.live ? 'flux en direct' : 'flux en pause'),
+      tabs: [['journal', 'Journal', 'ph ph-list-bullets', last24.length], ['incidents', 'Incidents en cours', 'ph ph-siren', nOpen + nAck], ['alerts', 'Alertes Telegram', 'ph ph-telegram-logo', s.events.length ? s.rules.filter(r => r.on).length : 0]].map(t => { const on = s.tab === t[0]; return { label: t[1], icon: t[2], count: t[3], go: () => this.setState({ tab: t[0] }), style: { display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 14px', borderRadius: 9, fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#ffffff' : '#8a91a8', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'transparent', boxShadow: on ? '0 4px 14px rgba(99,102,241,.3)' : 'none' }, countStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 6px', borderRadius: 5, fontVariantNumeric: 'tabular-nums', background: on ? 'rgba(255,255,255,.2)' : t[0] === 'incidents' && t[3] ? 'rgba(244,114,140,.16)' : 'rgba(255,255,255,.06)', color: on ? '#ffffff' : t[0] === 'incidents' && t[3] ? '#fda4af' : '#8a91a8' } }; }),
+      isJournal: s.tab === 'journal', isIncidents: s.tab === 'incidents', isAlerts: s.tab === 'alerts',
+      hasToast: !!s.toast, toast: s.toast || '', toastIcon: this.LV[s.toastLvl || 'success'][2], toastIconStyle: { fontSize: 16, color: this.LV[s.toastLvl || 'success'][1] },
+      addOpen: false, ...this.resVals(), ...this.evVals()
+    };
+    if (s.tab === 'journal') {
+      out.health = this.MODS.filter(m => m[0] !== 'planner').map(m => { const inM = x => x === m[0] || (m[0] === 'posting' && x === 'planner'); const evs = last24.filter(e => inM(e.mod)); const open = incs.filter(i => inM(i.mod) && i.status !== 'resolved'); const worst = open.some(i => i.lvl === 'error') ? 'error' : open.length ? 'warn' : 'ok'; const C = { error: ['Incident en cours', '#f4728c'], warn: ['À surveiller', '#f5c77e'], ok: ['Opérationnel', '#4ade80'] }[worst];
+        const buckets = Array.from({ length: 12 }, (_, k) => s.events.filter(e => inM(e.mod) && e.t > now - (12 - k) * 36e5 && e.t <= now - (11 - k) * 36e5)); const mx = Math.max(1, ...buckets.map(b => b.length));
+        const on = s.modF === m[0];
+        return { label: m[1], icon: m[2], last: evs[0] ? 'Dernier événement ' + this.ago(evs[0].t) : 'Aucun événement', stLabel: C[0] + (open.length ? ' · ' + open.length : ''), stDot: { width: 8, height: 8, borderRadius: 99, background: C[1], boxShadow: '0 0 8px ' + C[1] }, stText: { fontSize: 12, fontWeight: 600, color: C[1] },
+          iconBox: { width: 32, height: 32, flex: 'none', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e2e8f0', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)' },
+          bars: buckets.map((b, k) => { const w = b.some(e => e.lvl === 'error') ? '#f4728c' : b.some(e => e.lvl === 'warn') ? '#f5c77e' : 'rgba(141,180,253,.55)'; return { title: b.length + ' événement' + (b.length > 1 ? 's' : '') + ' · il y a ' + (12 - k) + ' h', style: { flex: 1, height: Math.max(3, Math.round(b.length / mx * 28)), borderRadius: 2, background: b.length ? w : 'rgba(255,255,255,.06)' } }; }),
+          counts: [['success', 'ph ph-check-circle'], ['warn', 'ph ph-warning'], ['error', 'ph ph-x-circle']].map(c => { const n = evs.filter(e => e.lvl === c[0]).length; return { v: n, icon: c[1], title: this.LV[c[0]][0] + ' sur 24 h', style: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: n ? this.LV[c[0]][1] : '#5b6175' } }; }),
+          filter: () => this.setState({ modF: on ? 'all' : m[0] }),
+          card: { display: 'flex', flexDirection: 'column', gap: 12, padding: 14, borderRadius: 16, cursor: 'pointer', border: '1px solid ' + (on ? 'rgba(124,108,246,.6)' : worst === 'error' ? 'rgba(244,114,140,.35)' : 'rgba(255,255,255,.07)'), background: 'linear-gradient(180deg,' + (worst === 'error' ? 'rgba(244,114,140,.07)' : 'rgba(124,108,246,.05)') + ',rgba(255,255,255,.012) 60%)', boxShadow: on ? '0 0 0 1px rgba(124,108,246,.5)' : 'none' } }; });
+      const openL = incs.filter(i => i.status !== 'resolved').sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || b.last - a.last);
+      out.openIncs = openL.slice(0, 5).map(i => this.incRow(i)); out.openCount = openL.length; out.openSplit = nOpen + ' ouvert' + (nOpen > 1 ? 's' : '') + ' · ' + nAck + ' acquitté' + (nAck > 1 ? 's' : ''); out.noOpen = !openL.length; out.goIncidents = () => this.setState({ tab: 'incidents', incF: 'open' });
+      const qq = s.q.trim().toLowerCase();
+      const base = s.events.filter(e => (s.modF === 'all' || (e.mod === s.modF || (s.modF === 'posting' && e.mod === 'planner'))) && (!qq || e.msg.toLowerCase().indexOf(qq) >= 0));
+      const list = base.filter(e => s.lvlOn[e.lvl]).slice(0, 200);
+      out.lvlChips = this.LORD.map(k => { const L = this.LV[k]; const on = s.lvlOn[k]; return { label: L[0], icon: L[2], count: base.filter(e => e.lvl === k).length, go: () => this.setState(x => ({ lvlOn: { ...x.lvlOn, [k]: !x.lvlOn[k] } })), style: this.chip(on, L[1]), countStyle: { fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: on ? L[1] : '#5b6175' } }; });
+      out.modChips = [['all', 'Tous', '', 'Tous les modules']].concat(this.MODS.map(m => [m[0], '', m[2], m[1]])).map(m => ({ label: m[1], title: m[3], hasIcon: !!m[2], icon: m[2], go: () => this.setState({ modF: m[0] }), style: { ...this.chip(s.modF === m[0]), padding: m[1] ? '0 11px' : '0 9px' } }));
+      out.q = s.q; out.setQ = e => this.setState({ q: e.target.value });
+      out.toggleLive = () => { if (s.live) this.setState({ live: false }); else this.setState(x => ({ live: true, events: x.buffer.concat(x.events).slice(0, 600), buffer: [] })); };
+      out.liveLabel = s.live ? 'En direct' : 'En pause'; out.liveDot = { width: 8, height: 8, borderRadius: 99, background: s.live ? '#4ade80' : '#6b7289', animation: s.live ? 'livePulse 1.8s infinite' : 'none' };
+      out.liveBtn = { display: 'flex', alignItems: 'center', gap: 8, height: 30, padding: '0 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: s.live ? '#86efac' : '#aab0c5', background: s.live ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.04)', border: '1px solid ' + (s.live ? 'rgba(74,222,128,.4)' : 'rgba(255,255,255,.1)') };
+      out.hasPending = !s.live && s.buffer.length > 0; out.pendingLabel = s.buffer.length + ' nouvel' + (s.buffer.length > 1 ? 's' : '') + ' événement' + (s.buffer.length > 1 ? 's' : '') + ' · reprendre le direct'; out.flushPending = out.toggleLive;
+      const groups = []; list.forEach(e => { const h = Math.floor(e.t / 36e5); let g = groups[groups.length - 1]; if (!g || g.h !== h) { g = { h, items: [] }; groups.push(g); } g.items.push(e); });
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      out.groups = groups.map(g => { const d = new Date(g.h * 36e5); const H = d.getHours(); const isToday = d >= today; return { label: this.pad(H) + ' h – ' + this.pad((H + 1) % 24) + ' h', sub: (isToday ? 'Aujourd’hui' : 'Hier') + ' · ' + g.items.length + ' événement' + (g.items.length > 1 ? 's' : ''),
+        mix: ['error', 'warn'].map(k => ({ k, n: g.items.filter(e => e.lvl === k).length })).filter(x => x.n).map(x => ({ v: x.n + ' ' + (x.k === 'error' ? 'erreur' + (x.n > 1 ? 's' : '') : 'avert.'), style: { ...this.badge(this.LV[x.k][1]), height: 20, fontSize: 10.5 } })),
+        rows: g.items.map(e => { const L = this.LV[e.lvl]; const m = this.mod(e.mod); const inc = e.key && s.incs[e.key]; return { time: this.hms(e.t), lvl: L[0], lvlIcon: L[2], lvlStyle: { ...this.badge(L[1]), height: 22, fontSize: 11, justifySelf: 'start' }, mod: m[1], modIcon: m[2], msg: e.msg,
+          open: () => this.setState({ evView: e.id }), hasInc: !!inc && inc.count > 1, incCount: inc ? inc.count : 0, openInc: ev => { if (ev) ev.stopPropagation(); this.openRes(e.key); }, openIncOld: () => this.setState({ tab: 'incidents', incF: inc.status === 'resolved' ? 'resolved' : inc.status, openInc: e.key }),
+          openIncX: null, incStyle: { display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: '0 7px', borderRadius: 5, fontSize: 10.5, fontWeight: 700, cursor: 'pointer', color: '#fda4af', background: 'rgba(244,114,140,.12)', border: '1px solid rgba(244,114,140,.3)', justifySelf: 'end' },
+          row: { display: 'grid', gridTemplateColumns: '72px 132px 170px minmax(0,1fr) 56px', gap: 14, alignItems: 'center', padding: '7px 18px', background: now - e.t < 6000 ? 'rgba(124,108,246,.07)' : 'transparent', transition: 'background 1.5s' } }; }) }; });
+      out.fluxEmpty = !list.length;
+    }
+    if (s.tab === 'incidents') {
+      const F = s.incF; const cnt = k => incs.filter(i => k === 'all' || i.status === k).length;
+      out.incSeg = [['open', 'Ouverts'], ['ack', 'Acquittés'], ['resolved', 'Résolus'], ['all', 'Tous']].map(t => ({ label: t[1] + ' · ' + cnt(t[0]), style: this.segStyle(F === t[0]), go: () => this.setState({ incF: t[0] }) }));
+      const L = incs.filter(i => F === 'all' || i.status === F).sort((a, b) => b.last - a.last);
+      out.allIncs = L.map(i => this.incRow(i, true)); out.incEmpty = !L.length;
+      const selI = Object.keys(s.sel).map(k => s.incs[k]).filter(Boolean); out.bulkOn = selI.length > 0; out.bulkLabel = selI.length + ' incident' + (selI.length > 1 ? 's' : '') + ' sélectionné' + (selI.length > 1 ? 's' : '');
+      const same = selI.length && selI.every(i => i.mod === selI[0].mod && i.type === selI[0].type && (this.diag(i) || {}).c === (this.diag(selI[0]) || {}).c); const d0 = same ? this.diag(selI[0]) : null;
+      out.bulkHint = d0 ? 'Même cause : ' + d0.c[1].toLowerCase() : 'Causes différentes : seules les actions communes sont proposées';
+      out.bulkFixes = d0 ? d0.c[5].filter(fx => !fx[5]).map(fx => ({ label: fx[1], title: fx[2], style: { display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#ffffff', background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', whiteSpace: 'nowrap' }, go: () => { let ok = 0, ko = 0; const upd = {}; const fs = { ...s.fixStats }; const sk = selI[0].mod + '.' + selI[0].type + '.' + d0.c[0] + '.' + fx[0]; selI.forEach(i => { const r = Math.random() < fx[4]; if (r) { ok++; upd[i.key] = { ...i, status: 'resolved', resolution: { label: fx[1] + ' (groupé)', at: Date.now() } }; } else ko++; }); fs[sk] = { ok: (fs[sk] || { ok: 0 }).ok + ok, fail: (fs[sk] || { fail: 0 }).fail + ko }; this.setState(x => ({ incs: { ...x.incs, ...upd }, sel: {}, fixStats: fs })); this.toastMsg(ok + ' résolu' + (ok > 1 ? 's' : '') + (ko ? ' · ' + ko + ' en échec, à reprendre un par un' : ''), ko ? 'warn' : 'success'); } })) : [];
+      out.bulkAck = () => { const upd = {}; selI.forEach(i => { if (i.status === 'open') upd[i.key] = { ...i, status: 'ack' }; }); this.setState(x => ({ incs: { ...x.incs, ...upd }, sel: {} })); this.toastMsg(Object.keys(upd).length + ' incident(s) acquitté(s)', 'info'); };
+      out.bulkClear = () => this.setState({ sel: {} });
+    }
+    if (s.tab === 'alerts') {
+      out.bot = s.bot; out.setBot = e => this.setState({ bot: e.target.value }); out.chat = s.chat; out.setChat = e => this.setState({ chat: e.target.value });
+      out.rulesSub = s.rules.filter(r => r.on).length + ' active' + (s.rules.filter(r => r.on).length > 1 ? 's' : '') + ' · envoyées dans « ' + s.chat + ' »';
+      out.rules = s.rules.map(r => { const m = this.mod(r.mod); const ty = this.CAT[r.mod].find(x => x[0] === r.type); const L = this.LV[ty[2]]; const sw = this.sw(r.on); const n = s.events.filter(e => e.mod === r.mod && e.type === r.type && now - e.t < 24 * 36e5).length; const T = this.TH[r.th || 0]; return { th: T[2], cycleTh: () => this.setState(x => ({ rules: x.rules.map(y => y.id === r.id ? { ...y, th: ((y.th || 0) + 1) % this.TH.length } : y) })), thTitle: T[0] > 1 ? 'Alerte quand une même cible (compte, proxy, scraper, iPhone) cumule ' + T[0] + ' erreurs sur ses ' + T[1] + ' dernières actions de ce type' : 'Alerte à chaque occurrence', thStyle: { display: 'inline-flex', alignItems: 'center', gap: 5, height: 24, padding: '0 9px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: r.th ? '#dcd8ff' : '#8a91a8', background: r.th ? 'rgba(124,108,246,.14)' : 'transparent', border: '1px solid ' + (r.th ? 'rgba(124,108,246,.45)' : 'rgba(255,255,255,.1)') },
+        label: ty[1], sub: m[1] + ' · ' + n + ' déclenchement' + (n > 1 ? 's' : '') + ' sur 24 h' + (T[0] > 1 ? ' · seuil par cible' : ''), modIcon: m[2], modBox: { width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e2e8f0', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)' }, lvl: L[0], lvlIcon: L[2], lvlStyle: this.badge(L[1]), sw: sw[0], knob: sw[1], toggle: () => this.setState(x => ({ rules: x.rules.map(y => y.id === r.id ? { ...y, on: !y.on } : y) })), remove: () => this.setState(x => ({ rules: x.rules.filter(y => y.id !== r.id) })) }; });
+      out.noRules = !s.rules.length; out.openAddRule = () => this.setState({ addOpen: true });
+      const D = s.digest; const dsw = this.sw(D.on); const du = p => this.setState(x => ({ digest: { ...x.digest, ...p } }));
+      const n = k => last24.filter(e => k(e)).length; const openI = incs.filter(i => i.status !== 'resolved').length;
+      const full = D.detail !== 'short'; const cur = incs.filter(i => i.status !== 'resolved'); const cl = i => { const d = this.diag(i); return d ? d.c[1].charAt(0).toLowerCase() + d.c[1].slice(1) : ''; }; const tg = t => t.match(/^[a-z0-9._]+$/) ? '@' + t : t;
+      const itemsOf = (list, fmt) => full ? list.slice(0, 5).map(fmt).concat(list.length > 5 ? ['+' + (list.length - 5) + ' autres'] : []) : [];
+      const blocks = [];
+      if (D.secs.inc) blocks.push({ head: '🔴 ' + cur.length + ' incident' + (cur.length > 1 ? 's' : '') + ' en cours (dont ' + nAck + ' acquitté' + (nAck > 1 ? 's' : '') + ') · ' + incs.filter(i => i.status === 'resolved' && now - i.last < 24 * 36e5).length + ' résolu(s)', items: itemsOf(cur.slice().sort((x, y) => y.count - x.count), i => i.title + ' · ' + (['comptes', 'posting', 'planner'].indexOf(i.mod) >= 0 ? tg(i.target) : i.target) + ' ×' + i.count + (cl(i) ? ' — ' + cl(i) : '')) });
+      if (D.secs.pub) { const fails = cur.filter(i => i.mod === 'posting'); blocks.push({ head: '📤 ' + n(e => e.mod === 'posting' && e.type === 'pub') + ' publications · ' + n(e => e.mod === 'posting' && e.type === 'fail') + ' échec(s)', items: itemsOf(fails, i => tg(i.target) + ' — ' + cl(i) + ' (' + i.count + '×)') }); }
+      if (D.secs.story) { const st = cur.filter(i => i.mod === 'planner'); blocks.push({ head: '🎞 ' + n(e => e.mod === 'planner' && (e.type === 'story' || e.type === 'hl')) + ' stories publiées · ' + n(e => e.type === 'storyfail') + ' non publiée(s)', items: itemsOf(st, i => i.title + ' · ' + (['comptes', 'posting', 'planner'].indexOf(i.mod) >= 0 ? tg(i.target) : i.target) + (cl(i) ? ' — ' + cl(i) : '')) }); }
+      if (D.secs.veille) { const vs = cur.filter(i => i.mod === 'veille'); blocks.push({ head: '🔎 ' + n(e => e.mod === 'veille' && e.type === 'done') + ' veilles terminées · ' + n(e => e.type === 'snipe') + ' snipes', items: itemsOf(vs, i => i.target + ' · ' + (i.type === 'rate' ? 'limité' : 'cookie expiré') + ' (' + i.count + '×)') }); }
+      if (D.secs.acc) { const ac = cur.filter(i => i.mod === 'comptes'); blocks.push({ head: '📱 ' + ac.length + ' compte(s) à traiter', items: itemsOf(ac, i => tg(i.target) + ' · ' + i.title.toLowerCase() + (cl(i) ? ' (' + cl(i) + ')' : '')) }); }
+      if (D.secs.infra) { const inf = cur.filter(i => i.mod === 'infra'); blocks.push({ head: '🌐 ' + inf.length + ' incident(s) proxies & appareils', items: itemsOf(inf, i => i.target + ' · ' + i.title.toLowerCase() + (cl(i) ? ' (' + cl(i) + ')' : '')) }); }
+      if (D.secs.rules) { const act = s.rules.filter(r => r.on).map(r => ({ r, c: n(e => e.mod === r.mod && e.type === r.type) })); const sent = act.reduce((x, y) => x + y.c, 0); blocks.push({ head: '🔔 ' + sent + ' alerte(s) envoyée(s) · ' + act.length + ' règle(s) active(s)', items: full ? act.map(x => (this.CAT[x.r.mod].find(t => t[0] === x.r.type) || [0, x.r.type])[1] + ' · ' + x.c) : [] }); }
+      out.dg = { sw: dsw[0], knob: dsw[1], toggle: () => du({ on: !D.on }), hour: this.pad(D.hour) + ':00', dec: () => du({ hour: (D.hour + 23) % 24 }), inc: () => du({ hour: (D.hour + 1) % 24 }), body: { display: 'flex', flexDirection: 'column', gap: 14, opacity: D.on ? 1 : .45, pointerEvents: D.on ? 'auto' : 'none' },
+        detailSeg: [['short', 'Synthèse'], ['full', 'Détaillé']].map(t => ({ label: t[1], style: this.segStyle((D.detail || 'full') === t[0]), go: () => du({ detail: t[0] }) })),
+        secs: [['inc', 'Incidents'], ['pub', 'Publications'], ['story', 'Stories'], ['veille', 'Veilles'], ['acc', 'Comptes à traiter'], ['infra', 'Proxies & appareils'], ['rules', 'Règles d’alerte actives']].map(c => ({ label: c[1], style: this.chip(D.secs[c[0]]), go: () => du({ secs: { ...D.secs, [c[0]]: !D.secs[c[0]] } }) })),
+        title: 'Résumé du ' + new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), blocks: blocks.length ? blocks : [{ head: 'Aucune section sélectionnée', items: [] }] };
+    }
+    if (s.addOpen) {
+      out.addOpen = true; out.closeAdd = () => this.setState({ addOpen: false });
+      out.catalog = this.MODS.map(m => ({ label: m[1], icon: m[2], types: this.CAT[m[0]].map(ty => { const id = m[0] + '_' + ty[0]; const added = s.rules.some(r => r.id === id); const L = this.LV[ty[2]]; return { label: ty[1], added, dot: { width: 7, height: 7, borderRadius: 99, background: L[1] }, style: this.chip(added, L[1]), go: () => this.setState(x => ({ rules: added ? x.rules.filter(r => r.id !== id) : x.rules.concat([{ id, mod: m[0], type: ty[0], on: true }]) })) }; }) }));
+    }
+    return out;
+  }
+}
+</script>
+</body>
+</html>

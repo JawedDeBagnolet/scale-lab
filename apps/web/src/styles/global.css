@@ -160,4 +160,26 @@
     border-color: rgba(109, 94, 240, 0.6);
     background: rgba(109, 94, 240, 0.18);
   }
+
+  /* Dashboard card hover effects */
+  .dash-kpi {
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .dash-kpi:hover {
+    border-color: rgba(148,163,184,.55);
+    box-shadow: 0 0 16px rgba(148,163,184,.16);
+  }
+  .dash-alert {
+    transition: border-color .15s, background .15s;
+  }
+  .dash-alert:hover {
+    border-color: rgba(255,255,255,.22);
+    background: rgba(255,255,255,.04);
+  }
+  .dash-customize:hover {
+    background: rgba(255,255,255,.06);
+  }
+  .dash-seg-idle:hover {
+    color: #f2f3fa;
+  }
 }

@@ -28,7 +28,7 @@ async def get_overview(db: AsyncSession = Depends(get_db)):
     return await service.get_overview(db)
 
 
-# --- Scenarios ----------------------------------------------------------------
+# --- Scenarios (collection) ---------------------------------------------------
 
 @router.get("", response_model=list[ScenarioOut])
 async def list_scenarios(
@@ -40,36 +40,14 @@ async def list_scenarios(
     return await service.list_scenarios(db, origin=origin, plateforme=plateforme, active=active)
 
 
-@router.get("/{scenario_id}", response_model=ScenarioOut)
-async def get_scenario(scenario_id: UUID, db: AsyncSession = Depends(get_db)):
-    s = await service.get_scenario(db, scenario_id)
-    if not s:
-        raise HTTPException(404, "scenario not found")
-    return s
-
-
 @router.post("", response_model=ScenarioOut, status_code=201)
 async def create_scenario(data: ScenarioCreate, db: AsyncSession = Depends(get_db)):
     return await service.create_scenario(db, data)
 
 
-@router.patch("/{scenario_id}", response_model=ScenarioOut)
-async def update_scenario(scenario_id: UUID, data: ScenarioUpdate, db: AsyncSession = Depends(get_db)):
-    s = await service.get_scenario(db, scenario_id)
-    if not s:
-        raise HTTPException(404, "scenario not found")
-    return await service.update_scenario(db, s, data)
-
-
-@router.delete("/{scenario_id}", status_code=204)
-async def delete_scenario(scenario_id: UUID, db: AsyncSession = Depends(get_db)):
-    s = await service.get_scenario(db, scenario_id)
-    if not s:
-        raise HTTPException(404, "scenario not found")
-    await service.delete_scenario(db, s)
-
-
 # --- Runs ---------------------------------------------------------------------
+# IMPORTANT : ces routes DOIVENT être définies AVANT /{scenario_id}
+# sinon FastAPI tente de parser "runs" comme un UUID → 422
 
 @router.get("/runs/list", response_model=list[RunOut])
 async def list_runs(
@@ -110,6 +88,8 @@ async def delete_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 # --- Plages Horaires ----------------------------------------------------------
+# IMPORTANT : ces routes DOIVENT être définies AVANT /{scenario_id}
+# sinon FastAPI tente de parser "plages" comme un UUID → 422
 
 @router.get("/plages", response_model=list[PlageHoraireOut])
 async def list_plages(db: AsyncSession = Depends(get_db)):
@@ -135,3 +115,31 @@ async def delete_plage(plage_id: UUID, db: AsyncSession = Depends(get_db)):
     if not p:
         raise HTTPException(404, "plage horaire not found")
     await service.delete_plage(db, p)
+
+
+# --- Scenarios (par ID) -------------------------------------------------------
+# APRÈS les routes /runs/* et /plages/* pour éviter que FastAPI
+# ne parse "runs" ou "plages" comme un UUID
+
+@router.get("/{scenario_id}", response_model=ScenarioOut)
+async def get_scenario(scenario_id: UUID, db: AsyncSession = Depends(get_db)):
+    s = await service.get_scenario(db, scenario_id)
+    if not s:
+        raise HTTPException(404, "scenario not found")
+    return s
+
+
+@router.patch("/{scenario_id}", response_model=ScenarioOut)
+async def update_scenario(scenario_id: UUID, data: ScenarioUpdate, db: AsyncSession = Depends(get_db)):
+    s = await service.get_scenario(db, scenario_id)
+    if not s:
+        raise HTTPException(404, "scenario not found")
+    return await service.update_scenario(db, s, data)
+
+
+@router.delete("/{scenario_id}", status_code=204)
+async def delete_scenario(scenario_id: UUID, db: AsyncSession = Depends(get_db)):
+    s = await service.get_scenario(db, scenario_id)
+    if not s:
+        raise HTTPException(404, "scenario not found")
+    await service.delete_scenario(db, s)
