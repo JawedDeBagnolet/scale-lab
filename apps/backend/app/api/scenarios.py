@@ -9,6 +9,7 @@ from app.schemas.scenario import (
     PlageHoraireOut,
     PlageHoraireUpdate,
     RunCreate,
+    RunLaunch,
     RunOut,
     RunUpdate,
     ScenarioCreate,
@@ -17,6 +18,7 @@ from app.schemas.scenario import (
     ScenariosOverview,
 )
 from app.services import scenarios as service
+from app.services import engine as engine_service
 
 router = APIRouter()
 
@@ -85,6 +87,66 @@ async def delete_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
     if not r:
         raise HTTPException(404, "run not found")
     await service.delete_run(db, r)
+
+
+# --- Engine controls ----------------------------------------------------------
+
+@router.post("/runs/launch", response_model=RunOut, status_code=201)
+async def launch_run(data: RunLaunch, db: AsyncSession = Depends(get_db)):
+    try:
+        return await engine_service.launch_run(
+            db,
+            data.scenario_id,
+            data.comptes,
+            ignore_slots=data.ignore_slots,
+            launched_by=data.launched_by,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/runs/{run_id}/pause", response_model=RunOut)
+async def pause_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
+    r = await service.get_run(db, run_id)
+    if not r:
+        raise HTTPException(404, "run not found")
+    try:
+        return await engine_service.pause_run(db, r)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/runs/{run_id}/resume", response_model=RunOut)
+async def resume_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
+    r = await service.get_run(db, run_id)
+    if not r:
+        raise HTTPException(404, "run not found")
+    try:
+        return await engine_service.resume_run(db, r)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/runs/{run_id}/skip", response_model=RunOut)
+async def skip_step(run_id: UUID, db: AsyncSession = Depends(get_db)):
+    r = await service.get_run(db, run_id)
+    if not r:
+        raise HTTPException(404, "run not found")
+    try:
+        return await engine_service.skip_step(db, r)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/runs/{run_id}/abort", response_model=RunOut)
+async def abort_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
+    r = await service.get_run(db, run_id)
+    if not r:
+        raise HTTPException(404, "run not found")
+    try:
+        return await engine_service.abort_run(db, r)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 # --- Plages Horaires ----------------------------------------------------------

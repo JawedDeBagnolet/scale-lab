@@ -2219,7 +2219,7 @@ class Component extends DCLogic {
       alba: ['De Madrid a Lisboa en tren. {salutation} desde el vagón', '3 rincones secretos de {ville} que nadie te cuenta', 'Mochila lista para el próximo destino']
     };
   }
-  seedTpls() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedTpls() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; return SD.templates.map(t => ({ id: t.id, name: t.name, persona: t.persona || null, plat: t.plat || 'ig', type: t.type || 'post', layers: t.layers || [], variables: t.variables || {}, collection: t.collection, coll: t.collection, created: t.created })); }
     const rows = [
       ['t1', 'Réveil gainage', 'lea', 'ig', 'reel', 0, true, 38, 6.8, 1, ['s1', 's4'], ['Nouveau jour, nouveau défi : 20 min chrono. Tu tiens combien ?'], 2, 'FR'],
       ['t2', 'Programme 8 semaines', 'lea', 'ig', 'car', 2, true, 22, 5.1, 4, [], [], 5, 'FR'],
@@ -2236,7 +2236,7 @@ class Component extends DCLogic {
     const caps = this.caps();
     return rows.map(r => ({ id: r[0], name: r[1], persona: r[2], plat: r[3], type: r[4], caption: caps[r[2]][r[5]], ready: r[6], uses: r[7], ratio: r[8], media: this.lib(r[2], r[3], r[4]).slice(0, r[9]), sounds: r[10], variants: [], sound: (r[10] || [])[0] || null, updated: r[12], lang: r[13], fc: r[0] === 't1' ? '#fitnessfr #gainage #routine' : '', stats: r[7] ? { posts: r[7], impr: r[7] * (1500 + r[8] * 210), reach: Math.round(r[7] * (1500 + r[8] * 210) * .62), eng: r[8] } : null }));
   }
-  seedCamps() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedCamps() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.campaigns.map(c => ({ id: c.id, name: c.name, persona: c.persona, plat: c.plat || 'ig', type: c.type || 'engagement', status: c.status || 'active', startAt: null, endAt: null, scenarios: c.scenarios || [], coll: null, tone: '', freq: { mode: 'auto', n: 3, unit: 'j' }, accs: SD.accounts.filter(a => a.persona === c.persona && a.plat === (c.plat || 'ig')).map(a => a.id) })); }
     const T = this.today0();
     const ids = (p, pl) => this.accounts().filter(a => a.persona === p && a.plat === pl).map(a => a.id);
     return [
@@ -2246,7 +2246,7 @@ class Component extends DCLogic {
       { id: 'c4', name: 'Nina · Yoga du soir', icon: 'ph ph-moon-stars', mode: 'rotation', persona: 'nina', plat: 'ig', type: 'reel', accounts: ids('nina', 'ig'), coll: 'col5', status: 'done', start: T - 30 * 864e5, from: 18, to: 22, freq: 1, published: 30, planned: 30 }
     ];
   }
-  seedPosts() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedPosts() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; const T = this.today0(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw', acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: p.media ? [p.media] : [], fc: 1, sound: '', at, status: p.status === 'published' ? 'pub' : p.status === 'failed' ? 'error' : p.status === 'planned' ? 'ok' : 'draft', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
     const T = this.today0(); const now = Date.now(); const caps = this.caps();
     const at = (d, h, m) => T + d * 864e5 + (h * 60 + m) * 6e4;
     const spec = [
@@ -2780,7 +2780,7 @@ class Component extends DCLogic {
       saveTpl: () => this.saveTpl()
     }, carVals, schedVals);
   }
-  seedColls() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedColls() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.collections.map(c => ({ id: c.id, name: c.name, persona: c.persona || null, type: c.type || 'mix', media: [], st: { posted: 0, impr: 0, eng: 0 }, plats: ['ig', 'th', 'x'] })); }
     const st = (i, zero) => zero ? { posted: 0, impr: 0, eng: 0 } : { posted: 2 + (i * 7) % 21, impr: 1300 + (i * 577) % 2900, eng: +(2.2 + ((i * 13) % 62) / 10).toFixed(1) };
     const mk = (id, name, type, persona, plat, ptype, updated, data) => ({ id, name, type, persona, plat, ptype, updated, created: updated + 18, mediaMode: 'seq', items: [], captions: [], media: [], audio: [], ...data });
     const caps = (arr, base) => arr.map((t, i) => ({ id: 'k' + base + '_' + i, text: t, added: arr.length - i, stats: st(base * 5 + i, i >= arr.length - 2) }));

@@ -43,6 +43,12 @@ class Run(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, running, paused, done, error
     blocked_accounts: Mapped[list | None] = mapped_column(JSONB, default=list)
     journal: Mapped[list[dict] | None] = mapped_column(JSONB, default=list)  # log entries
+    # Per-account step tracking: {account_id: {step_idx: "ok"|"running"|"error"|"waiting"|"blocked"|"skipped"}}
+    account_progress: Mapped[dict | None] = mapped_column(JSONB, server_default="{}", default=dict)
+    # Launch config: {ignore_slots: bool, launched_by: str, ...}
+    config: Mapped[dict | None] = mapped_column(JSONB, server_default="{}", default=dict)
+    # Next scheduled wake time for the engine (when a delay/slot is pending)
+    next_wake_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

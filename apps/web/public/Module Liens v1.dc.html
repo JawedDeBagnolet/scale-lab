@@ -713,7 +713,8 @@ class Component extends DCLogic {
   bump(extra) { this.setState(y => Object.assign({ rev: y.rev + 1 }, extra || {})); }
 
   build() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return;
-    const SD = window.SCALE_DATA; let seed = 23; const R = () => (seed = seed * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const N = this.N;
+    const SD = window.SCALE_DATA; if (SD._live) { SD.loadModule('liens'); const N = this.N; const pById = {}; SD.personas.forEach(p => { pById[p.id] = p; }); const accById = {}; SD.accounts.forEach(a => { accById[a.id] = a; }); const domMap = {}; const domains = SD.domains.map(d => { const o = { host: d.host, max: d.max || 500 }; domMap[d.id] = d.host; return o; }); if (!domains.length) domains.push({ host: 'gms.fyi', max: 20 }); const links = SD.trackedLinks.map(l => ({ id: l.id, src: l.type === 'landing' ? 'gms' : 'sl', dom: domMap[l.dom] || 'gms.fyi', slug: l.slug, title: '', type: l.type, lp: null, dest: l.dest, plat: l.plat || 'none', persona: l.persona, acc: l.acc, asg: null, ctaR: 0, active: l.active, group: l.group || '', created: 0, clicks: Array(N).fill(0), uni: Array(N).fill(0), bots: Array(N).fill(0), cta: Array(N).fill(0), ctry: {}, ref: {}, dev: { mobile: .85, tablet: .05, desktop: .1 }, city: {}, lang: {}, brow: {}, bw: [1, .5, .3, .2, .15] })); this.data = { links, landings: [], domains, pById, accById, accounts: SD.accounts, personas: SD.personas }; return; }
+    let seed = 23; const R = () => (seed = seed * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const N = this.N;
     const pById = {}; SD.personas.forEach(p => { pById[p.id] = p; });
     const slug = x => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const ofUrl = p => 'https://onlyfans.com/' + slug(p.first) + (p.market === 'US' ? '.xo' : '.of');

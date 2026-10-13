@@ -13,14 +13,17 @@ from app.api import (
     statistiques, targets, veille,
 )
 from app.auth import auth_middleware
-from app.db import engine
+from app.db import engine as db_engine
+from app.services.engine import engine as execution_engine
 from app.ws import ws_logs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await execution_engine.start()
     yield
-    await engine.dispose()
+    await execution_engine.stop()
+    await db_engine.dispose()
 
 
 app = FastAPI(title="Scale Lab API", version="0.1.0", lifespan=lifespan)

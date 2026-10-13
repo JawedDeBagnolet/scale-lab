@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -67,6 +68,9 @@ class RunOut(RunBase):
     id: UUID
     blocked_accounts: list | None
     journal: list[dict] | None
+    account_progress: dict | None = None
+    config: dict | None = None
+    next_wake_at: datetime | None = None
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -96,6 +100,57 @@ class PlageHoraireOut(PlageHoraireBase):
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+
+# --- Engine: Launch & Control --------------------------------------------------
+
+class RunLaunch(BaseModel):
+    """POST /scenarios/runs/launch — start a new run."""
+    scenario_id: UUID
+    comptes: list[UUID]                        # accounts to include
+    ignore_slots: bool = False                 # True = bypass plages horaires
+    launched_by: str | None = None             # user / system / scheduler
+
+
+class RunControlAction(str, Enum):
+    pause = "pause"
+    resume = "resume"
+    skip = "skip"        # skip current step for all accounts
+    abort = "abort"
+
+
+class RunControl(BaseModel):
+    """POST /scenarios/runs/{id}/{action}"""
+    action: RunControlAction
+
+
+class AccountStepStatus(str, Enum):
+    ok = "ok"
+    running = "running"
+    error = "error"
+    waiting = "waiting"
+    blocked = "blocked"
+    skipped = "skipped"
+    todo = "todo"
+    delay = "delay"
+
+
+class JournalEntry(BaseModel):
+    ts: datetime
+    run_id: UUID
+    account_id: UUID | None = None
+    step: int | None = None
+    event: str                                 # started, step_begin, step_ok, step_err, paused, resumed, skipped, done, aborted
+    detail: str | None = None
+
+
+class RunProgress(BaseModel):
+    """WebSocket broadcast payload for run updates."""
+    run_id: UUID
+    status: str
+    current_step: int
+    account_progress: dict
+    journal_tail: list[dict] | None = None     # last N entries
 
 
 # --- Overview -----------------------------------------------------------------
