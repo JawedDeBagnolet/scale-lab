@@ -228,7 +228,7 @@ class Component extends DCLogic {
     const ST = { ok: ['Connecté', '#86efac', 'rgba(74,222,128,.1)'], err: ['Clé refusée', '#fda4af', 'rgba(244,114,140,.12)'], none: ['Non configuré', '#aab0c5', 'rgba(255,255,255,.06)'], edit: ['Non testée', '#f5c77e', 'rgba(245,199,126,.12)'] };
     const svc = { oc: 'oc', gm: 'gms' }[id]; const API = window.SCALE_DATA && window.SCALE_DATA.api; const sim = svc && API ? API.get(svc) : 'ok';
     const SIM = { sync: ['Synchro en cours', '#8db4fd', 'rgba(141,180,253,.12)'], down: ['Injoignable', '#f5c77e', 'rgba(245,199,126,.12)'], auth: ['Clé refusée', '#fda4af', 'rgba(244,114,140,.12)'], rate: ['Limite de requêtes', '#f5c77e', 'rgba(245,199,126,.12)'] };
-    const st = testing ? ['Test en cours…', '#cfd3ff', 'rgba(124,108,246,.16)'] : sim !== 'ok' ? SIM[sim] : ST[c.key ? c.status : 'none'];
+    const st = testing ? ['Test en cours…', '#cfd3ff', 'rgba(124,108,246,.16)'] : (sim !== 'ok' && SIM[sim]) ? SIM[sim] : ST[c.key ? c.status : 'none'];
     return { keyVal: c.key, inputType: rev ? 'text' : 'password', setKey: e => this.set(C => { C[id].key = e.target.value.trim(); C[id].status = 'edit'; return C; }),
       toggleReveal: () => this.setState({ reveal: Object.assign({}, s.reveal, { [id]: !rev }) }), revealIcon: rev ? 'ph ph-eye-slash' : 'ph ph-eye', revealTitle: rev ? 'Masquer' : 'Afficher et modifier',
       copy: () => { try { navigator.clipboard.writeText(c.key).catch(() => {}); } catch (e) {} this.toast('Copié'); },
