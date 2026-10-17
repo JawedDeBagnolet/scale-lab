@@ -196,6 +196,7 @@
     ready: function () { return devices.length > 0 || envs.connected().length > 0; }
   };
   window.SCALE_DATA = {
+    _live: true,
     ocAccounts: ocAccounts,
     api: api,
     envs: envs,
