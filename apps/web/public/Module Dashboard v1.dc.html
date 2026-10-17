@@ -903,11 +903,11 @@ class Component extends DCLogic {
         });
       }
       // Today/yesterday hourly activity (from dashboard stats if available)
-      var today = Array(24).fill(0), yest = Array(24).fill(0);
+      var todayH = Array(24).fill(0), yestH = Array(24).fill(0);
       var dStats = SD.dashboardStats || {};
-      if (dStats.hourly_today) today = dStats.hourly_today;
-      if (dStats.hourly_yesterday) yest = dStats.hourly_yesterday;
-      this.data = { tele: tele, per: per, today: today, yest: yest, sales: sales, SD: SD, fans: fans, scripts: scripts, queue: [], briefs: [], links: links, warm: warm, week: week, platW: platW, goals: [] };
+      if (dStats.hourly_today) todayH = dStats.hourly_today;
+      if (dStats.hourly_yesterday) yestH = dStats.hourly_yesterday;
+      this.data = { tele: tele, per: per, today: todayH, yest: yestH, sales: sales, SD: SD, fans: fans, scripts: scripts, queue: [], briefs: [], links: links, warm: warm, week: week, platW: platW, goals: [] };
       return; }
 
     let seed = 41; const R = () => (seed = seed * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const N = this.N;
