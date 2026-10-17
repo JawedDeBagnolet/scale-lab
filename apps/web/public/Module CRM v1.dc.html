@@ -780,10 +780,9 @@ class Component extends DCLogic {
     out.showPeriod = T !== 'tx' && T !== 'media';
     out.fanOpen = false; out.crEdOpen = false; out.scEdOpen = false; out.pickerOpen = false; out.impOpen = false; out.rulesOpen = false;
     if (!D) { Object.assign(out, { ready: false, tabs: [], crChips: [], subtitle: 'Connexion à OnlyChat…' }); return out; }
-    if (!D.creators || !D.creators.length) { Object.assign(out, { ready: true, tabs: [], crChips: [], subtitle: 'Aucune créatrice · lancez une synchronisation OnlyChat' }); return out; }
     out.ready = true;
     out.chanSeg = [['all', 'Les deux', 'ph ph-stack'], ['of', 'OnlyFans', 'ph ph-user-circle'], ['tg', 'Telegram', 'ph ph-telegram-logo']].map(x => ({ label: x[1], icon: x[2], style: this.segStyle((s.chan || 'all') === x[0]), go: () => this.setState({ chan: x[0], hb: null }) }));
-    const needOne = T === 'scripts' || T === 'media'; const crS = s.cr === 'all' ? D.creators[0].id : s.cr;
+    const needOne = T === 'scripts' || T === 'media'; const crS = s.cr === 'all' ? (D.creators.length ? D.creators[0].id : null) : s.cr;
     const ctx = { chan: T === 'overview' ? (s.chan || 'all') : 'all', s, D, N: this.N, P: s.period, from: this.N - s.period, to: this.N, pf: this.N - 2 * s.period, crS, crOK: id => s.cr === 'all' || id === s.cr, cr: id => D.creators.find(c => c.id === id) };
     out.crChips = (needOne ? [] : [{ name: 'Toutes les créatrices', dot: { display: 'none' }, style: this.chip(s.cr === 'all'), go: () => this.setState({ cr: 'all', fanLimit: 40 }) }]).concat(D.creators.map(c => { const on = needOne ? crS === c.id : s.cr === c.id; return { name: c.profile.displayName, dot: this.dotSt(c.p.color), style: this.chip(on, c.p.color), go: () => this.setState({ cr: c.id, folder: 'all', mFolder: 'all', fanLimit: 40, moveMenu: null, renaming: null }) }; }));
     const mins = Math.max(1, Math.round((Date.now() - D.lastSync) / 60000));
