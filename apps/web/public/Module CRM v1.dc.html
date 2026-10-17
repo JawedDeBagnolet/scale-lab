@@ -780,6 +780,7 @@ class Component extends DCLogic {
     out.showPeriod = T !== 'tx' && T !== 'media';
     out.fanOpen = false; out.crEdOpen = false; out.scEdOpen = false; out.pickerOpen = false; out.impOpen = false; out.rulesOpen = false;
     if (!D) { Object.assign(out, { ready: false, tabs: [], crChips: [], subtitle: 'Connexion à OnlyChat…' }); return out; }
+    if (!D.creators || !D.creators.length) { Object.assign(out, { ready: true, tabs: [], crChips: [], subtitle: 'Aucune créatrice · lancez une synchronisation OnlyChat' }); return out; }
     out.ready = true;
     out.chanSeg = [['all', 'Les deux', 'ph ph-stack'], ['of', 'OnlyFans', 'ph ph-user-circle'], ['tg', 'Telegram', 'ph ph-telegram-logo']].map(x => ({ label: x[1], icon: x[2], style: this.segStyle((s.chan || 'all') === x[0]), go: () => this.setState({ chan: x[0], hb: null }) }));
     const needOne = T === 'scripts' || T === 'media'; const crS = s.cr === 'all' ? D.creators[0].id : s.cr;
