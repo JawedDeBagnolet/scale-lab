@@ -1029,7 +1029,8 @@
   var _moduleLoaded = {};
 
   function loadModule(name) {
-    if (EMPTY || _moduleLoaded[name]) return;
+    if (_moduleLoaded[name]) return;
+    if (EMPTY && name !== 'settings') return;
     _moduleLoaded[name] = true;
 
     try {
