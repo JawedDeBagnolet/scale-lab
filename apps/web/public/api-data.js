@@ -1058,7 +1058,8 @@
               console.warn('[Scale Lab] Erreur OC CRM :', eoc);
               D._ocCreators = [];
             }
-          }
+            try { var ocBalR = apiFetchSync('/integrations/oc/status'); if (ocBalR && ocBalR.ok && ocBalR.data && ocBalR.data.balance != null) { D._ocBalance = ocBalR.data.balance; console.log('[Scale Lab] OC balance :', D._ocBalance); } } catch (e3) {}
+          } else { D._ocBalance = null; }
           console.log('[Scale Lab] Module CRM :', fans.length, 'fans,', transactions.length, 'transactions,', crmScripts.length, 'scripts');
           break;
 
