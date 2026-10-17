@@ -1158,6 +1158,7 @@
                   return { id: c.id, name: c.name || c.display_name || '', persona: null };
                 }));
                 console.log('[Scale Lab] OC creators charges :', ocAccounts.length);
+                if (ocRaw.data.balance != null) { D._ocBalance = ocRaw.data.balance; console.log('[Scale Lab] OC balance :', D._ocBalance); }
               }
             } catch (e) {
               console.warn('[Scale Lab] Erreur chargement OC creators :', e);
