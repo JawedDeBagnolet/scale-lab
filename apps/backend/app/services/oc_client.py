@@ -326,11 +326,32 @@ async def get_creator_stats(api_key: str, creator_id: str) -> dict:
     session = MCPSession(api_key)
     try:
         await session.initialize()
-        data = _json_content(await session.call_tool("get_creator_stats", {"creator_id": creator_id}))
+        # OC tool name is "get_stats", not "get_creator_stats"
+        data = _json_content(await session.call_tool("get_stats", {"creator_id": creator_id}))
         return data if isinstance(data, dict) else {}
     except Exception as e:
-        logger.exception("OC get_creator_stats error")
+        logger.exception("OC get_stats error")
         return {}
+    finally:
+        await session.close()
+
+
+async def list_transactions(api_key: str, creator_id: str, limit: int = 50) -> list:
+    """List transactions for a creator."""
+    session = MCPSession(api_key)
+    try:
+        await session.initialize()
+        data = _json_content(await session.call_tool(
+            "list_transactions", {"creator_id": creator_id, "limit": limit}
+        ))
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return data.get("transactions") or data.get("data") or data.get("items") or []
+        return []
+    except Exception as e:
+        logger.exception("OC list_transactions error")
+        return []
     finally:
         await session.close()
 
