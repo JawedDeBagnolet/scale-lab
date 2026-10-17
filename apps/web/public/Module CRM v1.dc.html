@@ -589,6 +589,7 @@ class Component extends DCLogic {
   componentWillUnmount() { window.removeEventListener('scale-api', this._apiFn); window.removeEventListener('storage', this._apiFn); clearTimeout(this._tt); clearTimeout(this._sy); clearInterval(this._sd); window.removeEventListener('keydown', this._key); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
 
   build() { const SD = window.SCALE_DATA, N = this.N; if (SD._live) {
+      SD.loadModule('settings');
       SD.loadModule('crm');
       const API = SD.api, oc = SD.ocAccounts || [];
       const ocCr = SD._ocCreators || [], ocSt = SD._ocStats || {}, ocFn = SD._ocFans || {}, ocSc = SD._ocScripts || {};
