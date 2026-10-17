@@ -192,6 +192,7 @@ class Component extends DCLogic {
   }
   _loadInitialState() {
     var me = this; var SD = window.SCALE_DATA; if (!SD) return;
+    SD.loadModule('settings');
     var ws = SD.workspace;
     if (ws) {
       var cfg = JSON.parse(JSON.stringify(me.state.cfg));
