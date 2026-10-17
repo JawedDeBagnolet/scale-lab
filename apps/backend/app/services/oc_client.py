@@ -175,9 +175,7 @@ class MCPSession:
 
     async def call_tool(self, name: str, arguments: dict | None = None) -> dict:
         """tools/call — invoke a tool by name."""
-        params: dict = {"name": name}
-        if arguments:
-            params["arguments"] = arguments
+        params: dict = {"name": name, "arguments": arguments or {}}
 
         logger.info("MCP tools/call → %s(%s)", name, arguments or {})
         result = await self._call("tools/call", params)
