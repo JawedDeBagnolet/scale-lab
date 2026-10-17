@@ -847,14 +847,14 @@ class Component extends DCLogic {
         return o;
       });
       // Telemetry
-      var tele = {}; SD.devices.forEach(function(d) { tele[d.id] = { sig: d.status === 'online' ? .8 : 0, bat: 80, charging: false, gb: 2, run: d.status === 'online', last: 5, off: 300, runAcc: null }; });
+      var teleL = {}; SD.devices.forEach(function(d) { teleL[d.id] = { sig: d.status === 'online' ? .8 : 0, bat: 80, charging: false, gb: 2, run: d.status === 'online', last: 5, off: 300, runAcc: null }; });
       // Warm-up
-      var warm = {}; SD.accounts.forEach(function(a) { warm[a.id] = { day: 7, len: 14 }; });
+      var warmL = {}; SD.accounts.forEach(function(a) { warmL[a.id] = { day: 7, len: 14 }; });
       // Week posting schedule
-      var week = []; for (var wd = 0; wd < 7; wd++) week.push({ ig: 0, th: 0, x: 0 });
-      var platW = per.map(function() { return { ig: .5, th: .25, x: .25 }; });
+      var weekL = []; for (var wd = 0; wd < 7; wd++) weekL.push({ ig: 0, th: 0, x: 0 });
+      var platWL = per.map(function() { return { ig: .5, th: .25, x: .25 }; });
       // Build sales from OC fans
-      var sales = [];
+      var salesL = [];
       if (hasOC) {
         ocCr.forEach(function(cr) {
           var cFans = ocFn[cr.id] || [];
@@ -863,13 +863,13 @@ class Component extends DCLogic {
             var spent = f.total_spent || f.spent || 0;
             if (spent <= 0) return;
             var types = ['PPV', 'Abonnement', 'Tip', 'Message payant'];
-            sales.push({ persona: matchP || SD.personas[0], tg: false, acc: cr.display_name || cr.name || '', type: types[i % types.length], amount: Math.round(spent / Math.max(1, Math.ceil(spent / 30))), ago: Math.round((i + 1) * 8 + hsh(f.id) * 20) });
+            salesL.push({ persona: matchP || SD.personas[0], tg: false, acc: cr.display_name || cr.name || '', type: types[i % types.length], amount: Math.round(spent / Math.max(1, Math.ceil(spent / 30))), ago: Math.round((i + 1) * 8 + hsh(f.id) * 20) });
           });
         });
-        sales.sort(function(a, b) { return a.ago - b.ago; });
+        salesL.sort(function(a, b) { return a.ago - b.ago; });
       }
       // Build fans list from OC
-      var fans = [];
+      var fansL = [];
       if (hasOC) {
         ocCr.forEach(function(cr) {
           var cFans = ocFn[cr.id] || [];
@@ -877,28 +877,28 @@ class Component extends DCLogic {
           cFans.forEach(function(f) {
             var spent = f.total_spent || f.spent || f.revenue || 0;
             if (spent <= 0) return;
-            fans.push({ name: f.pseudo || f.username || f.name || f.display_name || 'fan', p: matchP || SD.personas[0], tg: false, spent: Math.round(spent), last: Math.round(hsh(f.id + '_last') * 2000 + 10) });
+            fansL.push({ name: f.pseudo || f.username || f.name || f.display_name || 'fan', p: matchP || SD.personas[0], tg: false, spent: Math.round(spent), last: Math.round(hsh(f.id + '_last') * 2000 + 10) });
           });
         });
-        fans.sort(function(a, b) { return b.spent - a.spent; });
-        fans = fans.slice(0, 14);
+        fansL.sort(function(a, b) { return b.spent - a.spent; });
+        fansL = fansL.slice(0, 14);
       }
       // Build links from GMS
-      var links = [];
+      var linksL = [];
       if (hasGMS) {
         gmsLinks.slice(0, 12).forEach(function(gl) {
           var matchP = SD.personas[Math.floor(hsh(gl.id) * SD.personas.length)] || SD.personas[0];
-          links.push({ url: (gl.domain || 'gms.fyi') + '/' + (gl.slug || gl.short_url || gl.id), p: matchP, share: .1 + hsh(gl.id + '_sh') * .15, landing: gl.type === 'landing', ctr: 38 + hsh(gl.id + '_ctr') * 28 });
+          linksL.push({ url: (gl.domain || 'gms.fyi') + '/' + (gl.slug || gl.short_url || gl.id), p: matchP, share: .1 + hsh(gl.id + '_sh') * .15, landing: gl.type === 'landing', ctr: 38 + hsh(gl.id + '_ctr') * 28 });
         });
       }
       // Build scripts from OC
-      var scripts = [];
+      var scriptsL = [];
       if (hasOC) {
         ocCr.forEach(function(cr) {
           var cScripts = (SD._ocScripts && SD._ocScripts[cr.id]) || [];
           var matchP = SD.personas.find(function(p) { var cn = (cr.name || cr.display_name || '').toLowerCase().trim(); var pn = p.first.toLowerCase().trim(); return cn === pn || cn.indexOf(pn) >= 0 || pn.indexOf(cn) >= 0; });
           cScripts.slice(0, 3).forEach(function(s) {
-            scripts.push({ name: s.name || s.title || 'Script', p: matchP || SD.personas[0], tg: false, unlock: (s.unlock_rate || .3) * 100, rev: Math.round((s.revenue || 0) + hsh(s.id || s.name) * 2000) });
+            scriptsL.push({ name: s.name || s.title || 'Script', p: matchP || SD.personas[0], tg: false, unlock: (s.unlock_rate || .3) * 100, rev: Math.round((s.revenue || 0) + hsh(s.id || s.name) * 2000) });
           });
         });
       }
@@ -907,7 +907,7 @@ class Component extends DCLogic {
       var dStats = SD.dashboardStats || {};
       if (dStats.hourly_today) todayH = dStats.hourly_today;
       if (dStats.hourly_yesterday) yestH = dStats.hourly_yesterday;
-      this.data = { tele: tele, per: per, today: todayH, yest: yestH, sales: sales, SD: SD, fans: fans, scripts: scripts, queue: [], briefs: [], links: links, warm: warm, week: week, platW: platW, goals: [] };
+      this.data = { tele: teleL, per: per, today: todayH, yest: yestH, sales: salesL, SD: SD, fans: fansL, scripts: scriptsL, queue: [], briefs: [], links: linksL, warm: warmL, week: weekL, platW: platWL, goals: [] };
       return; }
 
     let seed = 41; const R = () => (seed = seed * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const N = this.N;
