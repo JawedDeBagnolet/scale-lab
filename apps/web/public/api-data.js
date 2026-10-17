@@ -740,6 +740,28 @@
     ocCreators: function () {
       return apiAsync('GET', '/integrations/oc/creators');
     },
+    ocCreatorStats: function (creatorId) {
+      return apiAsync('GET', '/integrations/oc/creators/' + encodeURIComponent(creatorId) + '/stats');
+    },
+    ocCreatorScripts: function (creatorId) {
+      return apiAsync('GET', '/integrations/oc/creators/' + encodeURIComponent(creatorId) + '/scripts');
+    },
+    ocCreatorFans: function (creatorId, limit) {
+      var q = limit ? '?limit=' + limit : '';
+      return apiAsync('GET', '/integrations/oc/creators/' + encodeURIComponent(creatorId) + '/fans' + q);
+    },
+    // GMS extended data proxies
+    gmsTimeSeries: function (timeframe, interval, metric, linkId) {
+      var q = '?timeframe=' + (timeframe || '7') + '&interval=' + (interval || 'day') + '&metric=' + (metric || 'pageviews');
+      if (linkId) q += '&link_id=' + encodeURIComponent(linkId);
+      return apiAsync('GET', '/integrations/gms/analytics/time-series' + q);
+    },
+    gmsLinkDetail: function (linkId) {
+      return apiAsync('GET', '/integrations/gms/links/' + encodeURIComponent(linkId));
+    },
+    gmsGroups: function () {
+      return apiAsync('GET', '/integrations/gms/groups');
+    },
     subscribe: function (fn) {
       window.addEventListener('scale-api', fn);
       return function () { window.removeEventListener('scale-api', fn); };
@@ -1054,12 +1076,65 @@
           populate(crmScripts,   safe(apiFetchSync('/crm/scripts')).map(xScript));
           D.crmOverview = apiFetchSync('/crm/overview');
           if (!D.crmOverview || Array.isArray(D.crmOverview)) D.crmOverview = { total_fans: 0, total_revenue: 0, avg_ltv: 0, top_script: null };
+          // Load OC data when connected
+          if (api.get('oc') === 'ok') {
+            try {
+              var ocCrm = apiFetchSync('/integrations/oc/creators');
+              var ocList = (ocCrm && ocCrm.data) ? ocCrm.data : (Array.isArray(ocCrm) ? ocCrm : []);
+              D._ocCreators = ocList;
+              D._ocStats = {};
+              D._ocFans = {};
+              D._ocScripts = {};
+              for (var oi = 0; oi < ocList.length; oi++) {
+                var ocId = ocList[oi].id;
+                try { D._ocStats[ocId] = apiFetchSync('/integrations/oc/creators/' + encodeURIComponent(ocId) + '/stats'); } catch (e2) { D._ocStats[ocId] = {}; }
+                try {
+                  var fRaw = apiFetchSync('/integrations/oc/creators/' + encodeURIComponent(ocId) + '/fans?limit=200');
+                  D._ocFans[ocId] = (fRaw && fRaw.data) ? fRaw.data : (Array.isArray(fRaw) ? fRaw : []);
+                } catch (e2) { D._ocFans[ocId] = []; }
+                try {
+                  var sRaw = apiFetchSync('/integrations/oc/creators/' + encodeURIComponent(ocId) + '/scripts');
+                  D._ocScripts[ocId] = (sRaw && sRaw.data) ? sRaw.data : (Array.isArray(sRaw) ? sRaw : []);
+                } catch (e2) { D._ocScripts[ocId] = []; }
+              }
+              console.log('[Scale Lab] OC CRM data :', ocList.length, 'creators');
+            } catch (eoc) {
+              console.warn('[Scale Lab] Erreur OC CRM :', eoc);
+              D._ocCreators = [];
+            }
+          }
           console.log('[Scale Lab] Module CRM :', fans.length, 'fans,', transactions.length, 'transactions,', crmScripts.length, 'scripts');
           break;
 
         case 'liens':
           populate(trackedLinks, safe(apiFetchSync('/liens')).map(xTrackedLink));
           populate(domains,      safe(apiFetchSync('/liens/domains')).map(xDomain));
+          // Load GMS data when connected
+          if (api.get('gms') === 'ok') {
+            try {
+              var gmsRaw = apiFetchSync('/integrations/gms/links?limit=100');
+              var gmsList = (gmsRaw && gmsRaw.data) ? gmsRaw.data : (Array.isArray(gmsRaw) ? gmsRaw : []);
+              D._gmsLinks = gmsList;
+              // Fetch analytics time-series for each link (pageviews, last 90 days)
+              D._gmsAnalytics = {};
+              for (var gi = 0; gi < gmsList.length; gi++) {
+                var gId = gmsList[gi].id;
+                try {
+                  var tsRaw = apiFetchSync('/integrations/gms/analytics/time-series?timeframe=90&interval=day&metric=pageviews&link_id=' + encodeURIComponent(gId));
+                  D._gmsAnalytics[gId] = (tsRaw && tsRaw.data) ? tsRaw.data : (Array.isArray(tsRaw) ? tsRaw : []);
+                } catch (e2) { D._gmsAnalytics[gId] = []; }
+              }
+              // Fetch groups
+              try {
+                var grpRaw = apiFetchSync('/integrations/gms/groups');
+                D._gmsGroups = (grpRaw && grpRaw.data) ? grpRaw.data : (Array.isArray(grpRaw) ? grpRaw : []);
+              } catch (e2) { D._gmsGroups = []; }
+              console.log('[Scale Lab] GMS liens data :', gmsList.length, 'links');
+            } catch (egms) {
+              console.warn('[Scale Lab] Erreur GMS liens :', egms);
+              D._gmsLinks = [];
+            }
+          }
           console.log('[Scale Lab] Module liens :', trackedLinks.length, 'liens,', domains.length, 'domaines');
           break;
 
@@ -1075,6 +1150,36 @@
         case 'dashboard':
           D.dashboardStats = apiFetchSync('/dashboard/stats');
           if (!D.dashboardStats || Array.isArray(D.dashboardStats)) D.dashboardStats = { total_personas: 0, total_comptes: 0, total_targets: 0, total_presets: 0, total_events: 0, errors_24h: 0, open_incidents: 0, comptes_ok: 0, comptes_error: 0 };
+          // Load OC data for dashboard (creators, fans, stats)
+          if (api.get('oc') === 'ok') {
+            try {
+              if (!D._ocCreators) {
+                var ocDash = apiFetchSync('/integrations/oc/creators');
+                var ocDashList = (ocDash && ocDash.data) ? ocDash.data : (Array.isArray(ocDash) ? ocDash : []);
+                D._ocCreators = ocDashList;
+                D._ocStats = {}; D._ocFans = {};
+                for (var di = 0; di < ocDashList.length; di++) {
+                  var dId = ocDashList[di].id;
+                  try { D._ocStats[dId] = apiFetchSync('/integrations/oc/creators/' + encodeURIComponent(dId) + '/stats'); } catch (e2) { D._ocStats[dId] = {}; }
+                  try {
+                    var dfRaw = apiFetchSync('/integrations/oc/creators/' + encodeURIComponent(dId) + '/fans?limit=50');
+                    D._ocFans[dId] = (dfRaw && dfRaw.data) ? dfRaw.data : (Array.isArray(dfRaw) ? dfRaw : []);
+                  } catch (e2) { D._ocFans[dId] = []; }
+                }
+              }
+              console.log('[Scale Lab] Dashboard OC data :', (D._ocCreators || []).length, 'creators');
+            } catch (eoc) { console.warn('[Scale Lab] Erreur dashboard OC :', eoc); }
+          }
+          // Load GMS link summary for dashboard
+          if (api.get('gms') === 'ok') {
+            try {
+              if (!D._gmsLinks) {
+                var gmsDash = apiFetchSync('/integrations/gms/links?limit=50');
+                D._gmsLinks = (gmsDash && gmsDash.data) ? gmsDash.data : (Array.isArray(gmsDash) ? gmsDash : []);
+              }
+              console.log('[Scale Lab] Dashboard GMS data :', (D._gmsLinks || []).length, 'links');
+            } catch (egms) { console.warn('[Scale Lab] Erreur dashboard GMS :', egms); }
+          }
           console.log('[Scale Lab] Module dashboard : stats chargees');
           break;
 
@@ -1085,6 +1190,21 @@
             apiUpdateFromWorkspace(raw);
           } else {
             D.workspace = xWorkspace({});
+          }
+          // If OC is connected, load OC creators into ocAccounts
+          if (api.get('oc') === 'ok') {
+            try {
+              var ocRaw = apiFetchSync('/integrations/oc/status');
+              if (ocRaw && ocRaw.ok && ocRaw.data) {
+                var crList = ocRaw.data.creators || [];
+                populate(ocAccounts, crList.map(function (c) {
+                  return { id: c.id, name: c.name || c.display_name || '', persona: null };
+                }));
+                console.log('[Scale Lab] OC creators charges :', ocAccounts.length);
+              }
+            } catch (e) {
+              console.warn('[Scale Lab] Erreur chargement OC creators :', e);
+            }
           }
           console.log('[Scale Lab] Module settings : workspace charge, oc=' + api.get('oc') + ', gms=' + api.get('gms'));
           break;

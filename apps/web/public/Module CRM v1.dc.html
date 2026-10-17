@@ -602,7 +602,76 @@ class Component extends DCLogic {
   componentWillUnmount() { window.removeEventListener('scale-api', this._apiFn); window.removeEventListener('storage', this._apiFn); clearTimeout(this._tt); clearTimeout(this._sy); clearInterval(this._sd); window.removeEventListener('keydown', this._key); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
 
   build() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return;
-    const SD = window.SCALE_DATA, N = this.N; if (SD._live) { SD.loadModule('crm'); const oc = SD.ocAccounts || []; const creators = SD.personas.map(p => { const ofUser = p.first.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + (p.market === 'US' ? '.xo' : '.of'); const accs = oc.filter(a => a.persona === p.id).map(a => ({ ...a, lic: null })); if (!accs.length) accs.push({ id: 'oc_of_' + p.id, persona: p.id, platform: 'onlyfans', name: ofUser, lic: null }); const ofAcc = (accs.find(a => a.platform === 'onlyfans') || accs[0]).id; return { id: p.id, p, mult: 1, sync: 'ok', profile: { displayName: p.first, ofUser, bio: p.city + ' · ' + p.niches.join(' · '), subPrice: p.market === 'US' ? 10 : 8, tg: p.tg || '' }, settings: { welcome: true, welcomeText: '', minPPV: 12, tz: 'Europe/Paris', tone: 'joueur', chatFrom: '10:00', chatTo: '02:00', relance: 14 }, accounts: accs, ofAcc, fanLists: [], welcome: [] }; }); const accPlat = {}, accById = {}; creators.forEach(c => c.accounts.forEach(a => { accPlat[a.id] = a.platform; accById[a.id] = a; })); const scripts = SD.crmScripts.map(s => ({ ...s, cr: null, name: s.id, acc: null, desc: '', timeout: 0, strict: false, versions: [], paid: [], ul: .2, op: .7, sent: new Float64Array(N), unl: new Float64Array(N), rev: new Float64Array(N) })); const fans = SD.fans.map(f => ({ id: f.id, cr: f.cr, pseudo: f.pseudo, joined: 0, disc: 0, end: N - 1, tier: 1, plat: f.plat || 'ig', handle: '', tg: false, tgAcc: null, tgDay: null, note: f.note, noteAt: null, lastActive: 0, spent: f.spent || 0, n: 0, last: null, firstTx: null })); const tx = SD.transactions.map(t => ({ id: t.id, d: 0, h: t.h || 0, fan: t.fan, cr: t.cr, type: t.type, amount: t.amount, script: t.script, acc: t.acc })); const byDay = Array.from({ length: N }, () => []); const fanById = {}; fans.forEach(f => { fanById[f.id] = f; }); tx.forEach(t => { const f = fanById[t.fan]; if (f) { f.spent += t.amount; f.n++; f.last = t.d * 24 + t.h; if (!f.firstTx) f.firstTx = t; } }); const scById = {}; scripts.forEach(sc => { scById[sc.id] = sc; }); const lastSale = {}; tx.forEach(t => { lastSale[t.cr] = t.d * 24 + t.h; }); const soc = {}; creators.forEach(c => { soc[c.id] = {}; ['ig', 'th', 'x'].forEach(pl => { soc[c.id][pl] = { posts: new Float64Array(N), reach: new Float64Array(N), visits: new Float64Array(N), clicks: new Float64Array(N) }; }); }); this.data = { accPlat, accById, creators, folders: [], scripts, mFolders: [], media: [], fans, tx, byDay, fanById, scById, lastSale, soc, lastSync: Date.now() }; return; }
+    const SD = window.SCALE_DATA, N = this.N; if (SD._live) {
+      SD.loadModule('crm');
+      const API = SD.api, oc = SD.ocAccounts || [];
+      const ocCr = SD._ocCreators || [], ocSt = SD._ocStats || {}, ocFn = SD._ocFans || {}, ocSc = SD._ocScripts || {};
+      const hasOC = API.get('oc') === 'ok' && ocCr.length > 0;
+      const nowMs = Date.now(), DAYMS = 864e5;
+      const dayOf = function(ts) { if (!ts) return N - 1; var t = typeof ts === 'number' ? ts : new Date(ts).getTime(); if (isNaN(t)) return N - 1; var ago = Math.floor((nowMs - t) / DAYMS); return Math.max(0, Math.min(N - 1, N - 1 - ago)); };
+      const hsh = function(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return (h >>> 0) / 4294967295; };
+      const creators = SD.personas.map(p => {
+        const ofUser = p.first.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + (p.market === 'US' ? '.xo' : '.of');
+        const ocMatch = hasOC ? ocCr.find(c => { const cn = (c.name || c.display_name || '').toLowerCase().trim(); const pn = p.first.toLowerCase().trim(); return cn === pn || cn.indexOf(pn) >= 0 || pn.indexOf(cn) >= 0; }) : null;
+        const accs = oc.filter(a => a.persona === p.id).map(a => ({ ...a, lic: null }));
+        if (!accs.length) { if (ocMatch) accs.push({ id: ocMatch.id, persona: p.id, platform: 'onlyfans', name: ocMatch.name || ocMatch.display_name || ofUser, lic: null }); else accs.push({ id: 'oc_of_' + p.id, persona: p.id, platform: 'onlyfans', name: ofUser, lic: null }); }
+        const ofAcc = (accs.find(a => a.platform === 'onlyfans') || accs[0]).id;
+        return { id: p.id, p, mult: 1, sync: hasOC && ocMatch ? 'ok' : (hasOC ? 'off' : 'ok'), _ocId: ocMatch ? ocMatch.id : null,
+          profile: { displayName: ocMatch ? (ocMatch.display_name || ocMatch.name || p.first) : p.first, ofUser, bio: p.city + ' \xb7 ' + p.niches.join(' \xb7 '), subPrice: p.market === 'US' ? 10 : 8, tg: p.tg || '' },
+          settings: { welcome: true, welcomeText: '', minPPV: 12, tz: 'Europe/Paris', tone: 'joueur', chatFrom: '10:00', chatTo: '02:00', relance: 14 },
+          accounts: accs, ofAcc, fanLists: [], welcome: [] };
+      });
+      const accPlat = {}, accById = {};
+      creators.forEach(c => c.accounts.forEach(a => { accPlat[a.id] = a.platform; accById[a.id] = a; }));
+      const folders = [], scripts = []; let fans = [], tx = [];
+      let fid = 0, tid = 0, sid = 0;
+      const SF = ['Bienvenue', 'Relances', 'PPV du soir', 'Bundles'];
+      creators.forEach(c => { SF.forEach((f, i) => folders.push({ id: 'f' + c.id + i, cr: c.id, name: f })); });
+      if (hasOC) {
+        creators.forEach(c => {
+          if (!c._ocId) return; const cId = c._ocId;
+          const cFans = ocFn[cId] || [], cScripts = ocSc[cId] || [];
+          cScripts.forEach(s => { const scId = s.id || ('s' + (sid++));
+            scripts.push({ id: scId, cr: c.id, name: s.name || s.title || ('Script ' + sid), acc: c.ofAcc,
+              group: s.group_id || s.script_group_id || scId, folder: (folders.find(x => x.cr === c.id) || { id: '' }).id,
+              active: s.active !== false, first: false, steps: s.steps || [], desc: s.description || s.desc || '',
+              timeout: s.timeout || 0, strict: !!s.strict, versions: s.versions || [], paid: s.paid || s.paid_steps || [],
+              ul: s.unlock_rate || s.ul || .2, op: s.open_rate || s.op || .7,
+              sent: new Float64Array(N), unl: new Float64Array(N), rev: new Float64Array(N) }); });
+          const crSc = scripts.filter(x => x.cr === c.id); if (crSc.length) crSc[0].first = true;
+          cFans.forEach(f => {
+            const myId = f.id || ('fan' + (fid++));
+            const joined = dayOf(f.joined_at || f.created_at || f.subscribed_at);
+            const lastAct = dayOf(f.last_activity || f.last_active || f.updated_at);
+            const spent = f.total_spent || f.spent || f.revenue || 0;
+            fans.push({ id: myId, cr: c.id, pseudo: f.pseudo || f.username || f.name || f.display_name || ('fan' + fid),
+              joined: joined, disc: Math.max(0, joined - 2), end: Math.max(joined, lastAct), tier: spent > 200 ? 3 : spent > 50 ? 2 : 1,
+              plat: f.platform || 'ig', handle: f.handle || '', tg: !!f.telegram, tgAcc: f.telegram_account || null, tgDay: null,
+              note: f.notes || f.note || '', noteAt: null, lastActive: lastAct, spent: 0, n: 0, last: null, firstTx: null });
+            if (spent <= 0) return;
+            const nTx = Math.min(Math.max(1, Math.ceil(spent / 15)), 20), txAmt = spent / nTx;
+            for (let i = 0; i < nTx; i++) { const dRange = Math.max(1, lastAct - joined);
+              const d = Math.min(N - 1, joined + Math.floor(hsh(myId + '_' + i) * dRange));
+              const type = i === 0 ? 'sub' : hsh(myId + '_t_' + i) < .5 ? 'ppv' : hsh(myId + '_t2_' + i) < .6 ? 'tip' : 'sub';
+              tx.push({ id: 't' + (tid++), d: d, h: Math.floor(hsh(myId + '_h_' + i) * 24), fan: myId, cr: c.id, type: type,
+                amount: Math.round(txAmt * (.7 + hsh(myId + '_a_' + i) * .6) * 100) / 100,
+                script: (type === 'ppv' && crSc.length) ? crSc[Math.floor(hsh(myId + '_s_' + i) * crSc.length)].id : null, acc: c.ofAcc }); }
+          });
+        });
+      }
+      if (!fans.length && SD.fans.length) fans = SD.fans.map(f => ({ id: f.id, cr: f.cr, pseudo: f.pseudo, joined: 0, disc: 0, end: N - 1, tier: 1, plat: f.plat || 'ig', handle: '', tg: false, tgAcc: null, tgDay: null, note: f.note || '', noteAt: null, lastActive: 0, spent: f.spent || 0, n: 0, last: null, firstTx: null }));
+      if (!scripts.length && SD.crmScripts.length) SD.crmScripts.forEach(s => { scripts.push({ ...s, cr: null, name: s.id, acc: null, desc: '', timeout: 0, strict: false, versions: [], paid: [], ul: .2, op: .7, sent: new Float64Array(N), unl: new Float64Array(N), rev: new Float64Array(N) }); });
+      if (!tx.length && SD.transactions.length) SD.transactions.forEach(t => { tx.push({ id: t.id, d: 0, h: t.h || 0, fan: t.fan, cr: t.cr, type: t.type, amount: t.amount, script: t.script, acc: t.acc }); });
+      tx.sort((a, b) => a.d - b.d || a.h - b.h);
+      const byDay = Array.from({ length: N }, () => []); tx.forEach(t => { if (t.d >= 0 && t.d < N) byDay[t.d].push(t); });
+      const fanById = {}; fans.forEach(f => { fanById[f.id] = f; });
+      tx.forEach(t => { const f = fanById[t.fan]; if (f) { f.spent += t.amount; f.n++; f.last = t.d * 24 + t.h; if (!f.firstTx) f.firstTx = t; } });
+      const scById = {}; scripts.forEach(sc => { scById[sc.id] = sc; });
+      const lastSale = {}; tx.forEach(t => { lastSale[t.cr] = t.d * 24 + t.h; });
+      tx.forEach(t => { if (t.script && scById[t.script]) { scById[t.script].unl[t.d]++; scById[t.script].rev[t.d] += t.amount; } });
+      scripts.forEach(sc => { for (let d = 0; d < N; d++) { sc.sent[d] = sc.unl[d] ? Math.round(sc.unl[d] / (sc.ul || .2) * (.85 + hsh(sc.id + d) * .3)) : 0; } });
+      const soc = {}; creators.forEach(c => { soc[c.id] = {}; ['ig', 'th', 'x'].forEach(pl => { soc[c.id][pl] = { posts: new Float64Array(N), reach: new Float64Array(N), visits: new Float64Array(N), clicks: new Float64Array(N) }; }); });
+      this.data = { accPlat, accById, creators, folders, scripts, mFolders: [], media: [], fans, tx, byDay, fanById, scById, lastSale, soc, lastSync: Date.now() }; return; }
     let sd = 20250917; const R = () => (sd = sd * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const pick = a => a[Math.floor(R() * a.length)];
     const wpick = (a, w) => { const t = a.reduce((x, y) => x + w(y), 0); let r = R() * t; for (let i = 0; i < a.length; i++) { r -= w(a[i]); if (r <= 0) return a[i]; } return a[a.length - 1]; };
     const MULT = { lea: 1.2, maya: .9, sofia: 1.8, clara: 1, nina: .75, alba: .5 };

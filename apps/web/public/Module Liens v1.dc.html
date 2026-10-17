@@ -713,7 +713,76 @@ class Component extends DCLogic {
   bump(extra) { this.setState(y => Object.assign({ rev: y.rev + 1 }, extra || {})); }
 
   build() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return;
-    const SD = window.SCALE_DATA; if (SD._live) { SD.loadModule('liens'); const N = this.N; const pById = {}; SD.personas.forEach(p => { pById[p.id] = p; }); const accById = {}; SD.accounts.forEach(a => { accById[a.id] = a; }); const domMap = {}; const domains = SD.domains.map(d => { const o = { host: d.host, max: d.max || 500 }; domMap[d.id] = d.host; return o; }); if (!domains.length) domains.push({ host: 'gms.fyi', max: 20 }); const links = SD.trackedLinks.map(l => ({ id: l.id, src: l.type === 'landing' ? 'gms' : 'sl', dom: domMap[l.dom] || 'gms.fyi', slug: l.slug, title: '', type: l.type, lp: null, dest: l.dest, plat: l.plat || 'none', persona: l.persona, acc: l.acc, asg: null, ctaR: 0, active: l.active, group: l.group || '', created: 0, clicks: Array(N).fill(0), uni: Array(N).fill(0), bots: Array(N).fill(0), cta: Array(N).fill(0), ctry: {}, ref: {}, dev: { mobile: .85, tablet: .05, desktop: .1 }, city: {}, lang: {}, brow: {}, bw: [1, .5, .3, .2, .15] })); this.data = { links, landings: [], domains, pById, accById, accounts: SD.accounts, personas: SD.personas }; return; }
+    const SD = window.SCALE_DATA; if (SD._live) {
+      SD.loadModule('liens');
+      const API = SD.api, N = this.N;
+      const pById = {}; SD.personas.forEach(p => { pById[p.id] = p; });
+      const accById = {}; SD.accounts.forEach(a => { accById[a.id] = a; });
+      const hasGMS = API.get('gms') === 'ok';
+      const gmsLinks = SD._gmsLinks || [], gmsAn = SD._gmsAnalytics || {}, gmsGrps = SD._gmsGroups || [];
+      const nowMs = Date.now(), DAYMS = 864e5;
+      const dayOf = function(ts) { if (!ts) return N - 1; var t = typeof ts === 'number' ? ts : new Date(ts).getTime(); if (isNaN(t)) return N - 1; var ago = Math.floor((nowMs - t) / DAYMS); return Math.max(0, Math.min(N - 1, N - 1 - ago)); };
+      const hsh = function(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return (h >>> 0) / 4294967295; };
+      // Build domains from backend + GMS
+      const domMap = {}; const domains = SD.domains.map(d => { var o = { host: d.host, max: d.max || 500 }; domMap[d.id] = d.host; return o; });
+      if (!domains.length) domains.push({ host: 'gms.fyi', max: 20 });
+      if (hasGMS && !domains.some(d => d.host === 'gms.fyi')) domains.push({ host: 'gms.fyi', max: 50 });
+      // Build Scale Lab links from backend data
+      var links = SD.trackedLinks.map(l => ({ id: l.id, src: l.type === 'landing' ? 'gms' : 'sl', dom: domMap[l.dom] || l.dom || 'gms.fyi', slug: l.slug, title: l.title || '', type: l.type || 'direct', lp: null, dest: l.dest || '', plat: l.plat || 'none', persona: l.persona, acc: l.acc, asg: null, ctaR: 0, active: l.active !== false, group: l.group || '', created: dayOf(l.created_at), clicks: Array(N).fill(0), uni: Array(N).fill(0), bots: Array(N).fill(0), cta: Array(N).fill(0), ctry: {}, ref: {}, dev: { mobile: .85, tablet: .05, desktop: .1 }, city: {}, lang: {}, brow: {}, bw: [1, .5, .3, .2, .15] }));
+      // Build GMS links from API data
+      var landings = [];
+      if (hasGMS && gmsLinks.length) {
+        var existIds = {}; links.forEach(function(l) { existIds[l.id] = true; });
+        gmsLinks.forEach(function(gl) {
+          if (existIds[gl.id]) return;
+          var isLanding = gl.type === 'landing' || gl.landing_page;
+          var slug = gl.slug || gl.short_url || gl.id;
+          var dom = gl.domain || 'gms.fyi';
+          var dest = gl.destination_url || gl.url || '';
+          var plat = 'none';
+          if (gl.platform) plat = gl.platform;
+          else if (/instagram/.test(dest)) plat = 'ig';
+          else if (/t\.me|telegram/.test(dest)) plat = 'tg';
+          else if (/onlyfans/.test(dest)) plat = 'none';
+          var grpName = '';
+          if (gl.group_id && gmsGrps.length) { var g = gmsGrps.find(function(x) { return x.id === gl.group_id; }); if (g) grpName = g.name || ''; }
+          else if (gl.group) grpName = gl.group;
+          // Build time-series from GMS analytics
+          var clicks = Array(N).fill(0), uni = Array(N).fill(0), bots = Array(N).fill(0), cta = Array(N).fill(0);
+          var ts = gmsAn[gl.id] || [];
+          ts.forEach(function(pt) {
+            var d = dayOf(pt.date || pt.timestamp);
+            var pv = pt.pageviews || pt.clicks || pt.value || 0;
+            clicks[d] += pv;
+            uni[d] += pt.unique_visitors || pt.unique_clicks || Math.round(pv * .82);
+            bots[d] += pt.bot_clicks || Math.round(pv * .05);
+            if (isLanding) cta[d] += pt.conversions || pt.cta_clicks || Math.round(pv * (pt.conversion_rate || .45));
+          });
+          var created = dayOf(gl.created_at || gl.created);
+          var asg = null;
+          if (gl.assigned_to || gl.account) {
+            var asgUser = gl.assigned_to || gl.account;
+            asg = { plat: plat !== 'none' ? plat : 'ig', user: typeof asgUser === 'string' ? asgUser : (asgUser.handle || asgUser.username || '') };
+          }
+          links.push({ id: gl.id, src: 'gms', dom: dom, slug: slug, title: gl.title || gl.name || '', type: isLanding ? 'landing' : 'direct', lp: null, dest: dest, plat: plat, persona: null, acc: null, asg: asg, ctaR: isLanding ? .45 : 0, active: gl.active !== false && gl.status !== 'disabled', group: grpName, created: created, clicks: clicks, uni: uni, bots: bots, cta: cta, ctry: gl.countries || {}, ref: gl.referrers || {}, dev: gl.devices || { mobile: .85, tablet: .05, desktop: .1 }, city: gl.cities || {}, lang: gl.languages || {}, brow: gl.browsers || {}, bw: [1, .5, .3, .2, .15] });
+          // Build landing data if it is a landing page
+          if (isLanding && gl.landing_page) {
+            var lp = gl.landing_page;
+            landings.push({ id: lp.id || gl.id, src: 'gms', persona: null, name: lp.name || gl.title || slug, dname: lp.display_name || lp.name || gl.title || '', uname: lp.username || '', bio: lp.bio || '', notes: '', group: grpName, dom: dom, slug: slug, sources: [], bg: lp.background || null, blur: false, showPp: true, ppMode: 'single', pp: lp.avatar || null, slides: [], audio: { on: false, name: '', autoplay: false, loop: false, cta: '' }, verified: false, verifiedColor: '#8db4fd', online: false, resp: '', loc: { display: 0, position: 0, style: 1 }, locFallback: '', socials: lp.socials || [], template: 0, font: 0, bgColor: '', textColor: '', disableLogos: false, blocks: (lp.blocks || []).map(function(b, bi) { return { id: b.id || ('b' + bi), effect: String(b.effect || b.type || '0'), label: b.label || b.title || '', url: b.url || '', desc: b.description || '', imgs: b.images || {}, slides: b.slides || [], cols: b.columns || 2, cstyle: b.style || 'theme-aware', ccolor: b.color || '#6d5ef0', tcolor: b.text_color || '#ffffff', anim: b.animation || 'static', grid: b.grid || '2x1', age: !!b.age_gate, newTab: !!b.new_tab, geo: b.geo || [], smart: b.smart || { on: false, url: '', after: '3', days: '7' }, pay: b.pay || { on: false, type: 'fixed', price: '10' }, cd: b.countdown || { mode: 'duration', h: '24', m: '0', start: '', end: '', digits: '#1f2233' } }; }), recovery: lp.recovery || { on: false, url: '' }, deeplink: true, strict: false, bot: lp.bot_protection || 'none', challenge: false, seo: lp.seo || { title: '', desc: '', card: 'summary_large_image', img: null }, agency: lp.tracking || { ga: '', fb: '', tt: '', sc: '', x: '', xev: '', hj: '' }, tparams: lp.tracking_params || [{ name: 'utm_campaign', enabled: true }], white: false, ab: lp.ab_test || { enabled: false, control: 100, variants: [] } });
+          }
+        });
+      }
+      // Set domain max based on actual link count
+      domains.forEach(function(d) { var n = links.filter(function(l) { return l.dom === d.host; }).length; if (n >= d.max) d.max = n + 5; });
+      this._gmsDomains = hasGMS ? Array.from(new Set(['gms.fyi'].concat(gmsLinks.map(function(l) { return l.domain || 'gms.fyi'; })))) : ['gms.fyi'];
+      var CW = { FR: { FR: .66, BE: .1, CH: .06, CA: .05, MA: .04, DE: .03, GB: .03, US: .03 }, US: { US: .68, CA: .1, GB: .08, AU: .06, DE: .03, MX: .05 }, ES: { ES: .58, MX: .14, AR: .08, CO: .07, US: .05, IT: .04, FR: .04 } };
+      this._CW = CW;
+      this._mkFinish = function(l, mk) { if (!l.ctry || !Object.keys(l.ctry).length) { var W = CW[mk] || CW.FR; var o = {}; var t2 = 0; Object.keys(W).forEach(function(k) { o[k] = W[k] * (.75 + hsh(l.id + k) * .5); t2 += o[k]; }); Object.keys(o).forEach(function(k) { o[k] /= t2; }); l.ctry = o; } l.active = l.active !== false; if (!l.bw || !l.bw.length) l.bw = [1, .5, .3, .2, .15]; };
+      this._blk = function(effect, o) { return Object.assign({ id: 'b' + Math.floor(Math.random() * 1e9).toString(36), effect: effect, label: '', url: '', desc: '', imgs: {}, slides: [], cols: 2, cstyle: 'theme-aware', ccolor: '#6d5ef0', tcolor: '#ffffff', anim: 'static', grid: '2x1', age: false, newTab: false, geo: [], smart: { on: false, url: '', after: '3', days: '7' }, pay: { on: false, type: 'fixed', price: '10' }, cd: { mode: 'duration', h: '24', m: '0', start: '', end: '', digits: '#1f2233' } }, o || {}); };
+      this.data = { links: links, landings: landings, domains: domains, pById: pById, accById: accById, accounts: SD.accounts, personas: SD.personas };
+      links.forEach(function(l) { if (l.src === 'gms') l.persona = this.gmsPersona(l); }.bind(this));
+      return; }
+
     let seed = 23; const R = () => (seed = seed * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const N = this.N;
     const pById = {}; SD.personas.forEach(p => { pById[p.id] = p; });
     const slug = x => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
