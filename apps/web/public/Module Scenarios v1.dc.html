@@ -76,21 +76,7 @@ a:hover { color: #b9d0ff; }
 <div onClick="{{ newSc }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 17px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 4px 18px rgba(99,102,241,.35)"><i class="ph ph-plus" style="font-size:15px"></i>Nouveau scénario</div>
 </div>
 </div>
-<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
-<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-flow-arrow" style="font-size:26px"></i></span>
-<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucun scénario</div>
-<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Un scénario enchaîne des actions sur un groupe de comptes : connexion, warmup, publication, stories. Les plages horaires restent configurables.</div>
-<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
-<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
-<div onClick="{{ newSc }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-plus" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Créer un scénario</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></div>
-<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-device-mobile" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter les comptes qui le joueront</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Comportements%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-sliders-horizontal" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Régler les comportements humains</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-</div>
-</div>
-<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
-</div></sc-if>
-<div style="{{ wsWrap }}">
+<div style="display:contents">
 
 <div data-screen-label="Templates" style="display:flex;flex-direction:column;gap:10px">
 <div style="display:flex;align-items:baseline;gap:10px"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Templates</div><span style="font-size:12px;color:#8a91a8">{{ tplSub }}</span></div>
@@ -359,7 +345,6 @@ class Component extends DCLogic {
   famsOf(sc) { return [...new Set(sc.steps.map(st => this.platOf(st.plat)[3]))]; }
   mkRun(sc, accs, o) { return { id: this.uid('r'), sc: sc.id, name: sc.name, icon: sc.icon, accs, labels: sc.steps.map((st, i) => ({ label: this.stepTitle(st) + (st.loop && st.loop.on ? (st.loop.inf ? ' · ∞' : ' · ×' + st.loop.n) : ''), loop: st.loop && st.loop.on ? { inf: !!st.loop.inf, n: st.loop.n } : null, plat: st.plat, delay: this.delaySum(st.delay, i === 0) })), ...o }; }
   build() {
-    if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return { scs: [], runs: [], slots: (window.SCALE_DATA.slots || []).map(x => ({ ...x, days: x.days.slice(), ranges: x.ranges.map(r => r.slice()) })) };
     const SD = window.SCALE_DATA; if (SD && SD._live) { SD.loadModule('scenarios'); const scs = SD.scenarios.map(x => this.norm(x)); const by = id => scs.find(x => x.id === id); const runs = SD.runs.map(r => { const sc = by(r.sc); if (!sc) return null; const nSt = sc.steps.length; const st = []; for (let i = 0; i < nSt; i++) { if (i < r.cur) st.push({ s: 'ok', done: r.accs.length, err: 0, at: r.startAt ? new Date(r.startAt).getTime() + (i + 1) * 6e5 : Date.now() }); else if (i === r.cur) st.push({ s: r.status === 'running' ? 'run' : r.status === 'paused' ? 'run' : r.status === 'done' ? 'ok' : 'todo', done: 0, err: 0 }); else st.push({ s: 'todo', done: 0, err: 0 }); } return this.mkRun(sc, r.accs, { startAt: r.startAt ? new Date(r.startAt).getTime() : Date.now(), status: r.status, cur: r.cur, st, endAt: r.endAt ? new Date(r.endAt).getTime() : null }); }).filter(Boolean); return { scs, runs, slots: SD.slots.map(x => ({ ...x, days: x.days.slice(), ranges: x.ranges.map(r => r.slice()) })) }; }
     const D = window.SCALE_DATA; const now = Date.now(); const H = 3600e3; const scs = D.scenarios.map(x => this.norm(x)); const by = id => scs.find(x => x.id === id);
     const pick = (plat, n, mk) => { const f = m => D.accounts.filter(a => a.plat === plat && (!m || (D.persona(a.persona) || {}).market === m)).slice(0, n).map(a => a.handle); const r = f(mk); return r.length ? r : f(null); };
@@ -574,10 +559,9 @@ class Component extends DCLogic {
         save: () => { if (!ok) return; const x = { id: dr.id || this.uid('s'), name: dr.name.trim(), icon: dr.icon, days: dr.days.slice().sort((a, b) => a - b), ranges: dr.ranges.slice().sort((a, b) => this.mins(a[0]) - this.mins(b[0])) }; this.setState(y => ({ slots: dr.id ? y.slots.map(z => z.id === dr.id ? x : z) : y.slots.concat([x]), sl: { view: 'list', draft: null } })); this.toastMsg('Plage « ' + x.name + ' » enregistrée'); } }); }
     return out;
   }
-  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
-    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "" });
-    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
-    const s = this.state; const dataEmpty = (s.scs || []).length === 0 && (s.runs || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false);
+  renderVals() { let out;
+    try { out = this._rvE(); } catch (err) { throw err; }
+    out.wsFull = true;
     return out; }
   _rvE() {
     const s = this.state; const D = window.SCALE_DATA; const scs = s.scs || []; const runsAll = s.runs;

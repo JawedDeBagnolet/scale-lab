@@ -186,15 +186,10 @@
     },
     dim: function (svcs) { var st = svcs.some(function (s) { return api.stale(s); }); return st ? { opacity: .6, filter: 'saturate(.55)', transition: 'opacity .2s' } : { transition: 'opacity .2s' }; }
   };
-  var EMPTY = false; try { EMPTY = localStorage.getItem('scale.emptySim') === '1'; } catch (e) {}
-  if (EMPTY) [personas, accounts, collections, campaigns, ocAccounts, licenses, devices, scenarios].forEach(function (a) { if (Array.isArray(a)) a.length = 0; });
-  var EMPTY_KEYS = { personas: 'scale.emptyPersonas', accounts: 'scale.empty.accounts', devices: 'scale.empty.devices' }; var EMPTY_ARR = { personas: personas, accounts: accounts, devices: devices };
-  if (EMPTY) Object.keys(EMPTY_KEYS).forEach(function (k) { try { (JSON.parse(localStorage.getItem(EMPTY_KEYS[k]) || '[]') || []).forEach(function (x) { EMPTY_ARR[k].push(x); }); } catch (e) {} });
-  function saveEmpty(kind, list) { if (!EMPTY || !EMPTY_KEYS[kind]) return; var arr = EMPTY_ARR[kind]; arr.length = 0; list.forEach(function (x) { arr.push(x); }); try { localStorage.setItem(EMPTY_KEYS[kind], JSON.stringify(list)); } catch (e) {} window.dispatchEvent(new Event('scale-api')); }
   var ENV_KEY = 'scale.envProviders';
   var envs = {
     PROVIDERS: [['gologin', 'GoLogin', 'Navigateur web anti-détection', 'ph ph-globe'], ['geelark', 'GeeLark', 'Téléphone Android dans le cloud', 'ph ph-device-mobile-camera']],
-    all: function () { var d = null; try { d = JSON.parse(localStorage.getItem(ENV_KEY) || 'null'); } catch (e) {} if (!d) d = EMPTY ? {} : { gologin: { last4: 'a91f' }, geelark: { last4: '33kd' } }; return d; },
+    all: function () { var d = null; try { d = JSON.parse(localStorage.getItem(ENV_KEY) || 'null'); } catch (e) {} if (!d) d = {}; return d; },
     get: function (k) { return envs.all()[k] || null; },
     set: function (k, v) { var d = envs.all(); if (v) d[k] = v; else delete d[k]; try { localStorage.setItem(ENV_KEY, JSON.stringify(d)); } catch (e) {} window.dispatchEvent(new Event('scale-api')); },
     connected: function () { var d = envs.all(); return envs.PROVIDERS.filter(function (p) { return d[p[0]]; }).map(function (p) { return p[1]; }); },
@@ -203,10 +198,7 @@
   window.SCALE_DATA = {
     ocAccounts: ocAccounts,
     api: api,
-    empty: EMPTY,
     envs: envs,
-    setEmpty: function (v) { try { localStorage.setItem('scale.emptySim', v ? '1' : '0'); localStorage.removeItem('scale.envProviders'); localStorage.removeItem('scale.emptyPersonas'); localStorage.removeItem('scale.empty.accounts'); localStorage.removeItem('scale.empty.devices'); } catch (e) {} location.reload(); },
-    saveEmpty: saveEmpty,
     licenses: licenses,
     devices: devices,
     alloc: alloc,

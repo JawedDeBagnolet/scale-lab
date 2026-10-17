@@ -102,21 +102,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </div>
 </div>
-<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
-<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-device-mobile" style="font-size:26px"></i></span>
-<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucun compte</div>
-<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Ajoute un compte Instagram, Threads ou X avec le bouton en haut à droite. Chaque compte est rattaché à une persona et tourne dans un environnement : profil GoLogin, téléphone GeeLark ou iPhone du parc.</div>
-<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
-<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
-<a href="Module%20Personas%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-user-circle" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Créer la persona du compte</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Parametres%20v1.dc.html#tab=int" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-cube" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Connecter un environnement : GoLogin, GeeLark ou un iPhone du parc</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Proxies%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-globe-simple" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Vérifier son proxy</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-</div>
-</div>
-<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
-</div></sc-if>
-<div style="{{ wsWrap }}">
+<div style="display:contents">
 
 <sc-if value="{{ showCards }}" hint-placeholder-val="{{ true }}">
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
@@ -1008,8 +994,7 @@ class Component extends DCLogic {
   stopDrift() { const d = this._drift; if (!d) return; cancelAnimationFrame(d.raf); d.blobs.forEach(b => b.el.remove()); d.dots.remove(); this._drift = null; }
   applyFont() { const m = { Manrope: "'Manrope'", Geist: "'Geist'", 'Instrument Sans': "'Instrument Sans'", Onest: "'Onest'" }; const v = m['Manrope'] || "'Manrope'"; if (this._font !== v) { this._font = v; document.documentElement.style.setProperty('--app-font', v); } }
   componentDidMount() { this.applyFont(); this.syncFx(); this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const acc = (H.get('acc') || '').replace(/^@/, ''); const per = H.get('persona'); if (acc) { const a = this.state.accounts.find(x => x.username === acc); if (a) return this.open(a); this.setState({ q: acc }); } else if (per) this.setState({ view: 'list', persona: per }); }; setTimeout(this._hash, 0); window.addEventListener('hashchange', this._hash); }
-  _saveEmpty() { const SD = window.SCALE_DATA; if (!SD || !SD.empty || this.state.accounts === this._lastAcc) return; this._lastAcc = this.state.accounts; SD.saveEmpty('accounts', (this.state.accounts || []).filter(a => a.username).map(a => ({ id: 'acc_' + String(a.username).replace(/[^a-z0-9]/gi, '').toLowerCase(), handle: a.username, persona: a.persona, plat: a.platform, workflow: a.workflow || 'Onboarding', status: a.status || 'idle', env: a.activeEnv || null }))); }
-  componentDidUpdate() { this._saveEmpty(); this.applyFont(); this.syncFx(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); }
 
   mkDraft(a) {
     if (a && a.extra) return JSON.parse(JSON.stringify({ ...a.extra, id: a.id, username: a.username, platform: a.platform, market: a.market, persona: a.persona, niche: a.niche, workflow: a.workflow, activeEnv: a.activeEnv }));
@@ -1024,7 +1009,7 @@ class Component extends DCLogic {
       password: a ? 'Ofm!' + (4821 + n * 37) + 'kx' : '', totp: a ? 'JBSW Y3DP EHPK ' + (3100 + n * 13) : '',
       platform: a ? a.platform : 'ig', market: a ? a.market : 'FR', lang: langOf(a ? a.market : 'FR'),
       persona: p.id, niche: a ? a.niche : p.niche, tags: a ? [p.niche.toLowerCase(), (a.market || 'FR').toLowerCase()] : [],
-      activeEnv: a ? a.activeEnv : (() => { const SD = window.SCALE_DATA; if (!SD || !SD.empty || (SD.devices || []).length) return 'iphone'; const E = SD.envs; return E && E.get('gologin') ? 'web' : E && E.get('geelark') ? 'phone' : 'iphone'; })(),
+      activeEnv: a ? a.activeEnv : 'iphone',
       envIds: {
         web: env.web ? 'gl_' + (683000 + n * 917).toString(36) : '',
         phone: env.phone ? 'gk-' + (40210 + n * 131) : '',
@@ -1142,10 +1127,9 @@ class Component extends DCLogic {
   }
   seg(items, cur, go) { return items.map(it => ({ ...it, active: it.v === cur, idle: it.v !== cur, hasIcon: !!it.icon, go: () => go(it.v) })); }
 
-  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
-    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "" });
-    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
-    out.wsEmpty = (this.state.accounts || []).length === 0 && this.state.view === 'list'; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false);
+  renderVals() { let out;
+    try { out = this._rvE(); } catch (err) { throw err; }
+    out.wsFull = true;
     const na = out.newAccount; const miss = this.gateMissing(); out.newAccount = () => { if (miss.length) this.setState({ gate: true }); else if (na) na(); };
     out.gateOpen = !!this.state.gate && miss.length > 0; out.closeGate = () => this.setState({ gate: false }); out.gateItems = miss; return out; }
   gateMissing() { const SD = window.SCALE_DATA; if (!SD) return []; const m = []; const IC = 'width:30px;height:30px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center';

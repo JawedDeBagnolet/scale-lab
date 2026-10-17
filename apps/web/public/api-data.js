@@ -690,7 +690,6 @@
 
   var api = {
     NAMES: { oc: 'OnlyChat', gms: 'GetMySocial' },
-    STATES: [['ok', 'Connecte'], ['sync', 'Synchro en cours'], ['down', 'Injoignable'], ['auth', 'Cle refusee'], ['rate', 'Limite de requetes'], ['none', 'Non configure']],
     get: function (svc) { return _apiState[svc] || 'none'; },
     set: function (svc, v) {
       _apiState[svc] = v;
@@ -807,7 +806,7 @@
     all: function () {
       var d = null;
       try { d = JSON.parse(localStorage.getItem(ENV_KEY) || 'null'); } catch (e) {}
-      if (!d) d = D.empty ? {} : { gologin: { last4: 'a91f' }, geelark: { last4: '33kd' } };
+      if (!d) d = {};
       return d;
     },
     get: function (k) { return envs.all()[k] || null; },
@@ -823,10 +822,6 @@
     },
     ready: function () { return devices.length > 0 || envs.connected().length > 0; }
   };
-
-  // ─── Mode "workspace vide" (simulation onboarding) ────────────────
-  var EMPTY = false;
-  try { EMPTY = localStorage.getItem('scale.emptySim') === '1'; } catch (e) {}
 
   // ─── Export synchrone : SCALE_DATA existe des le chargement ────────
   var D = {
@@ -878,8 +873,6 @@
     workspace: null,
 
     // Flags
-    empty: EMPTY,
-    _live: !EMPTY,
     _loaded: false,
     _error: null,
 
@@ -925,27 +918,6 @@
     refreshModule: function (name) { _moduleLoaded[name] = false; loadModule(name); },
     isModuleLoaded: function (name) { return !!_moduleLoaded[name]; },
 
-    // ── Onboarding (simulation) ──
-    setEmpty: function (v) {
-      try {
-        localStorage.setItem('scale.emptySim', v ? '1' : '0');
-        localStorage.removeItem('scale.envProviders');
-        localStorage.removeItem('scale.emptyPersonas');
-        localStorage.removeItem('scale.empty.accounts');
-        localStorage.removeItem('scale.empty.devices');
-      } catch (e) {}
-      location.reload();
-    },
-    saveEmpty: function (kind, list) {
-      if (!EMPTY) return;
-      var EMPTY_KEYS = { personas: 'scale.emptyPersonas', accounts: 'scale.empty.accounts', devices: 'scale.empty.devices' };
-      var EMPTY_ARR = { personas: personas, accounts: accounts, devices: devices };
-      if (!EMPTY_KEYS[kind]) return;
-      var arr = EMPTY_ARR[kind]; arr.length = 0;
-      list.forEach(function (x) { arr.push(x); });
-      try { localStorage.setItem(EMPTY_KEYS[kind], JSON.stringify(list)); } catch (e) {}
-      window.dispatchEvent(new Event('scale-api'));
-    }
   };
 
   window.SCALE_DATA = D;
@@ -968,20 +940,6 @@
 
   // ── Chargement core (synchrone au demarrage) ──
   function loadData() {
-    if (EMPTY) {
-      var EMPTY_KEYS = { personas: 'scale.emptyPersonas', accounts: 'scale.empty.accounts', devices: 'scale.empty.devices' };
-      var EMPTY_ARR = { personas: personas, accounts: accounts, devices: devices };
-      Object.keys(EMPTY_KEYS).forEach(function (k) {
-        try {
-          (JSON.parse(localStorage.getItem(EMPTY_KEYS[k]) || '[]') || []).forEach(function (x) {
-            EMPTY_ARR[k].push(x);
-          });
-        } catch (e) {}
-      });
-      D._loaded = true;
-      return;
-    }
-
     try {
       var rawPersonas    = apiFetchSync('/personas');
       var rawComptes     = apiFetchSync('/comptes');
@@ -1011,7 +969,6 @@
       // Calculer les regles d'attribution iPhone ↔ comptes
       computeDeviceRules();
 
-      D.empty = personas.length === 0;
       D._loaded = true;
       D._error = null;
 
@@ -1020,7 +977,6 @@
     } catch (err) {
       console.error('[Scale Lab] Erreur de chargement API :', err);
       D._error = err;
-      D.empty = true;
       D._loaded = true;
     }
   }
@@ -1030,7 +986,6 @@
 
   function loadModule(name) {
     if (_moduleLoaded[name]) return;
-    if (EMPTY && name !== 'settings') return;
     _moduleLoaded[name] = true;
 
     try {

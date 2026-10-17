@@ -95,21 +95,7 @@ input::placeholder, textarea::placeholder { color: #5b6175; }
 </div>
 <div onClick="{{ openCreate }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 18px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 4px 18px rgba(99,102,241,.35)" style-hover="box-shadow:0 4px 26px rgba(99,102,241,.55)"><i class="ph ph-plus" style="font-size:15px"></i>Nouvelle persona</div>
 </div>
-<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
-<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-user-circle" style="font-size:26px"></i></span>
-<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucune persona</div>
-<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Une persona correspond à une modèle : identité, marché, niches, bios et Telegram de la modèle. OnlyChat n’est pas nécessaire pour la créer, seulement pour lui attribuer des licences.</div>
-<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
-<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
-<div onClick="{{ openCreate }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-plus" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Créer la première persona</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></div>
-<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-device-mobile" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter ensuite ses comptes</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Parametres%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-plugs-connected" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Connecter OnlyChat pour les licences (optionnel)</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-</div>
-</div>
-<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
-</div></sc-if>
-<div style="{{ wsWrap }}">
+<div style="display:contents">
 
 <div style="display:flex;align-items:center;gap:10px">
 <div style="position:relative;flex:1;min-width:180px;max-width:320px">
@@ -882,7 +868,7 @@ class Component extends DCLogic {
   applyFont() { this.applySearch(); const m = { Manrope: "'Manrope'", Geist: "'Geist'", 'Instrument Sans': "'Instrument Sans'", Onest: "'Onest'" }; const v = m['Manrope'] || "'Manrope'"; if (this._font !== v) { this._font = v; document.documentElement.style.setProperty('--app-font', v); } }
   componentDidMount() {
     this._apiFn = () => this.forceUpdate(); window.addEventListener('scale-api', this._apiFn); window.addEventListener('storage', this._apiFn); this.applyFont(); this.syncFx(); this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const id = H.get('persona'); if (!id) return; const p = this.state.list.find(x => x.id === id); if (p) this.openDetail(p); }; setTimeout(this._hash, 0); window.addEventListener('hashchange', this._hash); }
-  componentDidUpdate() { if (window.SCALE_DATA && window.SCALE_DATA.empty && this.state.list !== this._lastSaved) { this._lastSaved = this.state.list; try { window.SCALE_DATA.saveEmpty('personas', ((this.state.list || []).map(p => { const nm = String(p.name || '').trim().split(/\s+/); return { id: p.key || p.id, prsId: p.id, first: nm[0] || 'Persona', last: nm.slice(1).join(' '), color: p.color || '#8b7cf6', market: p.market || 'FR', city: (p.location && (p.location.name || p.location.city || p.location.label)) || '', age: p.age || null, platforms: p.platforms || [], niches: p.niches || [], tg: '' }; }))); } catch (e) {} } this.applyFont(); this.syncFx(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); }
 
   ocData() { if (!this._oc) { const SD = window.SCALE_DATA || {}; this._oc = { accs: JSON.parse(JSON.stringify(SD.ocAccounts || [])), lics: JSON.parse(JSON.stringify(SD.licenses || [])) }; } return this._oc; }
   ocVals(out, d) {
@@ -924,10 +910,9 @@ class Component extends DCLogic {
     };
   }
 
-  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
-    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "" });
-    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
-    const s = this.state; const dataEmpty = (s.list || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false);
+  renderVals() { let out;
+    try { out = this._rvE(); } catch (err) { throw err; }
+    out.wsFull = true;
     return out; }
   _rvE() { const out = this._rv(); const A = window.SCALE_DATA && window.SCALE_DATA.api; out.apiBanners = A ? A.banners(["oc"], true) : []; out.apiWrap = Object.assign({ display: 'flex', flexDirection: 'column', gap: 16 }, A && false ? A.dim(["oc"]) : {}); return out; }
   _rv() {

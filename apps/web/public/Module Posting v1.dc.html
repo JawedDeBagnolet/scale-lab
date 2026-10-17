@@ -104,21 +104,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </div>
 </div>
-<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
-<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-paper-plane-tilt" style="font-size:26px"></i></span>
-<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Rien à publier</div>
-<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Une campagne publie des collections de médias sur des comptes actifs, selon un planning. Commence par une collection, puis crée la campagne.</div>
-<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
-<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
-<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-device-mobile" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter des comptes actifs</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Veille%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-magnifying-glass" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Récupérer des médias dans la Veille</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-<a href="Module%20Scenarios%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-flow-arrow" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Préparer les scénarios de publication</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
-</div>
-</div>
-<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#6b7289"><i class="ph ph-flask" style="font-size:14px"></i><span>Simulation d’un workspace vide.</span><span onClick="{{ exitEmpty }}" style="font-weight:600;color:#8db4fd;cursor:pointer" style-hover="color:#b9d0ff">Revenir aux données de démo</span></div>
-</div></sc-if>
-<div style="{{ wsWrap }}">
+<div style="display:contents">
 
 <div style="display:flex;flex-wrap:wrap;gap:2px;align-self:flex-start;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:4px">
 <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="7">
@@ -2133,7 +2119,7 @@ class Component extends DCLogic {
     return shot + ' de ' + p.name + ' ' + scene + ', ' + mood + '. Aucun texte incrusté ni logo visible. Adapté au format ' + (t ? t.label : 'vertical') + '.';
   }
   mediaName(m) { return m.name || (m.video ? 'VID_' : 'IMG_') + (4100 + (m.seed * 37) % 900) + (m.video ? '.mp4' : '.jpg'); }
-  seedStories() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedStories() { if ((window.SCALE_DATA && window.SCALE_DATA._live)) return [];
     return [
       { id: 'st1', name: 'Question du soir', username: 'lea.fitfr', color: '#1b1f33', media: ['lea-story-0'], bgIdx: 0, updated: 2, els: [{ id: 'e1', kind: 'text', x: 169, y: 170, scale: 1, rot: -4, text: 'Vos questions ?', color: '#ffffff' }, { id: 'e2', kind: 'question', x: 169, y: 330, scale: 1, rot: 0, text: 'Pose-moi une question', color: '#8b7cf6' }] },
       { id: 'st2', name: 'Sondage matin / soir', username: 'maya.ig', color: '#1b1f33', media: ['maya-story-1'], bgIdx: 0, updated: 5, els: [{ id: 'e1', kind: 'poll', x: 169, y: 300, scale: 1, rot: 0, text: 'Plutôt matin ou soir ?', color: '#5b8def' }, { id: 'e2', kind: 'mention', x: 169, y: 470, scale: 1, rot: -3, text: '@maya.cafe', color: '#5b8def' }] },
@@ -2178,13 +2164,13 @@ class Component extends DCLogic {
   }
   med(id) { return this.mediaLib().find(m => m.id === id) || (this._m || []).find(m => m.id === id) || ((this.state && this.state.extraMedia) || []).find(m => m.id === id) || null; }
   seedGroups() {
-    if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+    if ((window.SCALE_DATA && window.SCALE_DATA._live)) return [];
     if (this._sg) return this._sg;
     const m = this.lib('maya', 'th', 'th_media'), a = this.lib('alba', 'th', 'th_media'), l = this.lib('lea', 'th', 'th_media'), x = this.lib('sofia', 'x', 'tw_img');
     const mk = (id, persona, plat, media, name) => ({ id, persona, plat, media: media.filter(Boolean), name, created: 3 });
     return this._sg = this.seedIgGroups().concat([mk('grp_maya1', 'maya', 'th', [m[0], m[2], m[4]], 'Carousel café'), mk('grp_maya2', 'maya', 'th', [m[1], m[3]], 'Carousel déco'), mk('grp_alba1', 'alba', 'th', [a[0], a[1], a[2], a[3]], 'Carousel Lisboa'), mk('grp_lea1', 'lea', 'th', [l[0], l[1], l[2]], 'Carousel salle'), mk('grp_sofia1', 'sofia', 'x', [x[0], x[1]], 'Duo breathwork')]);
   }
-  seedIgGroups() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return []; const l = this.lib('lea', 'ig', 'car'), n = this.lib('nina', 'ig', 'car'), m = this.lib('maya', 'ig', 'car'); const mk = (id, persona, media, name) => ({ id, persona, plat: 'ig', media: media.filter(Boolean), name, created: 2 }); return [mk('grp_lea_ig1', 'lea', [l[0], l[2], l[1], l[3]], 'Carousel semaine 6'), mk('grp_lea_ig2', 'lea', [l[4], l[1]], 'Avant / après'), mk('grp_nina_ig1', 'nina', [n[0], n[1], n[2]], 'Flow du matin'), mk('grp_maya_ig1', 'maya', [m[0], m[1], m[2], m[3], m[4]], 'Dimanche en 5 étapes')]; }
+  seedIgGroups() { if ((window.SCALE_DATA && window.SCALE_DATA._live)) return []; const l = this.lib('lea', 'ig', 'car'), n = this.lib('nina', 'ig', 'car'), m = this.lib('maya', 'ig', 'car'); const mk = (id, persona, media, name) => ({ id, persona, plat: 'ig', media: media.filter(Boolean), name, created: 2 }); return [mk('grp_lea_ig1', 'lea', [l[0], l[2], l[1], l[3]], 'Carousel semaine 6'), mk('grp_lea_ig2', 'lea', [l[4], l[1]], 'Avant / après'), mk('grp_nina_ig1', 'nina', [n[0], n[1], n[2]], 'Flow du matin'), mk('grp_maya_ig1', 'maya', [m[0], m[1], m[2], m[3], m[4]], 'Dimanche en 5 étapes')]; }
   grp(id) { if (typeof id !== 'string' || id.indexOf('grp_') !== 0) return null; const list = (this.state && this.state.groups) || this.seedGroups(); return list.find(g => g.id === id) || null; }
   migratePost() {
     const s = this.state; const T = t => t === 'post' ? 'car' : t; const M = id => typeof id === 'string' ? id.replace(/-post-/, '-car-') : id;
@@ -2219,7 +2205,7 @@ class Component extends DCLogic {
       alba: ['De Madrid a Lisboa en tren. {salutation} desde el vagón', '3 rincones secretos de {ville} que nadie te cuenta', 'Mochila lista para el próximo destino']
     };
   }
-  seedTpls() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; return SD.templates.map(t => ({ id: t.id, name: t.name, persona: t.persona || null, plat: t.plat || 'ig', type: t.type || 'post', layers: t.layers || [], variables: t.variables || {}, collection: t.collection, coll: t.collection, created: t.created })); }
+  seedTpls() { if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; return SD.templates.map(t => ({ id: t.id, name: t.name, persona: t.persona || null, plat: t.plat || 'ig', type: t.type || 'post', layers: t.layers || [], variables: t.variables || {}, collection: t.collection, coll: t.collection, created: t.created })); }
     const rows = [
       ['t1', 'Réveil gainage', 'lea', 'ig', 'reel', 0, true, 38, 6.8, 1, ['s1', 's4'], ['Nouveau jour, nouveau défi : 20 min chrono. Tu tiens combien ?'], 2, 'FR'],
       ['t2', 'Programme 8 semaines', 'lea', 'ig', 'car', 2, true, 22, 5.1, 4, [], [], 5, 'FR'],
@@ -2236,7 +2222,7 @@ class Component extends DCLogic {
     const caps = this.caps();
     return rows.map(r => ({ id: r[0], name: r[1], persona: r[2], plat: r[3], type: r[4], caption: caps[r[2]][r[5]], ready: r[6], uses: r[7], ratio: r[8], media: this.lib(r[2], r[3], r[4]).slice(0, r[9]), sounds: r[10], variants: [], sound: (r[10] || [])[0] || null, updated: r[12], lang: r[13], fc: r[0] === 't1' ? '#fitnessfr #gainage #routine' : '', stats: r[7] ? { posts: r[7], impr: r[7] * (1500 + r[8] * 210), reach: Math.round(r[7] * (1500 + r[8] * 210) * .62), eng: r[8] } : null }));
   }
-  seedCamps() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.campaigns.map(c => ({ id: c.id, name: c.name, persona: c.persona, plat: c.plat || 'ig', type: c.type || 'engagement', status: c.status || 'active', startAt: null, endAt: null, scenarios: c.scenarios || [], coll: null, tone: '', freq: { mode: 'auto', n: 3, unit: 'j' }, accs: SD.accounts.filter(a => a.persona === c.persona && a.plat === (c.plat || 'ig')).map(a => a.id) })); }
+  seedCamps() { if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.campaigns.map(c => ({ id: c.id, name: c.name, persona: c.persona, plat: c.plat || 'ig', type: c.type || 'engagement', status: c.status || 'active', startAt: null, endAt: null, scenarios: c.scenarios || [], coll: null, tone: '', freq: { mode: 'auto', n: 3, unit: 'j' }, accs: SD.accounts.filter(a => a.persona === c.persona && a.plat === (c.plat || 'ig')).map(a => a.id) })); }
     const T = this.today0();
     const ids = (p, pl) => this.accounts().filter(a => a.persona === p && a.plat === pl).map(a => a.id);
     return [
@@ -2246,7 +2232,7 @@ class Component extends DCLogic {
       { id: 'c4', name: 'Nina · Yoga du soir', icon: 'ph ph-moon-stars', mode: 'rotation', persona: 'nina', plat: 'ig', type: 'reel', accounts: ids('nina', 'ig'), coll: 'col5', status: 'done', start: T - 30 * 864e5, from: 18, to: 22, freq: 1, published: 30, planned: 30 }
     ];
   }
-  seedPosts() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; const T = this.today0(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw', acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: p.media ? [p.media] : [], fc: 1, sound: '', at, status: p.status === 'published' ? 'pub' : p.status === 'failed' ? 'error' : p.status === 'planned' ? 'ok' : 'draft', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
+  seedPosts() { if (window.SCALE_DATA && window.SCALE_DATA._live) { window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA; const T = this.today0(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw', acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: p.media ? [p.media] : [], fc: 1, sound: '', at, status: p.status === 'published' ? 'pub' : p.status === 'failed' ? 'error' : p.status === 'planned' ? 'ok' : 'draft', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
     const T = this.today0(); const now = Date.now(); const caps = this.caps();
     const at = (d, h, m) => T + d * 864e5 + (h * 60 + m) * 6e4;
     const spec = [
@@ -2266,7 +2252,7 @@ class Component extends DCLogic {
     });
     return out.concat(this.seedBatches());
   }
-  seedBatches() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedBatches() { if ((window.SCALE_DATA && window.SCALE_DATA._live)) return [];
     const T = this.today0(); const now = Date.now(); const at = (d, h, m) => T + d * 864e5 + (h * 60 + m) * 6e4; const out = [];
     const camps = this.seedCamps(); const colls = this.seedColls();
     camps.filter(c => c.status !== 'done').forEach((c, ci) => {
@@ -2383,10 +2369,8 @@ class Component extends DCLogic {
   componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); this.ensureBatches(); }
   componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); }
 
-  renderVals() { const SD = window.SCALE_DATA; const E = !!(SD && SD.empty); let out;
-    if (E && false) out = Object.assign(this.shellVals(), { ready: true, tabs: [], apiBanners: [], stopProp: e => e.stopPropagation(), subtitle: "" });
-    else { try { out = this._rvE(); } catch (err) { if (!E) throw err; out = {}; } }
-    const s = this.state; const dataEmpty = (s.posts || []).length + (s.camps || []).length + (s.colls || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; out.exitEmpty = () => SD.setEmpty(false);
+  renderVals() { var out = this._rvE();
+    var SD = window.SCALE_DATA; var s = this.state;
     const add = out.addClick; const noAcc = !!(SD && SD.accounts.length === 0); out.addClick = () => { if (noAcc && (s.tab === 'pub' || s.tab === 'camp')) this.setState({ gate: true }); else if (add) add(); };
     out.gateOpen = !!s.gate; out.closeGate = () => this.setState({ gate: false }); out.gateTitle = 'Avant de créer une publication'; out.gateItems = [{ icon: 'ph ph-device-mobile', label: 'Un compte actif', sub: 'Une publication part d’un compte Instagram, Threads ou X rattaché à une persona.', href: 'Module%20Comptes%20v1.dc.html', cta: 'Ajouter un compte', alt: false, altHref: '', altCta: '' }];
     return out; }
@@ -2780,7 +2764,7 @@ class Component extends DCLogic {
       saveTpl: () => this.saveTpl()
     }, carVals, schedVals);
   }
-  seedColls() { if ((window.SCALE_DATA && window.SCALE_DATA.empty)) return []; if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.collections.map(c => ({ id: c.id, name: c.name, persona: c.persona || null, type: c.type || 'mix', media: [], st: { posted: 0, impr: 0, eng: 0 }, plats: ['ig', 'th', 'x'] })); }
+  seedColls() { if (window.SCALE_DATA && window.SCALE_DATA._live) { const SD = window.SCALE_DATA; return SD.collections.map(c => ({ id: c.id, name: c.name, persona: c.persona || null, type: c.type || 'mix', media: [], st: { posted: 0, impr: 0, eng: 0 }, plats: ['ig', 'th', 'x'] })); }
     const st = (i, zero) => zero ? { posted: 0, impr: 0, eng: 0 } : { posted: 2 + (i * 7) % 21, impr: 1300 + (i * 577) % 2900, eng: +(2.2 + ((i * 13) % 62) / 10).toFixed(1) };
     const mk = (id, name, type, persona, plat, ptype, updated, data) => ({ id, name, type, persona, plat, ptype, updated, created: updated + 18, mediaMode: 'seq', items: [], captions: [], media: [], audio: [], ...data });
     const caps = (arr, base) => arr.map((t, i) => ({ id: 'k' + base + '_' + i, text: t, added: arr.length - i, stats: st(base * 5 + i, i >= arr.length - 2) }));
@@ -3185,7 +3169,7 @@ class Component extends DCLogic {
   MOMS = [['matin', 'Matin', '7h–10h', 420, 600, 'sun-horizon'], ['midi', 'Midi', '11h30–13h30', 690, 810, 'fork-knife'], ['aprem', 'Après-midi', '14h–17h', 840, 1020, 'sun'], ['finap', 'Fin d’aprem', '17h–19h30', 1020, 1170, 'cloud-sun'], ['diner', 'Dîner', '19h30–21h', 1170, 1260, 'wine'], ['soiree', 'Soirée', '21h–23h30', 1260, 1410, 'moon'], ['nuit', 'Nuit', '23h30–3h', 1410, 1620, 'moon-stars']];
   STPOOLS = [['sp1', 'Lifestyle · quotidien', 'lifestyle', 30], ['sp2', 'Lifestyle · café & déco', 'lifestyle', 20], ['sp3', 'CTA · programme', 'cta', 12], ['sp4', 'CTA · lien en bio', 'cta', 14], ['sp5', 'Promo · offres', 'promo', 8], ['sp6', 'Repost · mentions', 'repost', 10], ['sp7', 'Questions du soir', 'question', 16], ['sp8', 'Coulisses · tournage', 'bts', 10], ['sp9', 'Highlights · programme', 'hl', 5], ['sp10', 'Highlights · avis', 'hl', 11], ['sp11', 'Highlights · moi', 'hl', 7], ['sp12', 'GYM · salle', 'gym', 28], ['sp13', 'GYM · cardio & mobilité', 'gym', 14]];
   HLICONS = ['star', 'heart', 'barbell', 'chat-circle-text', 'sparkle', 'coffee', 'airplane-tilt', 'camera', 'user-circle'];
-  seedPlans() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedPlans() { if ((window.SCALE_DATA && window.SCALE_DATA._live)) return [];
     const r = (id, type, freqMode, n, moments, pool) => ({ id, type, freqMode, n, moments, pool });
     return [
       { id: 'pl1', name: 'Léa · rythme quotidien', persona: 'lea', minActive: 2, anti: 14, status: 'active', seed: 3, rules: [r('r1', 'lifestyle', 'week', 5, ['matin', 'aprem'], 'sp1'), r('r2', 'cta', 'every', 2, ['soiree'], 'sp3'), r('r3', 'promo', 'every', 3, ['diner'], 'sp5')], hls: [{ id: 'h1', names: ['GYM', '🏋️', 'Muscu'], icon: 'barbell' }, { id: 'h2', names: ['Programme', 'Prog 8 sem'], icon: 'star' }] },
@@ -3240,7 +3224,7 @@ class Component extends DCLogic {
   }
   planTotal(pl) { return this.planWeek(pl).reduce((s, d) => s + d.length, 0); }
   openPlan(p) { const per = p ? p.persona : 'lea'; this.setState({ rtSel: null, bdDay: 0, planEd: p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', persona: per, anti: 14, status: 'active', seed: Math.floor(Math.random() * 90) + 1, rules: [{ id: 'r' + Date.now(), type: 'lifestyle', freqMode: 'week', n: 5, moments: ['matin', 'aprem'], pool: 'sp1' }], hls: [] } }); }
-  seedRoutines() { if ((window.SCALE_DATA && (window.SCALE_DATA.empty || window.SCALE_DATA._live))) return [];
+  seedRoutines() { if ((window.SCALE_DATA && window.SCALE_DATA._live)) return [];
     const b = (id, type, days, from, to, n, pool, p) => ({ id, type, days, from, to, n, pool, p: p == null ? 100 : p });
     const WD = [0, 1, 2, 3, 4], ALL = [0, 1, 2, 3, 4, 5, 6];
     return {
