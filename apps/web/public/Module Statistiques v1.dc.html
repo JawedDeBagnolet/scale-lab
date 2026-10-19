@@ -76,7 +76,19 @@ a:hover { color: #b9d0ff; }
 <div onClick="{{ toggleCompare }}" style="{{ compareStyle }}" style-hover="border-color:rgba(255,255,255,.2)"><i class="{{ compareIcon }}" style="font-size:15px"></i>vs période précédente</div>
 </div>
 </div>
-<div>
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-chart-line-up" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Pas encore de statistiques</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Les stats arrivent dès qu'un compte est actif : abonnés, portée, engagement, nouveaux subs Telegram et OnlyFans, objectifs.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<a href="Module%20Comptes%20v1.dc.html" style="display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-decoration:none;cursor:pointer" style-hover="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)"><span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#6d5ef0;background:rgba(124,108,246,.1)"><i class="ph ph-device-mobile" style="font-size:16px"></i></span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e8eaf3">1 — Ajouter des comptes</div><div style="font-size:11.5px;color:#8a91a8;margin-top:1px">Rattache tes comptes Instagram, Threads ou X à une persona.</div></div><i class="ph ph-arrow-right" style="font-size:14px;color:#5b6175"></i></a>
+<a href="Module%20Posting%20v1.dc.html" style="display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-decoration:none;cursor:pointer" style-hover="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)"><span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#6d5ef0;background:rgba(124,108,246,.1)"><i class="ph ph-paper-plane-tilt" style="font-size:16px"></i></span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#e8eaf3">2 — Publier avec une campagne</div><div style="font-size:11.5px;color:#8a91a8;margin-top:1px">Lance une campagne de publication pour commencer à générer des stats.</div></div><i class="ph ph-arrow-right" style="font-size:14px;color:#5b6175"></i></a>
+</div>
+</div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
 
 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0">
 <div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ mktSeg }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div>
@@ -541,7 +553,7 @@ class Component extends DCLogic {
     };
   }
 
-  renderVals() { var out = this._rvE(); return out; }
+  renderVals() { var out = this._rvE(); var D = window.SCALE_DATA; var dataEmpty = (D.accounts || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; return out; }
   _rvE() {
     const s0 = this.state; const s = { ...s0 };
     if (!Array.isArray(s.goals)) { const old = s.goals || {}; const ids = Object.keys(old); s.goals = ids.length ? ['net', 'er'].map(k => { const per = {}; ids.forEach(id => { per[id] = { on: true, v: old[id][k] || (k === 'er' ? 4 : 0) }; }); return { metric: k, freq: 30, per }; }) : []; if (!this._fixG) { this._fixG = true; setTimeout(() => { this._fixG = false; this.setState({ goals: s.goals }); }, 0); } }
