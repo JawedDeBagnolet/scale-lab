@@ -873,6 +873,7 @@
     workspace: null,
 
     // Flags
+    _live: true,
     _loaded: false,
     _error: null,
 
