@@ -581,13 +581,23 @@ class Component extends DCLogic {
     const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
     this._hash = () => { const D = this.data; if (!D) return; const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const cr = H.get('creator'), fan = H.get('fan'), tab = H.get('tab'); if (fan) { const f = Object.values(D.fanById || {}).find(x => (x.pseudo || x.id) === fan && (!cr || x.cr === cr)) || (D.fanById || {})[fan]; if (f) return this.setState({ tab: 'fans', fanSel: f.id, cr: 'all' }); } if (cr) this.setState(Object.assign({ tab: tab || 'creators' }, tab && tab !== 'creators' ? { cr } : { crEd: { id: cr } })); else if (tab) this.setState({ tab }); };
     window.addEventListener('hashchange', this._hash);
-    const boot = () => { this.build(); this.setState({ ready: true }); setTimeout(this._hash, 0); };
+    const boot = () => { this.build(); this.setState({ ready: true }); setTimeout(this._hash, 0); this._loadOCBalance(); };
     if (window.SCALE_DATA) boot(); else this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); boot(); } }, 80);
     this._key = e => { if (e.key !== 'Escape') return; const s = this.state; if (s.picker) this.setState({ picker: null }); else if (s.imp) this.setState({ imp: null }); else if (s.scEd) this.setState({ scEd: null }); else if (s.crEd) this.setState({ crEd: null }); else if (s.rulesEd) this.setState({ rulesEd: null }); else if (s.fanSel) this.setState({ fanSel: null, noteDraft: null }); else if (s.moveMenu) this.setState({ moveMenu: null }); };
     window.addEventListener('keydown', this._key);
   }
   componentWillUnmount() { window.removeEventListener('scale-api', this._apiFn); window.removeEventListener('storage', this._apiFn); clearTimeout(this._tt); clearTimeout(this._sy); clearInterval(this._sd); window.removeEventListener('keydown', this._key); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
 
+  _loadOCBalance() {
+    var me = this; var API = window.SCALE_DATA && window.SCALE_DATA.api;
+    if (!API) return;
+    API.getStatus('oc').then(function (r) {
+      if (!r || !r.ok || !r.data || r.data.balance == null) return;
+      me._ocBal = r.data.balance;
+      console.log('[Scale Lab] CRM OC balance (async) :', me._ocBal);
+      me.forceUpdate();
+    });
+  }
   build() { const SD = window.SCALE_DATA, N = this.N; if (SD._live) {
       SD.loadModule('settings');
       SD.loadModule('crm');
@@ -871,7 +881,7 @@ class Component extends DCLogic {
           cellFirst: this.cellBase({ gap: 8, ...sub }), cell: this.cellBase({ justifyContent: 'flex-end', textAlign: 'right', fontSize: 12, color: '#c5c9d8', ...sub }) }; }) : [];
       return { toggle: e => { e.stopPropagation(); this.setState(y => ({ cmpOpen: { ...y.cmpOpen, [r.x.id]: !open } })); }, chev: open ? 'ph ph-caret-down' : 'ph ph-caret-right', chevStyle: { width: 24, height: 24, flex: 'none', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a91a8', cursor: 'pointer' }, subs, accN: '1 OnlyFans' + (nT ? ' · ' + nT + ' Telegram' : ''), name: r.x.profile.displayName, of: r.x.profile.ofUser, initial: r.x.profile.displayName[0], avatar: this.avatar(r.x.p.color), rev: this.fM(r.a.rev), delta: dd.hasDelta ? dd.delta : '—', deltaStyle: dd.deltaStyle, buyers: this.fN(r.a.buyers), active: this.fN(r.a.active), basket: this.fM2(r.a.basket), ul: this.fP(r.a.ulOf, 0), uOf: this.fP(r.a.ulOf, 0), uTg: r.a.ulTg ? this.fP(r.a.ulTg, 0) : '—', bOf: r.a.bOf ? this.fM(r.a.bOf) : '—', bTg: r.a.bTg ? this.fM(r.a.bTg) : '—', last: this.ago(r.lastH), lastStyle: { fontWeight: 600, color: '#c5c9d8', whiteSpace: 'nowrap' }, go, cellFirst: this.cellBase({ gap: 10, cursor: 'pointer' }), cell: this.cellBase({ justifyContent: 'flex-end', textAlign: 'right', cursor: 'pointer' }) }; });
     out.cmpSub = 'Clique une créatrice pour filtrer la page · la flèche ouvre le détail par compte · comparé aux ' + P + ' jours précédents';
-    { const C = s.credit; const bal = typeof D._ocBalance === 'number' ? Math.round(D._ocBalance * 100) / 100 : C.bal; const days = []; for (let d = ctx.N - 14; d < ctx.N; d++) days.push(D.byDay[d].reduce((m, x) => m + x.amount, 0) * .08 + 4); const avg = days.reduce((m, v) => m + v, 0) / days.length; const mx = Math.max(1, ...days); const low = bal < C.thr;
+    { const C = s.credit; const bal = typeof this._ocBal === 'number' ? Math.round(this._ocBal * 100) / 100 : (typeof D._ocBalance === 'number' ? Math.round(D._ocBalance * 100) / 100 : C.bal); const days = []; for (let d = ctx.N - 14; d < ctx.N; d++) days.push(D.byDay[d].reduce((m, x) => m + x.amount, 0) * .08 + 4); const avg = days.reduce((m, v) => m + v, 0) / days.length; const mx = Math.max(1, ...days); const low = bal < C.thr;
       out.crBal = this.fM(bal); out.crBalStyle = { fontSize: 28, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: low ? '#fda4af' : '#f2f3fa' }; out.crDays = '≈ ' + Math.max(0, Math.floor(bal / avg)) + ' jours au rythme actuel'; out.crAvg = '≈ ' + this.fM(avg) + ' / jour';
       out.crPillTxt = low ? 'Solde bas' : 'OK'; out.crPill = this.pill(low ? '#fda4af' : '#86efac', low ? 'rgba(244,114,140,.12)' : 'rgba(74,222,128,.1)');
       out.crBars = days.map((v, i) => ({ title: this.dd(ctx.N - 14 + i) + ' · ' + this.fM(v), style: { flex: 1, minWidth: 2, height: Math.max(4, v / mx * 100) + '%', borderRadius: '3px 3px 1px 1px', background: i === days.length - 1 ? 'linear-gradient(180deg,#8b7cf6,#4b7bf5)' : 'rgba(124,108,246,.35)' } }));
