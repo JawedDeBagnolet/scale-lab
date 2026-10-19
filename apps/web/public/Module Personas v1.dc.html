@@ -614,6 +614,30 @@ class Component extends DCLogic {
   }
   SWATCHES() { return ['#8b7cf6', '#5b8def', '#38bdf8', '#2dd4a8', '#4ade80', '#f5b04c', '#fb923c', '#f472b6', '#f43f5e', '#c084fc']; }
   city(n) { return this.CITIES().find(c => c.city === n); }
+  _searchCity(query, target) {
+    clearTimeout(this['_ldt_' + target]);
+    if (!query || query.length < 2) { this.setState({ [target]: [] }); return; }
+    this['_ldt_' + target] = setTimeout(() => {
+      fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&limit=6&lang=fr&osm_tag=place:city&osm_tag=place:town&osm_tag=place:village')
+        .then(r => r.json())
+        .then(data => {
+          const seen = {};
+          const results = (data.features || []).map(f => {
+            const p = f.properties || {};
+            const g = f.geometry || {};
+            const city = p.name || '';
+            const country = p.country || '';
+            const k = city + '|' + country;
+            if (seen[k]) return null;
+            seen[k] = true;
+            const coords = g.coordinates || [];
+            return { city: city, country: country, lat: coords[1] || 0, lng: coords[0] || 0 };
+          }).filter(Boolean);
+          this.setState({ [target]: results });
+        })
+        .catch(() => {});
+    }, 280);
+  }
 
   seed() {
     const cta = this._cta = (o) => ({ ig: { on: true, placement: 'bio_link', interval: 3 }, th: { on: false, placement: 'bio_link' }, tt: { on: false, gw: { ig: { on: true, url: '' }, tg: { on: false, url: '' } } }, sc: { on: false, placement: 'private_story', mode: 'gateway', gw: { ig: { on: false, url: '' }, tg: { on: true, url: '' } } }, x: { on: false, placement: 'bio_link' }, ...o });
@@ -1032,10 +1056,10 @@ class Component extends DCLogic {
       out.noNiches = !ie && d.niches.length === 0;
       out.hexVal = s.hexDraft ?? d.color;
       out.swatches = this.SWATCHES().map(c => ({ style: this.swatchStyle(c, d.color.toLowerCase() === c), pick: () => { this.setState({ hexDraft: null }); this.upd(x => { x.color = c; }); } }));
-      const lq = s.locQ.trim().toLowerCase();
-      const lr = lq ? this.CITIES().filter(c => (c.city + ' ' + c.country).toLowerCase().indexOf(lq) >= 0).slice(0, 5) : [];
-      out.locQ = s.locQ; out.setLocQ = e => this.setState({ locQ: e.target.value });
-      out.hasLocResults = lr.length > 0; out.locResults = lr.map(c => ({ city: c.city, country: c.country, pick: () => { this.setState({ locQ: '' }); this.upd(x => { x.location = c; }); } }));
+      const lq = s.locQ.trim();
+      const lr = s._locResults || [];
+      out.locQ = s.locQ; out.setLocQ = e => { this.setState({ locQ: e.target.value }); this._searchCity(e.target.value.trim(), '_locResults'); };
+      out.hasLocResults = lr.length > 0; out.locResults = lr.map(c => ({ city: c.city, country: c.country, pick: () => { this.setState({ locQ: '', _locResults: [] }); this.upd(x => { x.location = c; }); } }));
 
       const bioKeys = PO.filter(k => d.bios[k]);
       out.hasBios = bioKeys.length > 0; out.noBios = !bioKeys.length && !s.bioAdd;
@@ -1137,11 +1161,11 @@ class Component extends DCLogic {
       const togN = (key, v) => this.updN(x => { const i = x[key].indexOf(v); if (i >= 0) x[key].splice(i, 1); else x[key].push(v); });
       out.nPlatChips = PO.map(k => ({ label: PL[k].l, icon: PL[k].i, style: this.platChip(k, n.platforms.indexOf(k) >= 0, false, true), toggle: () => togN('platforms', k) }));
       out.nNicheChips = this.NICHES().map(x => ({ label: x.label, ...this.nicheItem(x, n.niches.indexOf(x.id) >= 0, true), toggle: () => togN('niches', x.id) }));
-      const nq = s.nlocQ.trim().toLowerCase();
-      const nr = nq ? this.CITIES().filter(c => (c.city + ' ' + c.country).toLowerCase().indexOf(nq) >= 0).slice(0, 5) : [];
-      out.nlocQ = s.nlocQ; out.setNlocQ = e => this.setState({ nlocQ: e.target.value });
-      out.nHasLoc = !!n.location; out.nNoLoc = !n.location; out.nClearLoc = () => { this.setState({ nlocQ: '' }); this.updN(x => { x.location = null; }); };
-      out.nHasLocResults = nr.length > 0; out.nLocResults = nr.map(c => ({ city: c.city, country: c.country, pick: () => { this.setState({ nlocQ: '' }); this.updN(x => { x.location = c; }); } }));
+      const nq = s.nlocQ.trim();
+      const nr = s._nLocResults || [];
+      out.nlocQ = s.nlocQ; out.setNlocQ = e => { this.setState({ nlocQ: e.target.value }); this._searchCity(e.target.value.trim(), '_nLocResults'); };
+      out.nHasLoc = !!n.location; out.nNoLoc = !n.location; out.nClearLoc = () => { this.setState({ nlocQ: '', _nLocResults: [] }); this.updN(x => { x.location = null; }); };
+      out.nHasLocResults = nr.length > 0; out.nLocResults = nr.map(c => ({ city: c.city, country: c.country, pick: () => { this.setState({ nlocQ: '', _nLocResults: [] }); this.updN(x => { x.location = c; }); } }));
       const PH = [['GL-FR-014', 'Pixel 7 · Paris', 'free'], ['GL-FR-022', 'Galaxy S23 · Lyon', 'free'], ['GL-FR-031', 'Pixel 8 · Paris', 'used'], ['GL-US-007', 'Pixel 7a · Austin', 'free'], ['GL-ES-003', 'Galaxy A54 · Madrid', 'free'], ['GL-UK-011', 'Pixel 8 · Londres', 'used']];
       out.nPhones = PH.map(p => {
         const on = n.phones.indexOf(p[0]) >= 0; const free = p[2] === 'free';
