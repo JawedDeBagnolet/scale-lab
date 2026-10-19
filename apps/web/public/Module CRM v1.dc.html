@@ -72,7 +72,19 @@ a:hover { color: #b9d0ff; }
 <div style="min-width:0"><div style="font-size:12px;color:#5b6175;margin-bottom:6px">Workspace France · OnlyChat</div><div style="font-size:26px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa;line-height:1.15">CRM</div><div style="font-size:13px;color:#8a91a8;margin-top:5px">{{ subtitle }}</div></div>
 <sc-if value="{{ showPeriod }}"><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px"><sc-for list="{{ periodSeg }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa">{{ t.label }}</div></sc-for></div></sc-if>
 </div>
-<div>
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-address-book" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucune créatrice</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Les créatrices, fans, scripts et transactions viennent d'OnlyChat. Une persona avec un compte OnlyChat licencié devient une créatrice.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<a href="Module%20Parametres%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-key" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Enregistrer la clé API OnlyChat</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+<a href="Module%20Personas%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-identification-badge" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Attribuer les licences aux personas</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+</div>
+</div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
 
 <div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,.07);overflow-x:auto">
 <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="7"><div onClick="{{ t.go }}" style="{{ t.style }}" style-hover="color:#f2f3fa"><i class="{{ t.icon }}" style="font-size:15px"></i>{{ t.label }}<sc-if value="{{ t.hasBadge }}"><span style="font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:99px;color:#fda4af;background:rgba(244,114,140,.14)">{{ t.badge }}</span></sc-if></div></sc-for>
@@ -780,7 +792,7 @@ class Component extends DCLogic {
     };
   }
 
-  renderVals() { var out = this._rvE(); return out; }
+  renderVals() { var out = this._rvE(); const D = this.data; out.wsEmpty = (D.creators || []).length === 0; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true; return out; }
   _rvE() { const out = this._rv(); const A = window.SCALE_DATA && window.SCALE_DATA.api; out.apiBanners = A ? A.banners(["oc"]) : []; out.apiWrap = Object.assign({ display: 'flex', flexDirection: 'column', gap: 16 }, A && true ? A.dim(["oc"]) : {}); return out; }
   _rv() { return this.rv(); }
   rv() {

@@ -71,7 +71,18 @@ a:hover { color: #b9d0ff; }
 <div style="min-width:0"><div style="font-size:12px;color:#5b6175;margin-bottom:6px">Workspace France</div><div style="font-size:26px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa;line-height:1.15">Parc d’iPhone</div><div style="font-size:13px;color:#8a91a8;margin-top:5px">{{ subtitle }}</div></div>
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div onClick="{{ openSet }}" title="Seuils d’alerte et nettoyage du cache" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);white-space:nowrap;flex:none" style-hover="border-color:rgba(255,255,255,.22);color:#f2f3fa"><i class="ph ph-gear-six" style="font-size:15px"></i>Réglages</div><div onClick="{{ openAlloc }}" title="Règles d’attribution automatique des comptes" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);white-space:nowrap;flex:none" style-hover="border-color:rgba(255,255,255,.22);color:#f2f3fa"><i class="ph ph-arrows-split" style="font-size:15px"></i>Attribution</div><div onClick="{{ agentsAll }}" style="{{ agentsBtn }}" style-hover="border-color:rgba(255,255,255,.22);color:#f2f3fa"><i class="{{ agentsIcon }}" style="font-size:15px"></i>{{ agentsLabel }}</div><div onClick="{{ killClick }}" style="{{ killBtn }}"><i class="ph ph-skull" style="font-size:15px"></i>{{ killLabel }}</div><div onClick="{{ openAdd }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 17px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 4px 18px rgba(99,102,241,.35)"><i class="ph ph-plus" style="font-size:15px"></i>Ajouter un iPhone</div></div>
 </div>
-<div style="display:contents">
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-devices" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucun iPhone</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Installe l’agent Scale Lab sur un iPhone pour l’ajouter au parc. Il apparaîtra ici avec sa batterie, son réseau, son proxy et ses comptes.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<div onClick="{{ openAdd }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-plus" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter un iPhone</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></div>
+</div>
+</div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
 
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px"><sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4"><div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%);padding:13px 16px"><div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a91a8"><i class="{{ k.icon }}" style="font-size:13px"></i>{{ k.label }}</div><div style="{{ k.vStyle }}">{{ k.v }}</div><div style="font-size:11px;color:#5b6175;margin-top:2px">{{ k.sub }}</div></div></sc-for></div>
 
@@ -441,7 +452,7 @@ class Component extends DCLogic {
   stepsVals(t) { return t.steps.map((x, k) => ({ t: x, icon: k < t.step ? 'ph ph-check' : k === t.step ? 'ph ph-circle-notch' : 'ph ph-circle', style: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: k < t.step ? '#86efac' : k === t.step ? '#dcd8ff' : '#5b6175' } })); }
   renderVals() { let out;
     try { out = this._rvE(); } catch (err) { throw err; }
-    out.wsFull = true;
+    out.wsEmpty = (this.state.devs || []).length === 0; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true;
     return out; }
   _rvE() {
     const s = this.state; const C = s.cfg || this.CFG0; const D = window.SCALE_DATA; const devs = s.devs || []; const now = Date.now(); const PARC = 'Module%20Parc%20iPhone%20v1.dc.html';

@@ -102,7 +102,20 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </div>
 </div>
-<div style="display:contents">
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-device-mobile" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucun compte</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Ajoute un compte Instagram, Threads ou X avec le bouton en haut à droite. Chaque compte est rattaché à une persona et tourne dans un environnement : profil GoLogin, téléphone GeeLark ou iPhone du parc.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<a href="Module%20Personas%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-user-circle" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Créer la persona du compte</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+<a href="Module%20Parametres%20v1.dc.html#tab=int" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-cube" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Connecter un environnement : GoLogin, GeeLark ou un iPhone du parc</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+<a href="Module%20Proxies%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-globe-simple" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Vérifier son proxy</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+</div>
+</div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
 
 <sc-if value="{{ showCards }}" hint-placeholder-val="{{ true }}">
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
@@ -1129,7 +1142,7 @@ class Component extends DCLogic {
 
   renderVals() { let out;
     try { out = this._rvE(); } catch (err) { throw err; }
-    out.wsFull = true;
+    out.wsEmpty = (this.state.accounts || []).length === 0 && this.state.view === 'list'; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true;
     const na = out.newAccount; const miss = this.gateMissing(); out.newAccount = () => { if (miss.length) this.setState({ gate: true }); else if (na) na(); };
     out.gateOpen = !!this.state.gate && miss.length > 0; out.closeGate = () => this.setState({ gate: false }); out.gateItems = miss; return out; }
   gateMissing() { const SD = window.SCALE_DATA; if (!SD) return []; const m = []; const IC = 'width:30px;height:30px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center';

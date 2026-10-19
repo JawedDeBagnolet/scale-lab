@@ -82,7 +82,20 @@ select option { background: #151827; color: #e8eaf3; }
 <div onClick="{{ openLaunch }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 17px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(99,102,241,.35)" style-hover="box-shadow:0 4px 24px rgba(99,102,241,.55)"><i class="ph ph-binoculars" style="font-size:15px"></i>Nouvelle veille</div>
 </div>
 </div>
-<div style="display:contents">
+<sc-if value="{{ wsEmpty }}"><div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:36px 40px;border-radius:18px;border:1px dashed rgba(255,255,255,.12);background:radial-gradient(600px 240px at 0% 0%,rgba(124,108,246,.08),transparent 70%),rgba(255,255,255,.015)">
+<span style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-magnifying-glass" style="font-size:26px"></i></span>
+<div style="font-size:19px;font-weight:600;color:#f2f3fa;letter-spacing:-.01em">Aucune source de veille</div>
+<div style="font-size:13px;color:#aab0c5;max-width:560px;line-height:1.55;text-wrap:pretty">Il suffit de comptes scraper pour lancer une veille. Les targets et le Telegram de la modèle sont optionnels : le Telegram sert seulement à recevoir les briefs.</div>
+<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px;margin-top:6px">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7289;margin-bottom:2px">Pour commencer</div>
+<div onClick="{{ openScr }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">1</span><i class="ph ph-key" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Ajouter des comptes scraper</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></div>
+<div onClick="{{ openLaunch }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">2</span><i class="ph ph-binoculars" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Lancer une première veille</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></div>
+<a href="Module%20Personas%20v1.dc.html" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);color:#e8eaf3;text-decoration:none;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16);color:#ffffff"><span style="width:24px;height:24px;flex:none;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#cfd3ff;border:1px solid rgba(124,108,246,.45);font-variant-numeric:tabular-nums">3</span><i class="ph ph-telegram-logo" style="font-size:16px;color:#aab0c5"></i><span style="flex:1;font-size:12.5px;font-weight:500">Relier le Telegram de la modèle pour les briefs (optionnel)</span><i class="ph ph-arrow-right" style="font-size:13px;color:#6b7289"></i></a>
+</div>
+</div>
+</div></sc-if>
+<div style="{{ wsWrap }}">
 
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:4px">
@@ -1405,7 +1418,7 @@ class Component extends DCLogic {
 
   renderVals() { let out;
     try { out = this._rvE(); } catch (err) { throw err; }
-    out.wsFull = true;
+    out.wsEmpty = (this.state.scrapers || []).length === 0 && (this.state.posts || []).length === 0; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true;
     return out; }
   _rvE() { return Object.assign({ stopProp: e => e.stopPropagation() }, this.shellVals(), this.inspVals(), this.accVals(), this.favVals(), this.fusVals(), this.snipeVals(), this.queueVals(), this.histVals(), this.albVals(), this.modalVals(), this.albModalVals(), this.queueModalVals(), this.extraModals()); }
   snRules(plat) { const pct = v => String(v).replace('.', ',') + ' %';
