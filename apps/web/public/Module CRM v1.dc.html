@@ -658,7 +658,7 @@ class Component extends DCLogic {
       tx.forEach(t => { if (t.script && scById[t.script]) { scById[t.script].unl[t.d]++; scById[t.script].rev[t.d] += t.amount; } });
       scripts.forEach(sc => { for (let d = 0; d < N; d++) { sc.sent[d] = sc.unl[d] ? Math.round(sc.unl[d] / (sc.ul || .2) * (.85 + hsh(sc.id + d) * .3)) : 0; } });
       const soc = {}; creators.forEach(c => { soc[c.id] = {}; ['ig', 'th', 'x'].forEach(pl => { soc[c.id][pl] = { posts: new Float64Array(N), reach: new Float64Array(N), visits: new Float64Array(N), clicks: new Float64Array(N) }; }); });
-      this.data = { accPlat, accById, creators, folders, scripts, mFolders: [], media: [], fans, tx, byDay, fanById, scById, lastSale, soc, lastSync: Date.now() }; return; }
+      this.data = { accPlat, accById, creators, folders, scripts, mFolders: [], media: [], fans, tx, byDay, fanById, scById, lastSale, soc, lastSync: Date.now(), _ocBalance: SD._ocBalance }; return; }
     let sd = 20250917; const R = () => (sd = sd * 16807 % 2147483647) / 2147483647; const rg = (a, b) => a + R() * (b - a); const pick = a => a[Math.floor(R() * a.length)];
     const wpick = (a, w) => { const t = a.reduce((x, y) => x + w(y), 0); let r = R() * t; for (let i = 0; i < a.length; i++) { r -= w(a[i]); if (r <= 0) return a[i]; } return a[a.length - 1]; };
     const MULT = { lea: 1.2, maya: .9, sofia: 1.8, clara: 1, nina: .75, alba: .5 };
