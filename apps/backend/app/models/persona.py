@@ -24,7 +24,7 @@ class Persona(Base):
     city: Mapped[str | None] = mapped_column(String(100))
     age: Mapped[int | None] = mapped_column(Integer)
     platforms: Mapped[list[str] | None] = mapped_column(ARRAY(String))    # ["ig", "th", "x"]
-    niches: Mapped[list[int] | None] = mapped_column(ARRAY(Integer))      # IDs niches
+    niches: Mapped[list[str] | None] = mapped_column(ARRAY(String))       # slugs niches
     bios: Mapped[list[dict] | None] = mapped_column(JSONB, default=list)  # [{platform, text}]
     prompt: Mapped[str | None] = mapped_column(Text)                      # AI prompt
     funnel: Mapped[str | None] = mapped_column(Text)

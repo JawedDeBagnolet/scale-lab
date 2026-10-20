@@ -12,7 +12,7 @@ class PersonaBase(BaseModel):
     city: str | None = Field(default=None, max_length=100)
     age: int | None = Field(default=None, ge=18, le=99)
     platforms: list[str] | None = None
-    niches: list[int] | None = None
+    niches: list[str] | None = None
     bios: list[dict] | None = None
     prompt: str | None = None
     funnel: str | None = None

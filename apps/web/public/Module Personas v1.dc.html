@@ -530,6 +530,7 @@ input::placeholder, textarea::placeholder { color: #5b6175; }
 </div>
 </sc-if>
 </div>
+</div>
 
 <div><span style="display:block;font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:8px">Couleur</span>
 <div style="display:flex;flex-wrap:wrap;align-items:center;gap:7px">
@@ -543,7 +544,6 @@ input::placeholder, textarea::placeholder { color: #5b6175; }
 <sc-for list="{{ nNicheChips }}" as="n" hint-placeholder-count="12"><span onClick="{{ n.toggle }}" style="{{ n.style }}"><sc-if value="{{ n.hasDot }}"><span style="{{ n.dotStyle }}"></span></sc-if>{{ n.label }}</span></sc-for>
 </div></div>
 
-</div>
 </div>
 <div style="flex:none;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 26px 20px;border-top:1px solid rgba(255,255,255,.1)">
 <div onClick="{{ closeCreate }}" style="display:flex;align-items:center;height:38px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:500;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa">Annuler</div>
@@ -1142,11 +1142,11 @@ class Component extends DCLogic {
 
       out.askDelete = () => this.setState({ confirm: true });
       out.confirmText = accs.length ? 'Les ' + accs.length + ' comptes liés resteront dans le workspace, sans persona. Cette action est irréversible.' : 'Cette action est irréversible.';
-      out.save = () => { if (!d.name.trim()) { this.toastMsg('Le nom est obligatoire'); return; } this.setState(x => ({ list: x.list.map(p => p.id === d.id ? JSON.parse(JSON.stringify(d)) : p), view: 'grid', draft: null, dd: null })); this.toastMsg(d.name + ' enregistrée'); };
+      out.save = () => { if (!d.name.trim()) { this.toastMsg('Le nom est obligatoire'); return; } const SD = window.SCALE_DATA; if (SD && SD._live) { const pts = d.name.trim().split(/\s+/); SD.apiPatch('/personas/' + d.id, { first_name: pts[0], last_name: pts.slice(1).join(' ') || null, color: d.color, market: d.market, city: d.location ? d.location.city : null, platforms: d.platforms, niches: d.niches }); const si = SD.personas.findIndex(p => p.id === d.id || p.prsId === d.id); if (si >= 0) Object.assign(SD.personas[si], { name: d.name, first: pts[0], last: pts.slice(1).join(' '), color: d.color, market: d.market, city: d.location ? d.location.city : '', platforms: d.platforms.slice(), niches: d.niches.slice() }); } this.setState(x => ({ list: x.list.map(p => p.id === d.id ? JSON.parse(JSON.stringify(d)) : p), view: 'grid', draft: null, dd: null })); this.toastMsg(d.name + ' enregistrée'); };
     }
     out.hasConfirm = !!s.confirm && !!s.draft;
     out.cancelDelete = () => this.setState({ confirm: false });
-    out.doDelete = () => { const d = s.draft; this.setState(x => ({ list: x.list.filter(p => p.id !== d.id), confirm: false, view: 'grid', draft: null })); this.toastMsg(d.name + ' supprimée'); };
+    out.doDelete = () => { const d = s.draft; const SD = window.SCALE_DATA; if (SD && SD._live) { SD.apiDelete('/personas/' + d.id); const si = SD.personas.findIndex(p => p.id === d.id || p.prsId === d.id); if (si >= 0) SD.personas.splice(si, 1); } this.setState(x => ({ list: x.list.filter(p => p.id !== d.id), confirm: false, view: 'grid', draft: null })); this.toastMsg(d.name + ' supprimée'); };
 
     out.isCreate = !!s.create;
     if (s.create) {
@@ -1179,10 +1179,14 @@ class Component extends DCLogic {
       out.nPhonesLabel = n.phones.length ? n.phones.length + ' sélectionné' + (n.phones.length > 1 ? 's' : '') : 'Aucun sélectionné';
       out.create = () => {
         const nm = n.name.trim(); if (!nm) { this.toastMsg('Donne un nom à la persona'); return; }
-        const id = 'prs_' + Math.random().toString(16).slice(2, 14).padEnd(12, '0');
+        const parts = nm.split(/\s+/); const first = parts[0]; const last = parts.slice(1).join(' ') || null;
+        const SD = window.SCALE_DATA; const body = { first_name: first, last_name: last, color: n.color, market: 'FR', city: n.location ? n.location.city : null, platforms: [], niches: n.niches.slice(), telegram: null };
+        const res = SD && SD._live ? SD.apiPost('/personas', body) : null;
+        const id = res ? String(res.id) : 'prs_' + Math.random().toString(16).slice(2, 14).padEnd(12, '0');
         const base = this.seed()[5] || this._mk({ cta: this._cta({}) });
-        const p = { ...JSON.parse(JSON.stringify(base)), id, key: 'new_' + id, name: nm, color: n.color, market: 'FR', platforms: [], niches: n.niches.slice(), location: n.location, pp: 0, patterns: [], bios: {}, prompt: '', mission: '', telegram: { bot: '', channel: '' }, phones: [], funnel: { of: { on: false, url: '' }, tg: { on: false, url: '' }, mym: { on: false, url: '' } } };
+        const p = { ...JSON.parse(JSON.stringify(base)), id, key: res ? String(res.id) : 'new_' + id, name: nm, color: n.color, market: 'FR', platforms: [], niches: n.niches.slice(), location: n.location, pp: 0, patterns: [], bios: {}, prompt: '', mission: '', telegram: { bot: '', channel: '' }, phones: [], funnel: { of: { on: false, url: '' }, tg: { on: false, url: '' }, mym: { on: false, url: '' } } };
         PO.forEach(k => { p.cta[k].on = false; });
+        if (res && SD) { SD.personas.push(SD.x.persona(res)); }
         this.setState(x => ({ list: [p].concat(x.list), create: null }));
         this.openDetail(p); this.toastMsg(nm + ' créée');
       };
