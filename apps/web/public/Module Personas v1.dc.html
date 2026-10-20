@@ -115,12 +115,6 @@ input::placeholder, textarea::placeholder { color: #5b6175; }
 <i class="ph ph-magnifying-glass" style="position:absolute;left:12px;top:11px;font-size:15px;color:#5b6175"></i>
 <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Rechercher une persona, une niche…" style="width:100%;height:38px;padding:0 12px 0 34px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:13px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))">
 </div>
-<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px">
-<sc-for list="{{ marketSeg }}" as="t" hint-placeholder-count="5">
-<sc-if value="{{ t.active }}"><div onClick="{{ t.go }}" style="height:30px;padding:0 13px;display:flex;align-items:center;border-radius:8px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;cursor:pointer">{{ t.label }}</div></sc-if>
-<sc-if value="{{ t.idle }}"><div onClick="{{ t.go }}" style="height:30px;padding:0 13px;display:flex;align-items:center;border-radius:8px;font-size:12px;font-weight:500;color:#8a91a8;cursor:pointer" style-hover="color:#e8eaf3;background:rgba(255,255,255,.04)">{{ t.label }}</div></sc-if>
-</sc-for>
-</div>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
@@ -993,7 +987,6 @@ class Component extends DCLogic {
       showPatterns: true, showAddCard: true,
       subtitle: s.list.length + ' persona' + (s.list.length > 1 ? 's' : '') + ' · ' + accAll + ' comptes liés',
       q: s.q, setQ: e => this.setState({ q: e.target.value }),
-      marketSeg: [['all', 'Tous'], ['FR', 'FR'], ['US', 'US'], ['UK', 'UK'], ['ES', 'ES']].map(m => ({ label: m[1], active: s.market === m[0], idle: s.market !== m[0], go: () => this.setState({ market: m[0] }) })),
       openCreate: () => this.setState({ create: { name: '', color: '#8b7cf6', platforms: ['ig'], niches: [], location: null, phones: [] }, nlocQ: '', _nLocResults: [], nHexDraft: null, dd: null }),
       gridRef: this._gridRef || (this._gridRef = React.createRef()),
       onGridScroll: e => { const up = e.currentTarget.scrollTop > 280; if (up !== !!this.state.showTop) this.setState({ showTop: up }); },
@@ -1004,7 +997,7 @@ class Component extends DCLogic {
     };
 
     const q = s.q.trim().toLowerCase();
-    const filtered = s.list.filter(p => (s.market === 'all' || p.market === s.market) && (!q || (p.name + ' ' + p.niches.map(id => (this.niche(id) || {}).label).join(' ') + ' ' + p.patterns.join(' ') + ' ' + (p.location ? p.location.city : '')).toLowerCase().indexOf(q) >= 0));
+    const filtered = s.list.filter(p => !q || (p.name + ' ' + p.niches.map(id => (this.niche(id) || {}).label).join(' ') + ' ' + p.patterns.join(' ') + ' ' + (p.location ? p.location.city : '')).toLowerCase().indexOf(q) >= 0);
     out.cards = filtered.map(p => {
       const ns = p.niches.map(id => this.niche(id)).filter(Boolean);
       const pl = this.accPlats(p);
@@ -1124,8 +1117,7 @@ class Component extends DCLogic {
       out.linked = accs.map(a => ({ u: a.u, icon: PL[a.plat].i, st: ST[a.st][0], dot: this.dot(ST[a.st][1], 7) }));
 
       this.ocVals(out, d);
-      { const D0 = { lea: ['lea_mrtn', 'Léa M.', 812345671], sofia: ['sofiareyes', 'Sofia R.', 823456712], nina: ['nina.mrl', 'Nina', 834567123], clara: ['clara_vdl', 'Clara V.', 845671234] };
-        if (!this._tgm) { this._tgm = { linked: {}, pending: [{ id: 901234561, user: 'maya.lrt', name: 'Maya', ago: 25 }, { id: 902345612, user: 'alba_ortg', name: 'Alba O.', ago: 190 }, { id: 903456123, user: 'jade.creates', name: 'Jade', ago: 1440 }] }; Object.keys(D0).forEach(k => { this._tgm.linked[k] = { id: D0[k][2], user: D0[k][0], name: D0[k][1], ago: 0 }; }); }
+      { if (!this._tgm) { this._tgm = { linked: {}, pending: [] }; }
         const M = this._tgm; const cur = M.linked[d.key] || null; const LG = { FR: 'français', US: 'anglais', ES: 'espagnol' }[d.market] || 'français'; const open = this.state.tgMenu === d.key;
         const av = (n, sz) => ({ width: sz, height: sz, flex: 'none', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(sz * .42), fontWeight: 700, color: '#0b0d16', background: '#7cc4ef' });
         const whenTxt = m => m < 60 ? 'il y a ' + m + ' min' : m < 1440 ? 'il y a ' + Math.round(m / 60) + ' h' : 'il y a ' + Math.round(m / 1440) + ' j';
