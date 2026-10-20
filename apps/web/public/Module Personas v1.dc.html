@@ -1117,18 +1117,19 @@ class Component extends DCLogic {
       out.linked = accs.map(a => ({ u: a.u, icon: PL[a.plat].i, st: ST[a.st][0], dot: this.dot(ST[a.st][1], 7) }));
 
       this.ocVals(out, d);
-      { if (!this._tgm) { this._tgm = { linked: {}, pending: [] }; }
-        const M = this._tgm; const cur = M.linked[d.key] || null; const LG = { FR: 'français', US: 'anglais', ES: 'espagnol' }[d.market] || 'français'; const open = this.state.tgMenu === d.key;
+      { const SD = window.SCALE_DATA; const tgKey = '_tg_' + d.id; const tgVer = this.state.tgV || 0;
+        if (!this[tgKey] || this[tgKey]._v !== tgVer) { const tg = d.tg || {}; const pend = (SD && SD._live) ? (SD.api('/telegram/pending/' + d.id) || {}).data || [] : []; this[tgKey] = { linked: tg.chat_id ? { user: tg.username || '', name: tg.username || 'Modèle', id: tg.chat_id, lang: tg.langue || 'fr' } : null, pending: pend.map(p => ({ id: p.id, user: p.tg_username || '', name: p.tg_first_name || p.tg_username || 'Modèle', tgId: p.tg_user_id, lang: p.tg_lang || 'fr', ago: Math.round((Date.now() - new Date(p.created_at).getTime()) / 60000) })), _v: tgVer }; }
+        const M = this[tgKey]; const cur = M.linked; const LG = { fr: 'français', en: 'anglais', es: 'espagnol', th: 'thaï', vi: 'vietnamien' }[cur ? cur.lang : 'fr'] || 'français'; const open = this.state.tgMenu === d.key;
         const av = (n, sz) => ({ width: sz, height: sz, flex: 'none', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(sz * .42), fontWeight: 700, color: '#0b0d16', background: '#7cc4ef' });
         const whenTxt = m => m < 60 ? 'il y a ' + m + ' min' : m < 1440 ? 'il y a ' + Math.round(m / 60) + ' h' : 'il y a ' + Math.round(m / 1440) + ' j';
-        const bump = msg => { this.setState(y => ({ tgV: (y.tgV || 0) + 1, tgMenu: null })); if (msg) this.toastMsg(msg); };
-        const copy = () => { try { navigator.clipboard.writeText('https://t.me/scalelab_briefs_bot?start=' + d.id); } catch (e) {} this.toastMsg('Lien du bot copié'); };
+        const bump = msg => { this[tgKey] = null; this.setState(y => ({ tgV: (y.tgV || 0) + 1, tgMenu: null })); if (SD && SD._live) { const fresh = SD.api('/personas/' + d.id); if (fresh) { d.tg = fresh.telegram || null; const si = SD.personas.findIndex(p => p.id === d.id); if (si >= 0) SD.personas[si].tg = d.tg; } } if (msg) this.toastMsg(msg); };
+        const copy = () => { try { navigator.clipboard.writeText('https://t.me/ScaleCrewBot?start=' + d.id); } catch (e) {} this.toastMsg('Lien du bot copié'); };
         out.dd.tgUser = cur ? cur.user : '';
         out.tgc = { hasUser: !!cur, noUser: !cur, user: cur ? cur.user : '', ini: cur ? cur.name[0] : '', av: av('', 22), open, toggle: () => this.setState({ tgMenu: open ? null : d.key }), close: () => this.setState({ tgMenu: null }),
           hasPending: !cur && M.pending.length > 0, pendingN: M.pending.length + ' en attente', none: !M.pending.length,
           btnStyle: { display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 10px', borderRadius: 9, cursor: 'pointer', fontSize: 12.5, background: 'rgba(255,255,255,.035)', border: '1px solid ' + (open ? 'rgba(148,163,184,.55)' : 'rgba(255,255,255,.08)'), boxShadow: open ? '0 0 16px rgba(148,163,184,.16)' : 'none' },
-          opts: M.pending.map(m => ({ name: m.name, user: m.user, when: whenTxt(m.ago), ini: m.name[0], av: av('', 30), cur: false, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, cursor: 'pointer' }, go: () => { if (cur) M.pending.push({ ...cur, ago: 0 }); M.pending = M.pending.filter(x => x.id !== m.id); M.linked[d.key] = { ...m }; bump('@' + m.user + ' reliée à ' + d.name); } })),
-          unlink: () => { if (!cur) return; M.pending.unshift({ ...cur, ago: 0 }); delete M.linked[d.key]; bump('@' + cur.user + ' détachée'); },
+          opts: M.pending.map(m => ({ name: m.name, user: m.user, when: whenTxt(m.ago), ini: m.name[0], av: av('', 30), cur: false, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, cursor: 'pointer' }, go: () => { if (SD && SD._live) { SD.apiPost('/telegram/link/' + d.id, { pending_id: m.id }); } bump('@' + m.user + ' reliée à ' + d.name); } })),
+          unlink: () => { if (!cur) return; if (SD && SD._live) { SD.apiDelete('/telegram/link/' + d.id); } bump('@' + cur.user + ' détachée'); },
           ...(cur ? { icon: 'ph-fill ph-check-circle', iconStyle: { fontSize: 18, color: '#86efac', flex: 'none' }, title: 'Modèle reliée · @' + cur.user, text: 'ID Telegram ' + cur.id + ' · briefs envoyés en ' + LG + ' · la modèle peut interroger le bot sur chaque média', canCopy: false, copy: () => {} }
             : { icon: 'ph ph-paper-plane-tilt', iconStyle: { fontSize: 18, color: '#f5c77e', flex: 'none' }, title: 'Modèle non reliée', text: 'Copie le lien du bot et envoie-le à la modèle. Après son premier message, elle apparaît dans le sélecteur.', canCopy: true, copy }) }; }
 
