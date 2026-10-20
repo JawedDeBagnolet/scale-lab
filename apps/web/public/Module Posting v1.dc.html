@@ -2580,6 +2580,7 @@ class Component extends DCLogic {
     const status = asDraft ? 'draft' : sch ? 'scheduled' : 'published';
     const prev = ed.id ? this.state.posts.find(p => p.id === ed.id) : null;
     const obj = { id: ed.id || 'p' + Date.now(), acc: ed.account, persona: ed.persona, plat: ed.plat, type: ed.type, caption: ed.caption, lang: ed.lang, date: asDraft ? null : (sch || Date.now()), status, media: ed.media.slice(), sound: ed.sound, fc: ed.showFc ? ed.fc : '', camp: prev ? prev.camp : null, err: null };
+    const SD = window.SCALE_DATA; if (SD && SD._live) { if (ed.id) { SD.apiPatch('/posting/publications/' + ed.id, { status, caption: obj.caption, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }); } else if (obj.acc) { const res = SD.apiPost('/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }); if (res && res.id) obj.id = res.id; } }
     this.setState(x => ({ posts: ed.id ? x.posts.map(p => p.id === ed.id ? obj : p) : [obj].concat(x.posts), ed: null, sched: null, tab: 'pub' }));
     this.toastMsg(asDraft ? 'Brouillon enregistré' : sch ? 'Publication programmée' : 'Publication envoyée');
   }
@@ -2587,6 +2588,7 @@ class Component extends DCLogic {
     const ed = this.state.ed; if (!ed.persona || !ed.plat || !ed.type) { this.toastMsg('Choisis une persona, une plateforme et un type'); return; }
     const prev = ed.id ? this.state.tpls.find(t => t.id === ed.id) : null;
     const obj = { ...(prev || { uses: 0, ratio: 0, stats: null }), id: ed.id || 't' + Date.now(), name: ed.name.trim() || 'Template sans titre', ready: ed.ready, persona: ed.persona, plat: ed.plat, type: ed.type, caption: ed.caption, lang: ed.lang, media: ed.media.slice(), mVars: (ed.mVars || []).filter(v => v.media.length), sound: ed.sound || null, fc: ed.showFc ? ed.fc : '', fcVars: ed.showFc ? (ed.fcVars || []).filter(v => v.trim()) : [], updated: 0 };
+    const SD = window.SCALE_DATA; if (SD && SD._live) { if (ed.id) { SD.apiPatch('/posting/templates/' + ed.id, { name: obj.name, persona_id: obj.persona || null, plateforme: obj.plat, template_type: obj.type }); } else { const res = SD.apiPost('/posting/templates', { name: obj.name, persona_id: obj.persona || null, plateforme: obj.plat, template_type: obj.type }); if (res && res.id) obj.id = res.id; } }
     this.setState(x => ({ tpls: ed.id ? x.tpls.map(t => t.id === ed.id ? obj : t) : [obj].concat(x.tpls), ed: null, tab: 'tpl' }));
     this.toastMsg(ed.id ? 'Template mis à jour' : 'Template créé');
   }
@@ -2851,11 +2853,12 @@ class Component extends DCLogic {
     const media = !pick ? [] : g ? g.media.slice() : [pick];
     return { label: 'Caption #' + (k % nc + 1), caption: cap ? cap.text : '', media, sound: co.audio.length ? co.audio[k % co.audio.length] : null };
   }
-  updColl(id, fn) { this.setState(x => ({ colls: x.colls.map(c => c.id === id ? { ...fn(c), updated: 0 } : c) })); }
+  updColl(id, fn) { this.setState(x => { const newColls = x.colls.map(c => c.id === id ? { ...fn(c), updated: 0 } : c); const upd = newColls.find(c => c.id === id); const SD = window.SCALE_DATA; if (SD && SD._live && upd) { SD.apiPatch('/posting/collections/' + id, { name: upd.name, collection_type: upd.type, persona_id: upd.persona || null, plateforme: upd.plat, post_type: upd.ptype, captions: upd.captions || null, media_ids: upd.media || null }); } return { colls: newColls }; }); }
   dupColl(c) {
     const id = 'col' + Date.now(); const z = () => ({ posted: 0, impr: 0, eng: 0 });
     const copy = { ...JSON.parse(JSON.stringify(c)), id, name: c.name + ' (copie)', updated: 0, created: 0 };
     copy.items = copy.items.map((i, j) => ({ ...i, id: 'i' + id + j, stats: z() })); copy.captions = copy.captions.map((k, j) => ({ ...k, id: 'k' + id + j, stats: z() }));
+    const SD = window.SCALE_DATA; if (SD && SD._live) { const res = SD.apiPost('/posting/collections', { name: copy.name, collection_type: copy.type, persona_id: copy.persona || null, plateforme: copy.plat, post_type: copy.ptype, captions: copy.captions || null, media_ids: copy.media || null }); if (res && res.id) copy.id = res.id; }
     this.setState(x => ({ colls: [copy].concat(x.colls) })); this.toastMsg('Collection dupliquée · ' + copy.name);
   }
   openNewColl() { this.setState({ newColl: { name: '', type: 'variable', persona: null, plat: 'ig', ptype: 'reel' } }); }
@@ -2988,7 +2991,7 @@ class Component extends DCLogic {
         ncPlats: ['ig', 'th', 'x'].map(pl => ({ label: this.platLabel(pl), hasIcon: true, icon: this.platIcon(pl), style: this.chip(nc.plat === pl), go: () => nupd({ plat: pl, ptype: this.TYPES[pl][0][0] }) })),
         ncPtypes: this.TYPES[nc.plat].filter(x => x[0] !== 'story').map(x => ({ label: x[1], hasIcon: false, icon: '', style: this.chip(nc.ptype === x[0]), go: () => nupd({ ptype: x[0] }) })),
         ncHint: hint, ncCreateStyle: { display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 10, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: hint ? 'not-allowed' : 'pointer', opacity: hint ? .45 : 1 },
-        ncCreate: () => { if (hint) { this.toastMsg(hint); return; } const id = 'col' + Date.now(); const c = { id, name: nc.name.trim() || per.name + ' · ' + ty.label, type: nc.type, persona: nc.persona, plat: nc.plat, ptype: nc.ptype, updated: 0, created: 0, mediaMode: 'seq', items: [], captions: [], media: [], audio: [] }; this.setState(x => ({ colls: [c].concat(x.colls), newColl: null, tab: 'coll', collView: id })); this.toastMsg('Collection créée'); }
+        ncCreate: () => { if (hint) { this.toastMsg(hint); return; } const id = 'col' + Date.now(); const c = { id, name: nc.name.trim() || per.name + ' · ' + ty.label, type: nc.type, persona: nc.persona, plat: nc.plat, ptype: nc.ptype, updated: 0, created: 0, mediaMode: 'seq', items: [], captions: [], media: [], audio: [] }; const SD = window.SCALE_DATA; if (SD && SD._live) { const res = SD.apiPost('/posting/collections', { name: c.name, collection_type: c.type, persona_id: c.persona || null, plateforme: c.plat, post_type: c.ptype }); if (res && res.id) c.id = res.id; } this.setState(x => ({ colls: [c].concat(x.colls), newColl: null, tab: 'coll', collView: c.id })); this.toastMsg('Collection créée'); }
       });
     }
     const ie = s.itemEd; const ieCo = ie && colls.find(c => c.id === ie.collId);
@@ -3717,6 +3720,7 @@ class Component extends DCLogic {
     const accs = Object.keys(w.accs).filter(k => w.accs[k]);
     const nDays = w.days.filter(Boolean).length;
     const c = { id: 'c' + Date.now(), name: w.name.trim() || per.name + ' · ' + ty.label + ' #' + (this.state.camps.length + 1), icon: w.icon, mode: w.mode, persona: w.persona, plat: w.plat, type: w.type, accounts: accs, coll: w.coll, status: 'active', start: w.start === 'now' ? Date.now() : this.today0() + 864e5, fromM: w.fromM, toM: w.toM, from: Math.floor(w.fromM / 60), to: Math.ceil(w.toM / 60), freq: w.freq, published: 0, planned: accs.length * w.freq * nDays * 2, delay: +w.delay || 0, feed: w.feed ? this.feedNorm(w.feedCfg) : null };
+    const SD = window.SCALE_DATA; if (SD && SD._live) { const res = SD.apiPost('/posting/campagnes', { name: c.name, icon: c.icon || null, persona_id: c.persona || null, plateforme: c.plat, status: c.status, planning: { mode: c.mode, type: c.type, from: c.from, to: c.to, freq: c.freq, delay: c.delay } }); if (res && res.id) c.id = res.id; }
     this.setState(x => ({ camps: [c].concat(x.camps), wiz: null, tab: 'camp' }));
     this.toastMsg('Campagne lancée · ' + c.name);
   }
@@ -3918,10 +3922,10 @@ class Component extends DCLogic {
         cfInner: { width: 'min(460px,100%)', borderRadius: 18, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, ...this.glassPanel() },
         cfTitle: K[2], cfText: 'Tu es sur le point de supprimer ' + noun + '.' + K[3] + ' Cette action est irréversible.',
         cfNames: names, cfCancel: () => this.setState({ confirm: null }),
-        cfOk: () => { const ids = cf.ids;
-          if (kind === 'media') { this.setState(x => { const d = { ...x.delMedia }; ids.forEach(i => { d[i] = true; }); return { delMedia: d, confirm: null, kill: false, sel: {} }; }); this.toastMsg('Supprimé · ' + noun); return; }
-          if (kind !== 'camp') { this.setState(x => ({ [K[5]]: x[K[5]].filter(c => ids.indexOf(c.id) < 0), confirm: null, collView: ids.indexOf(x.collView) >= 0 ? null : x.collView, ...(kind === 'tpl' ? { kill: false, sel: {} } : {}) })); this.toastMsg('Supprimé · ' + noun); return; }
-          this.setState(x => ({ camps: x.camps.filter(c => ids.indexOf(c.id) < 0), confirm: null, kill: false, sel: {}, campOpen: ids.indexOf(x.campOpen) >= 0 ? null : x.campOpen })); this.toastMsg(ids.length + ' campagne' + (ids.length > 1 ? 's' : '') + ' supprimée' + (ids.length > 1 ? 's' : '')); }
+        cfOk: () => { const ids = cf.ids; const SD = window.SCALE_DATA;
+          if (kind === 'media') { if (SD && SD._live) ids.forEach(i => SD.apiDelete('/posting/medias/' + i)); this.setState(x => { const d = { ...x.delMedia }; ids.forEach(i => { d[i] = true; }); return { delMedia: d, confirm: null, kill: false, sel: {} }; }); this.toastMsg('Supprimé · ' + noun); return; }
+          if (kind !== 'camp') { if (SD && SD._live && kind !== 'story') { const ep = kind === 'tpl' ? '/posting/templates/' : '/posting/collections/'; ids.forEach(i => SD.apiDelete(ep + i)); } this.setState(x => ({ [K[5]]: x[K[5]].filter(c => ids.indexOf(c.id) < 0), confirm: null, collView: ids.indexOf(x.collView) >= 0 ? null : x.collView, ...(kind === 'tpl' ? { kill: false, sel: {} } : {}) })); this.toastMsg('Supprimé · ' + noun); return; }
+          if (SD && SD._live) ids.forEach(i => SD.apiDelete('/posting/campagnes/' + i)); this.setState(x => ({ camps: x.camps.filter(c => ids.indexOf(c.id) < 0), confirm: null, kill: false, sel: {}, campOpen: ids.indexOf(x.campOpen) >= 0 ? null : x.campOpen })); this.toastMsg(ids.length + ' campagne' + (ids.length > 1 ? 's' : '') + ' supprimée' + (ids.length > 1 ? 's' : '')); }
       });
     }
     return out;

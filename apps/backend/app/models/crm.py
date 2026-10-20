@@ -12,6 +12,7 @@ class Fan(Base):
     __tablename__ = "fans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    oc_external_id: Mapped[str | None] = mapped_column(String(200), unique=True)  # OnlyChat fan ID
     pseudo: Mapped[str] = mapped_column(String(100))
     creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     compte_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
@@ -30,6 +31,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    oc_external_id: Mapped[str | None] = mapped_column(String(200), unique=True)  # OnlyChat tx ID
     fan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     transaction_type: Mapped[str] = mapped_column(String(10))  # sub / ppv / tip
@@ -44,6 +46,7 @@ class Script(Base):
     __tablename__ = "scripts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    oc_external_id: Mapped[str | None] = mapped_column(String(200), unique=True)  # OnlyChat script ID
     script_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     folder: Mapped[str | None] = mapped_column(String(100))
     active: Mapped[bool] = mapped_column(Boolean, default=True)

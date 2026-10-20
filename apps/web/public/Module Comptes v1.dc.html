@@ -1068,6 +1068,14 @@ class Component extends DCLogic {
     const env = {}; ['web', 'phone', 'iphone'].forEach(k => { env[k] = k === d.activeEnv ? 'active' : (d.envIds[k] ? 'configured' : null); });
     const base = { username: u, platform: d.platform, market: d.market, persona: d.persona, niche: d.niche || this.P(d.persona).niche, workflow: d.workflow, env, activeEnv: d.activeEnv };
     const extra = JSON.parse(JSON.stringify({ ...d, username: u }));
+    const SD = window.SCALE_DATA;
+    if (SD && SD._live && d.id) {
+      const real = SD.accounts.find(x => x.handle === d.username || x.id === d.id);
+      if (real) {
+        SD.apiPatch('/comptes/' + real.id, { handle: u, plateforme: d.platform, workflow: d.workflow, status: d.status || 'ok', persona_id: d.persona || null, env: env });
+        real.handle = u; real.plat = d.platform; real.workflow = d.workflow; real.persona = d.persona;
+      }
+    }
     this.setState(s => d.id
       ? { accounts: s.accounts.map(a => a.id === d.id ? { ...a, ...base, extra } : a), view: 'list', draft: null, modal: false }
       : { accounts: [{ id: 'a' + Date.now(), n: s.accounts.length, status: 'idle', sessions: 0, follows: 0, ...base, extra }, ...s.accounts], view: 'list', draft: null });
@@ -1134,6 +1142,8 @@ class Component extends DCLogic {
       if (this._lowBal) { this.toastMsg(this._lowBal); return; }
       list = this.genNames().map((u, i) => mk(u, i));
     }
+    const SD = window.SCALE_DATA;
+    if (SD && SD._live) { list.forEach(a => { const res = SD.apiPost('/comptes', { handle: a.username, plateforme: a.platform, persona_id: a.persona || null, workflow: a.workflow || 'Onboarding', status: 'ok', device_id: a.device || null, env: a.env || null }); if (res && res.id) { a.id = res.id; const mapped = SD.x.compte(res); SD.accounts.unshift(mapped); } }); }
     this.setState(x => ({ accounts: list.concat(x.accounts), view: 'list', draft: null, modal: false, fmenu: null }));
     const onI = iphs.filter(Boolean); const noI = iphs.length - onI.length; const where = d.activeEnv !== 'iphone' ? '' : onI.length ? ' · ' + (new Set(onI).size === 1 ? 'attribué' + (onI.length > 1 ? 's' : '') + ' à ' + onI[0] : 'répartis sur ' + new Set(onI).size + ' iPhone') + (noI ? ' · ' + noI + ' en attente d’iPhone' : '') : ' · en attente d’un iPhone';
     this.toastMsg((list.length > 1 ? list.length + ' comptes ajoutés' : '@' + list[0].username + ' ajouté') + where);
@@ -1269,7 +1279,7 @@ class Component extends DCLogic {
       askBulkDelete: () => { if (selIds.length) this.setState({ confirm: { ids: selIds } }); },
       hasConfirm: !!cf, confirmTitle: cf ? (cf.ids.length > 1 ? 'Supprimer ' + cf.ids.length + ' comptes ?' : 'Supprimer ' + (cfNames[0] || 'ce compte') + ' ?') : '', confirmNames,
       cancelConfirm: () => this.setState({ confirm: null }),
-      doDelete: () => { const ids = cf.ids; this.setState(x => ({ accounts: x.accounts.filter(a => ids.indexOf(a.id) < 0), sel: {}, confirm: null, kill: false, view: 'list', draft: null, modal: false })); this.toastMsg(ids.length + ' compte' + (ids.length > 1 ? 's supprimés' : ' supprimé')); },
+      doDelete: () => { const ids = cf.ids; const SD = window.SCALE_DATA; if (SD && SD._live) { ids.forEach(id => { const a = accs.find(x => x.id === id); if (a) { const real = SD.accounts.find(x => x.handle === a.username); if (real) { SD.apiDelete('/comptes/' + real.id); const si = SD.accounts.indexOf(real); if (si >= 0) SD.accounts.splice(si, 1); } } }); } this.setState(x => ({ accounts: x.accounts.filter(a => ids.indexOf(a.id) < 0), sel: {}, confirm: null, kill: false, view: 'list', draft: null, modal: false })); this.toastMsg(ids.length + ' compte' + (ids.length > 1 ? 's supprimés' : ' supprimé')); },
       hasToast: !!s.toast, toast: s.toast || '',
       save: () => (s.modal ? this.save() : this.submitCreate())
     };

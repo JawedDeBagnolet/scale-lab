@@ -404,6 +404,18 @@ class Component extends DCLogic {
     document.documentElement.style.setProperty('--app-font', "'Manrope'");
     const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
     if (!(window.SCALE_DATA && window.SCALE_DATA._live)) this._live = setInterval(() => this.tick(), 4200);
+    else if (window.SCALE_DATA && window.SCALE_DATA.onWsMessage) {
+      this._wsHandler = msg => {
+        if (!msg || msg.type === 'pong') return;
+        const SD = window.SCALE_DATA;
+        const ev = SD.x.event(msg);
+        this.setState(x => {
+          const incs = this.addToInc(x.incs, ev);
+          return x.live ? { events: [ev].concat(x.events).slice(0, 600), incs } : { buffer: [ev].concat(x.buffer), incs };
+        });
+      };
+      window.SCALE_DATA.onWsMessage(this._wsHandler);
+    }
     this._clock = setInterval(() => this.forceUpdate(), 30000);
     this._key = e => { if (e.key !== 'Escape') return; if (this.state.evView) this.setState({ evView: null }); else if (this.state.resolve) { clearInterval(this._run); this.setState({ resolve: null }); } else if (this.state.addOpen) this.setState({ addOpen: false }); };
     window.addEventListener('keydown', this._key);
@@ -411,7 +423,7 @@ class Component extends DCLogic {
     setTimeout(this._hash, 200); window.addEventListener('hashchange', this._hash);
     if (!window.SCALE_DATA) { this._sd = setInterval(() => { if (window.SCALE_DATA) { clearInterval(this._sd); this.setState(this.init()); } }, 80); }
   }
-  componentWillUnmount() { clearInterval(this._run); clearInterval(this._live); clearInterval(this._clock); clearInterval(this._sd); clearTimeout(this._tt); window.removeEventListener('keydown', this._key); window.removeEventListener('hashchange', this._hash); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } }
+  componentWillUnmount() { clearInterval(this._run); clearInterval(this._live); clearInterval(this._clock); clearInterval(this._sd); clearTimeout(this._tt); window.removeEventListener('keydown', this._key); window.removeEventListener('hashchange', this._hash); if (this._drift) { cancelAnimationFrame(this._drift.raf); this._drift.blobs.forEach(b => b.el.remove()); this._drift.dots.remove(); this._drift = null; } if (this._wsHandler && window.SCALE_DATA && window.SCALE_DATA.offWsMessage) window.SCALE_DATA.offWsMessage(this._wsHandler); }
 
   evVals() {
     const s = this.state; const e = s.evView && (s.events.find(x => x.id === s.evView) || s.buffer.find(x => x.id === s.evView)); if (!e) return { evOpen: false };

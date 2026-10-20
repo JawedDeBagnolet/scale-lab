@@ -17,3 +17,7 @@ API_BASE = "https://vps.scalelab.win"
 [[kv_namespaces]]
 binding = "CACHE"
 id = "15ea593d7838454dabd796d8e34669f4"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "scale-lab-media"

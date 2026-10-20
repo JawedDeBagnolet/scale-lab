@@ -57,7 +57,67 @@ async def create_event(db: AsyncSession, data: EventCreate) -> Event:
     await db.commit()
     await db.refresh(e)
     await _broadcast_event(e)
+    # Check alert rules
+    if e.level in ("warning", "error", "critical"):
+        await _evaluate_alert_rules(db, e)
     return e
+
+
+async def _evaluate_alert_rules(db: AsyncSession, event: Event) -> None:
+    """Check if any alert rule matches this event and fire Telegram notification."""
+    import logging
+    log = logging.getLogger("logs.alerts")
+
+    try:
+        # Find matching rules
+        stmt = select(AlertRule).where(
+            AlertRule.module == event.module,
+            AlertRule.tg_enabled.is_(True),
+        )
+        rules = (await db.execute(stmt)).scalars().all()
+
+        if not rules:
+            return
+
+        now = datetime.now(UTC)
+        window = now - timedelta(hours=1)
+
+        for rule in rules:
+            # Check if event_type matches (empty = match all for module)
+            if rule.event_type and rule.event_type != event.event_type:
+                continue
+
+            # Count recent errors for this module+type in the last hour
+            count_stmt = select(func.count(Event.id)).where(
+                Event.module == event.module,
+                Event.level.in_(["warning", "error", "critical"]),
+                Event.timestamp >= window,
+            )
+            if rule.event_type:
+                count_stmt = count_stmt.where(Event.event_type == rule.event_type)
+
+            recent_count = await db.scalar(count_stmt) or 0
+
+            # Fire if threshold is reached
+            if recent_count >= rule.threshold_errors:
+                from app.services.telegram import send_alert
+                await send_alert(
+                    db,
+                    module=event.module,
+                    event_type=event.event_type,
+                    message=(
+                        f"{event.message}\n\n"
+                        f"<i>{recent_count} erreur(s) en 1h"
+                        f"{' — ' + event.target if event.target else ''}</i>"
+                    ),
+                    level=event.level,
+                )
+                log.info(
+                    "Alert fired: module=%s type=%s count=%d threshold=%d",
+                    event.module, event.event_type, recent_count, rule.threshold_errors,
+                )
+    except Exception:
+        log.exception("Failed to evaluate alert rules")
 
 
 async def emit_event(
@@ -94,6 +154,9 @@ async def emit_event(
             await db.commit()
             await db.refresh(e)
             await _broadcast_event(e)
+            # Check alert rules for warnings/errors
+            if level in ("warning", "error", "critical"):
+                await _evaluate_alert_rules(db, e)
     except Exception:
         # Never crash a background service because of a log write failure
         import logging

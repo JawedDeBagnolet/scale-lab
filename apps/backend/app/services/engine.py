@@ -285,10 +285,15 @@ async def _execute_iphone_action(
             iphone.name, udid, action_type, compte.handle,
         )
 
-        # TODO: Send command to on-device agent via USB tunnel or local socket
-        # For now, log and return success as the agent is not yet implemented
-        await asyncio.sleep(0.2)
-        return True, f"iphone: {action_type} dispatched to {iphone.name}"
+        # Dispatch command to on-device agent via USB tunnel
+        from app.services.dispatch import dispatch_command
+
+        ok, msg, result = await dispatch_command(udid, command)
+        if ok:
+            logger.info("iPhone OK: device=%s — %s", iphone.name, msg)
+        else:
+            logger.warning("iPhone FAIL: device=%s — %s", iphone.name, msg)
+        return ok, f"iphone: {msg}"
 
 
 # ---------------------------------------------------------------------------

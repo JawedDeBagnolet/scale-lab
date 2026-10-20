@@ -999,7 +999,7 @@ class Component extends DCLogic {
       saveStyle: { display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: dirty ? 'pointer' : 'default', opacity: dirty ? 1 : .45, border: '1px solid rgba(124,108,246,.5)', color: '#cfd3ff', background: 'rgba(124,108,246,.1)' },
       buys: mine.slice(-8).reverse().map(t => { const sc = t.script ? D.scById[t.script] : null; return { ty: this.TY[t.type][0], tyStyle: this.pill(this.TY[t.type][1], 'rgba(' + this.rgb(this.TY[t.type][1]) + ',.12)'), text: this.dd(t.d) + ' · ' + this.hhmm(t.h) + (sc ? ' · ' + sc.name : ''), amount: this.fM2(t.amount) }; }), noBuys: !mine.length };
     out.setNote = e => this.setState({ noteDraft: e.target.value });
-    out.saveNote = () => { if (!dirty) return; f.note = draft; f.noteAt = 'à l’instant'; this.setState({ noteDraft: null }); this.bump(); this.toastMsg('Note enregistrée dans OnlyChat'); };
+    out.saveNote = () => { if (!dirty) return; f.note = draft; f.noteAt = 'à l’instant'; const SD = window.SCALE_DATA; if (SD && SD._live && f.id) SD.apiPatch('/crm/fans/' + f.id, { notes: draft }); this.setState({ noteDraft: null }); this.bump(); this.toastMsg('Note enregistrée dans OnlyChat'); };
   }
 
   vTx(out, ctx) {
@@ -1191,6 +1191,7 @@ class Component extends DCLogic {
       let x = E.id ? D.scById[E.id] : null; if (!x) { const nid = 's' + Date.now().toString(36); x = { id: nid, cr: crS, acc: E.acc || c.ofAcc, group: nid, ul: .2, op: .7, ...this.newStats() }; D.scripts.push(x); D.scById[x.id] = x; }
       Object.assign(x, { name, desc: E.desc, timeout: num(E.timeoutTxt) || 1.5, strict: E.strict, folder: E.folder, active: E.active, versions: E.versions.map(v => ({ id: v.id, free: v.free.map(z => clean(z, true)) })), paid: E.paid.map(z => clean(z, false)) });
       if (E.first) { D.scripts.forEach(y => { if (y.acc === x.acc) y.first = false; }); x.first = true; } else x.first = false;
+      const SD = window.SCALE_DATA; if (SD && SD._live) { const payload = { folder: x.folder || null, active: x.active, priority: !!x.first, steps: x.versions ? [].concat(...x.versions.map(v => v.free)).concat(x.paid || []) : [] }; if (E.id) { SD.apiPatch('/crm/scripts/' + x.id, payload); } else { const res = SD.apiPost('/crm/scripts', payload); if (res && res.id) { x.id = res.id; D.scById[x.id] = x; } } }
       this.setState({ scEd: null, picker: null }); this.bump(); this.toastMsg('Script « ' + name + ' » enregistré · ' + nSteps + ' étapes'); };
   }
 

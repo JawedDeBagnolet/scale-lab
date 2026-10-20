@@ -100,3 +100,20 @@ async def usb_status():
         connected_count=usb_monitor.connected_count,
         pymobiledevice_available=_PYMOBILE_AVAILABLE,
     )
+
+
+@router.get("/{iphone_id}/agent")
+async def agent_status(iphone_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Check if the on-device agent is running and reachable."""
+    iphone = await service.get_iphone(db, iphone_id)
+    if not iphone:
+        raise HTTPException(404, "iphone not found")
+    udid = (iphone.telemetry or {}).get("udid")
+    if not udid:
+        return {"reachable": False, "reason": "no UDID — re-provision via USB"}
+
+    from app.services.dispatch import check_agent_status
+    status = await check_agent_status(udid)
+    if status is None:
+        return {"reachable": False, "reason": "agent not reachable"}
+    return {"reachable": True, "agent": status}

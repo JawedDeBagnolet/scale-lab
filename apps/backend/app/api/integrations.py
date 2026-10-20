@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.services import settings as settings_svc
 from app.services import gms_client, oc_client
+from app.services import oc_sync, gms_sync
 
 router = APIRouter()
 
@@ -301,3 +302,24 @@ async def oc_creator_fans(
         raise HTTPException(400, "Pas de cle API OC configuree")
     fans = await oc_client.list_fans(s.oc_api_key, creator_id, limit=limit)
     return {"data": fans, "count": len(fans)}
+
+
+# ── Sync ────────────────────────────────────────────────────
+
+
+@router.post("/oc/sync")
+async def oc_sync_now(db: AsyncSession = Depends(get_db)):
+    """Trigger a full OC → local CRM sync."""
+    result = await oc_sync.run_full_sync(db)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "sync failed"))
+    return result
+
+
+@router.post("/gms/sync")
+async def gms_sync_now(db: AsyncSession = Depends(get_db)):
+    """Trigger a full GMS → local links sync."""
+    result = await gms_sync.run_full_sync(db)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "sync failed"))
+    return result

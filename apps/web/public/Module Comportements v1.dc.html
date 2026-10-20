@@ -212,6 +212,7 @@ class Component extends DCLogic {
       weightSub: mode === 'weighted' ? 'Tirage pondéré : ce preset sort dans ' + Math.round(E.weight / tw * 100) + ' % des sessions ' + pfName + ' qui le proposent avec les ' + this.pl(others.length, 'autre') : 'Utilisé en mode pondéré · le tirage ' + pfName + ' est actuellement uniforme',
       hasErr: !!E.err, err: E.err,
       save: () => { if (!E.name.trim()) { up({ err: 'Donne un nom au preset' }); return; } const b = { id: E.id || this.uid('b'), plat: E.plat, icon: E.icon, name: E.name.trim(), type: E.type, weight: E.weight, p: { ...E.p }, durations: E.durations.map(x => ({ ...x })), pauses: E.pauses.filter(x => x.label.trim() || x.prob).map(x => ({ ...x, label: x.label.trim() || 'Pause' })) };
+        const SD = window.SCALE_DATA; if (SD && SD._live) { const payload = { name: b.name, plateforme: b.plat, session_type: b.type, config: { icon: b.icon, weight: b.weight, p: b.p, durations: b.durations, pauses: b.pauses } }; if (E.id) { SD.apiPatch('/presets/' + E.id, payload); } else { const res = SD.apiPost('/presets', payload); if (res && res.id) b.id = res.id; } }
         const i = D.behaviors.findIndex(x => x.id === b.id); if (i >= 0) D.behaviors[i] = b; else D.behaviors.push(b);
         this.setState(y => ({ list: E.id ? y.list.map(x => x.id === b.id ? b : x) : y.list.concat([b]), ed: null, plat: b.plat })); this.toastMsg('« ' + b.name + ' » ' + (E.id ? 'enregistré' : 'créé')); }
     } };
@@ -243,7 +244,7 @@ class Component extends DCLogic {
       cards, addLabel: 'Nouveau comportement ' + pfName, newB: () => this.openNew(),
       hasToast: !!s.toast, toast: s.toast || '', edOpen: false,
       cfOpen: !!s.cf, cfClose: () => this.setState({ cf: null }),
-      cf: s.cf ? { title: 'Supprimer « ' + s.cf.name + ' » ?', text: s.cf.n ? 'Il est retiré des étapes de ' + this.pl(s.cf.n, 'scénario') + '. Ces étapes utiliseront leurs propres réglages ou les autres presets sélectionnés.' : 'Aucun scénario ne l’utilise.', go: () => { const id = s.cf.id; const nm = s.cf.name; if (D) { const i = D.behaviors.findIndex(x => x.id === id); if (i >= 0) D.behaviors.splice(i, 1); D.scenarios.forEach(sc => sc.steps.forEach(st => st[1].forEach(t => { if (t[2]) t[2] = t[2].filter(z => z !== id); }))); } this.setState(y => ({ list: y.list.filter(x => x.id !== id), cf: null })); this.toastMsg('« ' + nm + ' » supprimé'); } } : {}
+      cf: s.cf ? { title: 'Supprimer « ' + s.cf.name + ' » ?', text: s.cf.n ? 'Il est retiré des étapes de ' + this.pl(s.cf.n, 'scénario') + '. Ces étapes utiliseront leurs propres réglages ou les autres presets sélectionnés.' : 'Aucun scénario ne l’utilise.', go: () => { const id = s.cf.id; const nm = s.cf.name; const SD = window.SCALE_DATA; if (SD && SD._live) SD.apiDelete('/presets/' + id); if (D) { const i = D.behaviors.findIndex(x => x.id === id); if (i >= 0) D.behaviors.splice(i, 1); D.scenarios.forEach(sc => sc.steps.forEach(st => st[1].forEach(t => { if (t[2]) t[2] = t[2].filter(z => z !== id); }))); } this.setState(y => ({ list: y.list.filter(x => x.id !== id), cf: null })); this.toastMsg('« ' + nm + ' » supprimé'); } } : {}
     };
     if (s.ed && D) Object.assign(out, this.edVals(s));
     return out;

@@ -82,7 +82,7 @@ class RunOut(RunBase):
 class PlageHoraireBase(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     days: list | None = None  # [0..6]
-    ranges: list[dict] | None = None  # [{start, end}]
+    ranges: list | None = None  # [["08:00", "12:00"], ...]
 
 
 class PlageHoraireCreate(PlageHoraireBase):
@@ -92,7 +92,7 @@ class PlageHoraireCreate(PlageHoraireBase):
 class PlageHoraireUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     days: list | None = None
-    ranges: list[dict] | None = None
+    ranges: list | None = None
 
 
 class PlageHoraireOut(PlageHoraireBase):

@@ -109,6 +109,42 @@
       .catch(function (e) { console.warn('[Scale Lab] Async ' + method + ' ' + path + ' :', e); return null; });
   }
 
+  // Upload media file vers R2 via le gateway
+  // Retourne { key, url, content_type, size } ou null
+  function apiUpload(file, personaId) {
+    var form = new FormData();
+    form.append('file', file);
+    if (personaId) form.append('persona_id', personaId);
+    // URL base sans /api : le endpoint est /api/upload/media
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', API_BASE + '/upload/media', false);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+      xhr.send(form);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        return JSON.parse(xhr.responseText);
+      }
+      console.warn('[Scale Lab] Upload erreur ' + xhr.status + ' :', xhr.responseText);
+    } catch (e) {
+      console.warn('[Scale Lab] Upload erreur :', e);
+    }
+    return null;
+  }
+
+  // Upload async (non-bloquant, retourne une Promise)
+  function apiUploadAsync(file, personaId) {
+    var form = new FormData();
+    form.append('file', file);
+    if (personaId) form.append('persona_id', personaId);
+    return fetch(API_BASE + '/upload/media', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+      body: form
+    })
+      .then(function (r) { return r.json(); })
+      .catch(function (e) { console.warn('[Scale Lab] Upload async erreur :', e); return null; });
+  }
+
   // Helper : s'assurer qu'on a un array
   function safe(v) { return Array.isArray(v) ? v : []; }
 
@@ -568,7 +604,7 @@
     };
   }
 
-  // ─── behaviorParams (config statique, identique a shared-data.js) ──
+  // ─── behaviorParams (config statique) ─────────────────────────────
   var behaviorParams = {
     labels: {
       like: ['Like', 'Probabilite de liker un post vu'],
@@ -899,6 +935,8 @@
     apiDelete: apiDeleteSync,
     apiFetch: apiFetchSync,
     apiAsync: apiAsync,
+    apiUpload: apiUpload,
+    apiUploadAsync: apiUploadAsync,
 
     // ── Transforms (exposes pour les modules) ──
     x: {
@@ -1009,6 +1047,8 @@
           D.logStats = apiFetchSync('/logs/stats');
           if (!D.logStats || Array.isArray(D.logStats)) D.logStats = { total_events: 0, errors_24h: 0, open_incidents: 0, modules: {} };
           console.log('[Scale Lab] Module logs :', logEvents.length, 'events,', logIncidents.length, 'incidents');
+          // Connecter le WebSocket pour les logs live
+          connectLiveWs();
           break;
 
         case 'stats':
@@ -1185,6 +1225,81 @@
       console.error('[Scale Lab] Erreur chargement module ' + name + ' :', err);
     }
   }
+
+  // ── WebSocket live logs ────────────────────────────────────────────
+  var _ws = null;
+  var _wsListeners = [];
+  var _wsReconnectTimer = null;
+
+  function connectLiveWs() {
+    if (_ws && (_ws.readyState === 0 || _ws.readyState === 1)) return;
+
+    // Construire l'URL WS a partir de API_BASE : https://api.scalelab.win → wss://api.scalelab.win
+    var wsBase = API_BASE.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://');
+    var wsUrl = wsBase + '/ws/logs?token=' + TOKEN;
+
+    try {
+      _ws = new WebSocket(wsUrl);
+    } catch (e) {
+      console.warn('[Scale Lab] WS erreur creation :', e);
+      scheduleReconnect();
+      return;
+    }
+
+    _ws.onopen = function () {
+      console.log('[Scale Lab] WS connecte');
+      if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
+    };
+
+    _ws.onmessage = function (ev) {
+      try {
+        var msg = JSON.parse(ev.data);
+        if (msg.type === 'pong') return;
+        // Pousser l'evenement dans logEvents
+        if (msg.id || msg.event || msg.type) {
+          var transformed = xEvent(msg);
+          logEvents.unshift(transformed);
+          if (logEvents.length > 600) logEvents.length = 600;
+        }
+        // Notifier tous les listeners (modules DC abonnes)
+        for (var i = 0; i < _wsListeners.length; i++) {
+          try { _wsListeners[i](msg); } catch (e2) { /* ignore */ }
+        }
+      } catch (e) { /* ignore non-JSON */ }
+    };
+
+    _ws.onclose = function () {
+      console.log('[Scale Lab] WS ferme, reconnexion dans 5s');
+      _ws = null;
+      scheduleReconnect();
+    };
+
+    _ws.onerror = function () {
+      console.warn('[Scale Lab] WS erreur');
+      try { _ws.close(); } catch (e) { /* ignore */ }
+    };
+
+    // Keepalive ping toutes les 30s
+    var pingInterval = setInterval(function () {
+      if (_ws && _ws.readyState === 1) {
+        _ws.send('ping');
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 30000);
+  }
+
+  function scheduleReconnect() {
+    if (_wsReconnectTimer) return;
+    _wsReconnectTimer = setTimeout(function () {
+      _wsReconnectTimer = null;
+      connectLiveWs();
+    }, 5000);
+  }
+
+  D.connectLiveWs = connectLiveWs;
+  D.onWsMessage = function (fn) { _wsListeners.push(fn); };
+  D.offWsMessage = function (fn) { _wsListeners = _wsListeners.filter(function (f) { return f !== fn; }); };
 
   // Charger immediatement (synchrone) — les core data sont pretes avant support.js
   loadData();

@@ -13,6 +13,8 @@ from app.models.scenario import PlageHoraire, Run, Scenario
 from app.models.settings import WorkspaceSettings
 from app.models.statistique import DailyStat
 from app.models.target import Target
+from app.models.telegram_pending import TelegramPending
+from app.models.telegram_pending_group import TelegramPendingGroup
 from app.models.veille import Album, Favorite, Inspiration, Snipe, VeilleSource
 
 __all__ = [
@@ -43,6 +45,8 @@ __all__ = [
     "Script",
     "Snipe",
     "Target",
+    "TelegramPending",
+    "TelegramPendingGroup",
     "Template",
     "TrackedLink",
     "Transaction",
