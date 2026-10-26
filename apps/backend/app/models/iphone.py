@@ -26,13 +26,13 @@ class IPhone(Base):
     proxy_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # --- Connection mode ----------------------------------------------------------
     # "usb"    : USB cable via pymobiledevice3 (default, legacy)
-    # "tunnel" : reverse SSH tunnel exposing MCP + crane-controller on localhost
+    # "tunnel" : reverse SSH tunnel exposing MCP + SSH on localhost
     connection_type: Mapped[str] = mapped_column(
         String(10), default="usb", server_default="usb"
     )
     # Ports exposed by the reverse SSH tunnel (only used when connection_type="tunnel")
     mcp_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    crane_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ssh_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # --------------------------------------------------------------------------
     telemetry: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(

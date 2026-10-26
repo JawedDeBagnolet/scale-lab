@@ -469,7 +469,7 @@ async def _media_import(
     This needs the VPS media_transfer module for:
     - Download from R2
     - EXIF metadata spoofing
-    - Gallery injection via crane
+    - Gallery injection via scalectl
     """
     log("   [ig_media_import] Import — en attente du module media_transfer")
     return False, "ig_media_import pas encore implémenté"

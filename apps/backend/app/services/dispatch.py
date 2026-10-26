@@ -7,8 +7,9 @@ Two connection modes:
     Uses pymobiledevice3 UsbmuxTcpForwarder to create a local TCP port.
 
   Tunnel (network):
-    iPhone ──reverse-SSH──> VPS (MCP on 127.0.0.1:<mcp_port>, crane on 127.0.0.1:<crane_port>)
+    iPhone ──reverse-SSH──> VPS (MCP on 127.0.0.1:<mcp_port>, SSH on 127.0.0.1:<ssh_port>)
     Direct HTTP to the MCP JSON-RPC server exposed by the SSH tunnel.
+    Container management via SSH → scalectl CLI on the iPhone.
     No pymobiledevice3 needed — the ports are already forwarded.
 
 The on-device MCP agent (iOS accessibility driver) exposes:
@@ -18,10 +19,13 @@ The on-device scale-agent (USB mode) exposes:
   GET  /status       — health check
   POST /abort        — cancel current action
 
-The crane-controller (tunnel mode only) exposes:
-  POST /sequence     — switch container
-  GET  /inventory    — list containers
-  POST /kill         — kill app
+ScaleTweak (tunnel mode) — container management via SSH:
+  scalectl --list <bundle>                         — list containers
+  scalectl --switch <bundle> <uuid|name:N|default> — switch active container
+  scalectl --create <bundle> <name> [country] [persona] — create container
+  scalectl --delete <bundle> <uuid>                — delete container
+  scalectl --inject <bundle> <uuid> <file.json>    — inject session/fingerprint
+  scalectl --status                                — global status
 
 The engine decides which path to take based on iPhone.connection_type.
 """
@@ -29,6 +33,7 @@ The engine decides which path to take based on iPhone.connection_type.
 import asyncio
 import json
 import logging
+import plistlib
 from datetime import UTC, datetime
 from typing import Any
 
@@ -42,15 +47,30 @@ logger = logging.getLogger("dispatch")
 
 # USB agent port on the iPhone
 AGENT_PORT = 8765
-# Default MCP / crane ports for tunnel mode (overridden per device)
+# Default MCP / SSH ports for tunnel mode (overridden per device)
 DEFAULT_MCP_PORT = 8190
-DEFAULT_CRANE_PORT = 8180
+DEFAULT_SSH_PORT = 2222
 
 # Timeouts (seconds)
 COMMAND_TIMEOUT = 30
 TUNNEL_TIMEOUT = 10
 MCP_TIMEOUT = 60       # MCP actions can be slow (UI automation)
-CRANE_TIMEOUT = 10
+SSH_TIMEOUT = 15        # scalectl commands are fast
+
+# ScaleTweak plist path on the iPhone
+SCALE_PLIST_PATH = "/var/jb/var/mobile/Library/Preferences/com.scale.tweak.plist"
+
+# Bundle → process name mapping (for killall)
+BUNDLE_TO_PROCESS = {
+    "com.burbn.instagram": "Instagram",
+    "com.burbn.barcelona": "Barcelona",
+}
+
+# Bundle → URL scheme mapping (for uiopen after kill)
+BUNDLE_TO_URL_SCHEME = {
+    "com.burbn.instagram": "instagram://",
+    "com.burbn.barcelona": "barcelona://",
+}
 
 # USB tunnel cache: udid -> (local_port, created_at)
 _tunnel_cache: dict[str, tuple[int, datetime]] = {}
@@ -67,7 +87,7 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Shared HTTP client (for tunnel mode)
+# Shared HTTP client (for MCP tunnel mode)
 # ---------------------------------------------------------------------------
 
 _http_client: httpx.AsyncClient | None = None
@@ -218,7 +238,7 @@ def _parse_http_response(data: bytes) -> tuple[bool, str, dict | None]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# TUNNEL MODE — direct HTTP to MCP / crane-controller
+# TUNNEL MODE — MCP via HTTP
 # ═══════════════════════════════════════════════════════════════════════════
 
 async def mcp_call(
@@ -259,54 +279,365 @@ async def mcp_call(
         return None
 
 
-async def crane_call(
-    crane_port: int,
-    path: str,
-    payload: dict | None = None,
+# ═══════════════════════════════════════════════════════════════════════════
+# SSH EXECUTION — run commands on iPhone via reverse SSH tunnel
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def _ssh_exec(
+    ssh_port: int,
+    command: str,
+    *,
+    timeout: float = SSH_TIMEOUT,
+    host: str = "127.0.0.1",
+    user: str = "root",
+    binary: bool = False,
+) -> tuple[bool, str | bytes]:
+    """Execute a command on iPhone via SSH tunnel.
+
+    Args:
+        ssh_port: Local port forwarded to iPhone's SSH (via reverse tunnel)
+        command: Shell command to execute on iPhone
+        timeout: Max seconds to wait
+        host: SSH host (default 127.0.0.1 — reverse tunnel)
+        user: SSH user on iPhone (default root)
+        binary: If True, return raw stdout bytes instead of decoded string
+
+    Returns:
+        (success: bool, output: str | bytes)
+    """
+    try:
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_exec(
+                "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "ConnectTimeout=5",
+                "-o", "BatchMode=yes",
+                "-o", "LogLevel=ERROR",
+                "-p", str(ssh_port),
+                f"{user}@{host}",
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            ),
+            timeout=timeout,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(),
+            timeout=timeout,
+        )
+
+        if proc.returncode == 0:
+            return True, stdout if binary else stdout.decode("utf-8", errors="replace").strip()
+        else:
+            err = stderr.decode("utf-8", errors="replace").strip()
+            out = stdout.decode("utf-8", errors="replace").strip()
+            return False, err or out or f"SSH exit code {proc.returncode}"
+
+    except asyncio.TimeoutError:
+        return False, f"SSH timeout ({timeout}s)"
+    except FileNotFoundError:
+        return False, "ssh binary not found on VPS"
+    except Exception as e:
+        return False, f"SSH error: {e}"
+
+
+async def _ssh_check(
+    ssh_port: int,
+    *,
+    host: str = "127.0.0.1",
+) -> bool:
+    """Quick SSH connectivity check."""
+    ok, _ = await _ssh_exec(ssh_port, "echo ok", timeout=5, host=host)
+    return ok
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SCALECTL — container management via SSH → scalectl on iPhone
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def scalectl_list_containers(
+    ssh_port: int,
+    bundle: str = "com.burbn.instagram",
+    *,
+    host: str = "127.0.0.1",
+) -> list[dict]:
+    """List all containers for a bundle by reading the ScaleTweak plist.
+
+    Reads the plist directly (binary or XML) for full UUID fidelity,
+    since scalectl --list truncates UUIDs to 8 chars in its output.
+    """
+    # Read plist as binary data via SSH
+    ok, raw = await _ssh_exec(
+        ssh_port,
+        f"cat {SCALE_PLIST_PATH}",
+        binary=True,
+        host=host,
+        timeout=10,
+    )
+    if not ok:
+        err = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
+        logger.warning("scalectl list: cannot read plist: %s", err)
+        return []
+
+    try:
+        raw_bytes = raw if isinstance(raw, bytes) else raw.encode()
+        config = plistlib.loads(raw_bytes)
+    except Exception as e:
+        logger.warning("scalectl list: plist parse error: %s", e)
+        return []
+
+    app_config = config.get(bundle, {})
+    if not isinstance(app_config, dict):
+        return []
+
+    containers_map = app_config.get("containers", {})
+    active_uuid = app_config.get("active", "")
+
+    result = []
+    for uuid, meta in containers_map.items():
+        if not isinstance(meta, dict):
+            continue
+        entry = {
+            "uuid": uuid,
+            "name": meta.get("name", ""),
+            "active": uuid == active_uuid,
+        }
+        # Include geo/carrier metadata if present
+        for key in ("country", "carrier", "timezone", "locale", "mcc", "mnc", "device_name"):
+            if key in meta:
+                entry[key] = meta[key]
+        # Include proxy config if present
+        if "proxy" in meta:
+            entry["proxy"] = meta["proxy"]
+        result.append(entry)
+
+    return result
+
+
+async def scalectl_switch_container(
+    ssh_port: int,
+    container_uuid: str,
+    bundle: str = "com.burbn.instagram",
+    *,
+    host: str = "127.0.0.1",
+    relaunch: bool = True,
+    relaunch_delay: float = 2.0,
+) -> bool:
+    """Switch the iPhone to a specific container via scalectl.
+
+    Flow:
+      1. scalectl --switch <bundle> <uuid>  → writes new active UUID to plist
+      2. killall <process>                   → force-close the app
+      3. uiopen <url-scheme>                 → relaunch (Tweak.x picks up new UUID)
+      4. Wait for app startup
+    """
+    # Step 1: scalectl --switch
+    ok, output = await _ssh_exec(
+        ssh_port,
+        f"scalectl --switch {bundle} {container_uuid}",
+        host=host,
+    )
+    if not ok:
+        logger.warning("scalectl switch failed: %s", output)
+        return False
+
+    if "Not found" in str(output):
+        logger.warning("scalectl switch: container %s not found", container_uuid)
+        return False
+
+    logger.info("scalectl: switched %s → %s", bundle, container_uuid)
+
+    if not relaunch:
+        return True
+
+    # Step 2: Kill the app
+    process_name = BUNDLE_TO_PROCESS.get(bundle)
+    if process_name:
+        await _ssh_exec(ssh_port, f"killall -9 {process_name}", host=host, timeout=5)
+        await asyncio.sleep(0.5)
+
+    # Step 3: Relaunch via uiopen
+    url_scheme = BUNDLE_TO_URL_SCHEME.get(bundle)
+    if url_scheme:
+        await _ssh_exec(ssh_port, f"uiopen '{url_scheme}'", host=host, timeout=5)
+
+    # Step 4: Wait for app startup + Tweak.x constructor
+    await asyncio.sleep(relaunch_delay)
+
+    return True
+
+
+async def scalectl_kill_app(
+    ssh_port: int,
+    bundle: str = "com.burbn.instagram",
+    *,
+    host: str = "127.0.0.1",
+) -> bool:
+    """Kill an app on the iPhone via SSH."""
+    process_name = BUNDLE_TO_PROCESS.get(bundle)
+    if not process_name:
+        logger.warning("Unknown bundle for kill: %s", bundle)
+        return False
+
+    ok, output = await _ssh_exec(
+        ssh_port,
+        f"killall -9 {process_name}",
+        host=host,
+        timeout=5,
+    )
+    # killall returns 1 if process not found — that's OK (already dead)
+    if not ok and "No matching processes" not in str(output):
+        logger.warning("kill_app failed for %s: %s", process_name, output)
+    return True
+
+
+async def scalectl_create_container(
+    ssh_port: int,
+    bundle: str,
+    name: str,
+    country: str = "FR",
+    persona: str | None = None,
+    *,
+    host: str = "127.0.0.1",
+) -> str | None:
+    """Create a new container via scalectl.
+
+    Returns the container UUID on success, None on failure.
+    """
+    cmd = f"scalectl --create {bundle} '{name}' {country}"
+    if persona:
+        cmd += f" '{persona}'"
+
+    ok, output = await _ssh_exec(ssh_port, cmd, host=host)
+    if not ok:
+        logger.warning("scalectl create failed: %s", output)
+        return None
+
+    # Parse output: "Created: <name> -> <uuid_8chars>"
+    # We need the full UUID — re-read plist to find it by name
+    containers = await scalectl_list_containers(ssh_port, bundle, host=host)
+    for c in containers:
+        if c.get("name") == name:
+            return c["uuid"]
+
+    logger.warning("scalectl create: container '%s' not found after creation", name)
+    return None
+
+
+async def scalectl_delete_container(
+    ssh_port: int,
+    bundle: str,
+    container_uuid: str,
+    *,
+    host: str = "127.0.0.1",
+) -> bool:
+    """Delete a container via scalectl."""
+    ok, output = await _ssh_exec(
+        ssh_port,
+        f"scalectl --delete {bundle} {container_uuid}",
+        host=host,
+    )
+    if not ok:
+        logger.warning("scalectl delete failed: %s", output)
+        return False
+    return True
+
+
+async def scalectl_inject_session(
+    ssh_port: int,
+    bundle: str,
+    container_uuid: str,
+    session_data: dict,
+    *,
+    host: str = "127.0.0.1",
+) -> bool:
+    """Inject session cookies + fingerprint into a container.
+
+    Writes a temporary JSON file on the iPhone, runs scalectl --inject,
+    then cleans up the temp file.
+
+    session_data should contain:
+      {
+        "session": {"sessionid": "...", "csrftoken": "...", "ds_user_id": "...", "mid": "...", "ig_did": "..."},
+        "fingerprint": {"device_id": "...", "family_device_id": "...", "user_agent": "..."},
+        "proxy": "http://user:pass@host:port"  (optional)
+      }
+    """
+    json_str = json.dumps(session_data)
+    tmp_path = f"/tmp/scale_inject_{container_uuid[:8]}.json"
+
+    # Write JSON to temp file on iPhone
+    # Escape single quotes in JSON for shell safety
+    escaped = json_str.replace("'", "'\\''")
+    ok, _ = await _ssh_exec(
+        ssh_port,
+        f"echo '{escaped}' > {tmp_path}",
+        host=host,
+    )
+    if not ok:
+        logger.warning("scalectl inject: failed to write temp JSON")
+        return False
+
+    # Run scalectl --inject
+    ok, output = await _ssh_exec(
+        ssh_port,
+        f"scalectl --inject {bundle} {container_uuid} {tmp_path}",
+        host=host,
+        timeout=10,
+    )
+
+    # Cleanup temp file
+    await _ssh_exec(ssh_port, f"rm -f {tmp_path}", host=host, timeout=5)
+
+    if not ok:
+        logger.warning("scalectl inject failed: %s", output)
+        return False
+
+    logger.info("scalectl: injected session into %s/%s", bundle, container_uuid[:8])
+    return True
+
+
+async def scalectl_status(
+    ssh_port: int,
     *,
     host: str = "127.0.0.1",
 ) -> dict | None:
-    """HTTP call to crane-controller exposed via SSH tunnel.
-
-    GET if payload is None, POST otherwise.
-    """
-    url = f"http://{host}:{crane_port}{path}"
-    try:
-        client = _get_http_client()
-        if payload is not None:
-            resp = await asyncio.wait_for(
-                client.post(url, json=payload),
-                timeout=CRANE_TIMEOUT,
-            )
-        else:
-            resp = await asyncio.wait_for(
-                client.get(url),
-                timeout=CRANE_TIMEOUT,
-            )
-        if resp.status_code >= 400:
-            logger.warning("Crane %s returned %d", path, resp.status_code)
-            return None
-        return resp.json()
-    except Exception as e:
-        logger.warning("Crane call failed (%s): %s", path, e)
+    """Get scalectl global status."""
+    ok, output = await _ssh_exec(ssh_port, "scalectl --status", host=host)
+    if not ok:
         return None
+    # Parse text output into a dict
+    result: dict[str, Any] = {"raw": output}
+    for line in output.split("\n"):
+        line = line.strip()
+        if ":" in line and "containers" in line:
+            parts = line.split(":")
+            if len(parts) >= 2:
+                app_id = parts[0].strip()
+                result[app_id] = parts[1].strip()
+    return result
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TUNNEL PROBE — check MCP + SSH connectivity
+# ═══════════════════════════════════════════════════════════════════════════
 
 async def tunnel_probe(
     mcp_port: int = DEFAULT_MCP_PORT,
-    crane_port: int = DEFAULT_CRANE_PORT,
+    ssh_port: int = DEFAULT_SSH_PORT,
     host: str = "127.0.0.1",
 ) -> dict:
-    """Probe MCP + crane endpoints to check if the tunnel is alive.
+    """Probe MCP + SSH endpoints to check if the tunnel is alive.
 
     Returns a dict suitable for TunnelProbeResult.
     """
     result = {
         "reachable": False,
         "mcp_port": mcp_port,
-        "crane_port": crane_port,
+        "ssh_port": ssh_port,
         "mcp_ok": False,
-        "crane_ok": False,
+        "ssh_ok": False,
         "containers": None,
         "error": None,
     }
@@ -315,15 +646,16 @@ async def tunnel_probe(
     mcp_result = await mcp_call(mcp_port, "get_ui_elements", host=host)
     result["mcp_ok"] = mcp_result is not None
 
-    # Probe crane
-    crane_result = await crane_call(crane_port, "/inventory", host=host)
-    result["crane_ok"] = crane_result is not None
-    if crane_result:
-        result["containers"] = crane_result.get("containers") or crane_result.get("data")
+    # Probe SSH + scalectl
+    ssh_ok = await _ssh_check(ssh_port, host=host)
+    result["ssh_ok"] = ssh_ok
+    if ssh_ok:
+        containers = await scalectl_list_containers(ssh_port, host=host)
+        result["containers"] = containers
 
-    result["reachable"] = result["mcp_ok"] or result["crane_ok"]
+    result["reachable"] = result["mcp_ok"] or result["ssh_ok"]
     if not result["reachable"]:
-        result["error"] = f"Neither MCP (:{mcp_port}) nor crane (:{crane_port}) reachable"
+        result["error"] = f"Neither MCP (:{mcp_port}) nor SSH (:{ssh_port}) reachable"
 
     return result
 
@@ -338,7 +670,7 @@ async def dispatch_command(
     *,
     connection_type: str = "usb",
     mcp_port: int | None = None,
-    crane_port: int | None = None,
+    ssh_port: int | None = None,
     timeout: float = COMMAND_TIMEOUT,
 ) -> tuple[bool, str, dict | None]:
     """Send a command to the on-device agent.
@@ -351,7 +683,7 @@ async def dispatch_command(
         command: Command payload
         connection_type: "usb" or "tunnel"
         mcp_port: MCP port (tunnel mode only)
-        crane_port: crane-controller port (tunnel mode only)
+        ssh_port: SSH port (tunnel mode only)
         timeout: Max seconds to wait
 
     Returns:
@@ -361,7 +693,7 @@ async def dispatch_command(
         return await _dispatch_tunnel(
             command,
             mcp_port=mcp_port or DEFAULT_MCP_PORT,
-            crane_port=crane_port or DEFAULT_CRANE_PORT,
+            ssh_port=ssh_port or DEFAULT_SSH_PORT,
             timeout=timeout,
         )
     else:
@@ -374,7 +706,7 @@ async def _dispatch_tunnel(
     command: dict[str, Any],
     *,
     mcp_port: int,
-    crane_port: int,
+    ssh_port: int,
     timeout: float,
 ) -> tuple[bool, str, dict | None]:
     """Dispatch a command via the MCP tunnel.
@@ -405,23 +737,23 @@ async def check_agent_status(
     *,
     connection_type: str = "usb",
     mcp_port: int | None = None,
-    crane_port: int | None = None,
+    ssh_port: int | None = None,
 ) -> dict | None:
     """Check if the agent is running and get its status.
 
     Returns a status dict or None if unreachable.
     """
     if connection_type == "tunnel":
-        # Probe both MCP and crane
+        # Probe both MCP and SSH
         probe = await tunnel_probe(
             mcp_port=mcp_port or DEFAULT_MCP_PORT,
-            crane_port=crane_port or DEFAULT_CRANE_PORT,
+            ssh_port=ssh_port or DEFAULT_SSH_PORT,
         )
         if probe["reachable"]:
             return {
                 "connection_type": "tunnel",
                 "mcp_ok": probe["mcp_ok"],
-                "crane_ok": probe["crane_ok"],
+                "ssh_ok": probe["ssh_ok"],
                 "containers": probe.get("containers"),
             }
         return None
@@ -448,66 +780,3 @@ async def abort_action(
     else:
         ok, _, _ = await _usb_raw_request(udid, "POST", "/abort", timeout=5)
         return ok
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# CRANE-CONTROLLER helpers (tunnel mode)
-# ═══════════════════════════════════════════════════════════════════════════
-
-async def switch_container(
-    crane_port: int,
-    container_uuid: str,
-    bundle: str = "com.burbn.instagram",
-) -> bool:
-    """Switch the iPhone to a specific container via crane-controller.
-
-    This is the equivalent of VPS iphone_device.py's switch_container().
-    """
-    # First verify the container exists in inventory
-    inventory = await crane_call(crane_port, "/inventory")
-    if inventory is None:
-        logger.warning("Cannot get crane inventory on port %d", crane_port)
-        return False
-
-    containers = inventory.get("containers") or inventory.get("data") or []
-    found = any(
-        c.get("uuid") == container_uuid or c.get("id") == container_uuid
-        for c in containers
-        if isinstance(c, dict)
-    )
-    if not found:
-        logger.warning(
-            "Container %s not found in inventory (port %d, %d containers)",
-            container_uuid, crane_port, len(containers),
-        )
-        return False
-
-    # Switch
-    result = await crane_call(
-        crane_port,
-        "/sequence",
-        payload={"uuid": container_uuid, "bundle": bundle},
-    )
-    if result is None:
-        logger.warning("Container switch failed for %s", container_uuid)
-        return False
-
-    logger.info("Switched to container %s on crane :%d", container_uuid, crane_port)
-    return True
-
-
-async def kill_app(
-    crane_port: int,
-    bundle: str = "com.burbn.instagram",
-) -> bool:
-    """Kill an app via crane-controller."""
-    result = await crane_call(crane_port, "/kill", payload={"bundle": bundle})
-    return result is not None
-
-
-async def list_containers(crane_port: int) -> list[dict]:
-    """List all containers from crane-controller."""
-    result = await crane_call(crane_port, "/inventory")
-    if result is None:
-        return []
-    return result.get("containers") or result.get("data") or []

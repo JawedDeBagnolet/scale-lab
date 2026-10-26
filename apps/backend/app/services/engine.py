@@ -242,7 +242,7 @@ async def _execute_iphone_action(
 
     Uses DeviceSession + IGDriver/THDriver for real UI automation.
     DeviceSession handles connection mode (USB/tunnel) transparently
-    by resolving the account → device → MCP/crane ports from PostgreSQL.
+    by resolving the account → device → MCP/SSH ports from PostgreSQL.
     """
     if platform == "ig_iph":
         from app.services.automation.ig_runner import run_ig_task

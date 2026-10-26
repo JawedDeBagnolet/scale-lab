@@ -120,7 +120,7 @@ async def agent_status(iphone_id: UUID, db: AsyncSession = Depends(get_db)):
             "",
             connection_type="tunnel",
             mcp_port=iphone.mcp_port,
-            crane_port=iphone.crane_port,
+            ssh_port=iphone.ssh_port,
         )
     else:
         udid = (iphone.telemetry or {}).get("udid")
@@ -152,7 +152,7 @@ async def tunnel_provision(
         max_comptes=data.max_comptes,
         connection_type="tunnel",
         mcp_port=data.mcp_port,
-        crane_port=data.crane_port,
+        ssh_port=data.ssh_port,
     )
     iphone = await service.create_iphone(db, create_data)
 
@@ -168,7 +168,7 @@ async def tunnel_provision(
 async def tunnel_probe_endpoint(
     iphone_id: UUID, db: AsyncSession = Depends(get_db)
 ):
-    """Probe MCP + crane endpoints for a tunnel-connected iPhone."""
+    """Probe MCP + SSH endpoints for a tunnel-connected iPhone."""
     iphone = await service.get_iphone(db, iphone_id)
     if not iphone:
         raise HTTPException(404, "iphone not found")
@@ -179,7 +179,7 @@ async def tunnel_probe_endpoint(
     from app.services.dispatch import tunnel_probe
     result = await tunnel_probe(
         mcp_port=iphone.mcp_port or 8190,
-        crane_port=iphone.crane_port or 8180,
+        ssh_port=iphone.ssh_port or 2222,
     )
     return TunnelProbeResult(**result)
 
@@ -188,7 +188,7 @@ async def tunnel_probe_endpoint(
 async def list_device_containers(
     iphone_id: UUID, db: AsyncSession = Depends(get_db)
 ):
-    """List containers on a tunnel-connected iPhone via crane-controller."""
+    """List containers on a tunnel-connected iPhone via scalectl SSH."""
     iphone = await service.get_iphone(db, iphone_id)
     if not iphone:
         raise HTTPException(404, "iphone not found")
@@ -196,6 +196,6 @@ async def list_device_containers(
     if (iphone.connection_type or "usb") != "tunnel":
         raise HTTPException(400, "Containers only available for tunnel-connected iPhones")
 
-    from app.services.dispatch import list_containers
-    containers = await list_containers(iphone.crane_port or 8180)
+    from app.services.dispatch import scalectl_list_containers
+    containers = await scalectl_list_containers(iphone.ssh_port or 2222)
     return {"containers": containers}

@@ -27,7 +27,7 @@ class IPhoneBase(BaseModel):
     proxy_id: UUID | None = None
     connection_type: str | None = "usb"   # "usb" | "tunnel"
     mcp_port: int | None = None           # tunnel only (default 8190)
-    crane_port: int | None = None         # tunnel only (default 8180)
+    ssh_port: int | None = None           # tunnel only — SSH to iPhone for scalectl
 
 
 class IPhoneCreate(IPhoneBase):
@@ -46,7 +46,7 @@ class IPhoneUpdate(BaseModel):
     proxy_id: UUID | None = None
     connection_type: str | None = None
     mcp_port: int | None = None
-    crane_port: int | None = None
+    ssh_port: int | None = None
 
 
 class TelemetryUpdate(BaseModel):
@@ -64,7 +64,7 @@ class IPhoneOut(IPhoneBase):
     id: UUID
     connection_type: str = "usb"
     mcp_port: int | None = None
-    crane_port: int | None = None
+    ssh_port: int | None = None
     telemetry: dict | None = None
     created_at: datetime
     updated_at: datetime
@@ -122,7 +122,7 @@ class TunnelProvisionRequest(BaseModel):
     ios_version: str
     udid: str                              # device UDID (for tracking)
     mcp_port: int = 8190                   # MCP server port on localhost
-    crane_port: int = 8180                 # crane-controller port on localhost
+    ssh_port: int = 2222                   # SSH port on localhost (for scalectl)
     rack: str | None = None
     market: str | None = None
     jailbreak: bool = True
@@ -130,11 +130,11 @@ class TunnelProvisionRequest(BaseModel):
 
 
 class TunnelProbeResult(BaseModel):
-    """Result of probing an iPhone's MCP endpoint over tunnel."""
+    """Result of probing an iPhone's MCP + SSH endpoints over tunnel."""
     reachable: bool
     mcp_port: int
-    crane_port: int
+    ssh_port: int
     mcp_ok: bool = False
-    crane_ok: bool = False
-    containers: list[dict] | None = None   # crane inventory snapshot
+    ssh_ok: bool = False
+    containers: list[dict] | None = None   # scalectl container list
     error: str | None = None

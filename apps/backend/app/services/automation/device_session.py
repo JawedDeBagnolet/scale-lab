@@ -3,9 +3,9 @@
 Ported from VPS iphone_device.py. Handles:
   - Per-device asyncio lock (one task at a time per physical iPhone)
   - Account → device + container resolution from PostgreSQL
-  - Container switch via crane-controller
+  - Container switch via ScaleTweak (SSH → scalectl on iPhone)
   - Lock screen detection via MCP
-  - App kill on exit
+  - App kill on exit (SSH → killall)
   - Auto-login dispatch
 
 Usage:
@@ -24,11 +24,10 @@ from app.db import AsyncSessionLocal
 from app.models.compte import Compte
 from app.models.iphone import IPhone
 from app.services.dispatch import (
-    crane_call,
-    kill_app,
-    list_containers,
     mcp_call,
-    switch_container,
+    scalectl_kill_app,
+    scalectl_list_containers,
+    scalectl_switch_container,
 )
 
 logger = logging.getLogger("automation.device")
@@ -39,7 +38,7 @@ BUNDLE_THREADS = "com.burbn.barcelona"
 BUNDLE_INSTAGRAM = "com.burbn.instagram"
 
 DEFAULT_MCP_PORT = 8190
-DEFAULT_CRANE_PORT = 8180
+DEFAULT_SSH_PORT = 2222
 
 # Lock screen markers (iOS FR locale)
 _LOCK_MARKERS = ("lampe torche", "appareil photo", "afficher les notifications")
@@ -89,7 +88,7 @@ async def resolve_account_device(
 
     Returns a context dict with:
         device_id, device_label, container_uuid, username,
-        mcp_port, crane_port, mcp_url, crane_url, connection_type
+        mcp_port, ssh_port, mcp_url, connection_type
     """
     async with AsyncSessionLocal() as db:
         compte = await db.get(Compte, compte_id)
@@ -135,7 +134,7 @@ async def resolve_account_device(
 
         conn_type = iphone.connection_type or "usb"
         mcp_port = iphone.mcp_port or DEFAULT_MCP_PORT
-        crane_port = iphone.crane_port or DEFAULT_CRANE_PORT
+        ssh_port = iphone.ssh_port or DEFAULT_SSH_PORT
 
         return {
             "device_id": str(iphone.id),
@@ -145,9 +144,8 @@ async def resolve_account_device(
             "compte_id": str(compte.id),
             "connection_type": conn_type,
             "mcp_port": mcp_port,
-            "crane_port": crane_port,
+            "ssh_port": ssh_port,
             "mcp_url": f"http://127.0.0.1:{mcp_port}/mcp",
-            "crane_url": f"http://127.0.0.1:{crane_port}",
         }
 
 
@@ -195,43 +193,42 @@ async def switch_device_container(
     bundle: str,
     log: Callable = logger.info,
 ) -> bool:
-    """Switch to the account's container via crane-controller.
+    """Switch to the account's container via ScaleTweak (SSH → scalectl).
 
-    Verifies the UUID exists in inventory BEFORE switching — cranectl
-    returns success even for nonexistent UUIDs, which would silently
-    operate on the wrong account.
+    Verifies the UUID exists in the plist BEFORE switching to avoid
+    operating on the wrong container.
     """
     uuid = ctx["container_uuid"]
-    crane_port = ctx["crane_port"]
+    ssh_port = ctx["ssh_port"]
 
-    # Get inventory
-    containers = await list_containers(crane_port)
+    # Get container list from plist
+    containers = await scalectl_list_containers(ssh_port, bundle)
     if not containers:
         raise ContainerNotFound(
-            f"Inventaire vide sur {ctx['device_label']} — "
-            "crane-controller injoignable ?"
+            f"Aucun container sur {ctx['device_label']} — "
+            "scalectl injoignable ou plist vide"
         )
 
     # Verify container exists
-    refs = set()
-    for c in containers:
-        ref = c.get("uuid") or c.get("id") or ("name:" + (c.get("name") or ""))
-        refs.add(ref)
-
-    if uuid not in refs:
+    known_uuids = {c["uuid"] for c in containers}
+    if uuid not in known_uuids:
         raise ContainerNotFound(
             f"Container {uuid} introuvable sur {ctx['device_label']} "
-            f"({len(refs)} containers connus)"
+            f"({len(known_uuids)} containers connus)"
         )
 
-    log(f"   [crane] bascule {ctx.get('username', ctx['device_id'])} → {uuid} ({bundle})")
+    # Check if already active
+    active = next((c for c in containers if c.get("active")), None)
+    if active and active["uuid"] == uuid:
+        log(f"   [scalectl] container {uuid[:8]} déjà actif, skip switch")
+        return True
 
-    ok = await switch_container(crane_port, uuid, bundle)
+    log(f"   [scalectl] bascule {ctx.get('username', ctx['device_id'])} → {uuid[:8]} ({bundle})")
+
+    ok = await scalectl_switch_container(ssh_port, uuid, bundle)
     if not ok:
         raise RuntimeError(f"Bascule container KO pour {uuid}")
 
-    # Wait for app restart
-    await asyncio.sleep(2)
     return True
 
 
@@ -312,9 +309,9 @@ class DeviceSession:
         # Kill app before releasing lock
         if self.ctx and self.kill_on_exit:
             try:
-                await kill_app(self.ctx["crane_port"], self.bundle)
+                await scalectl_kill_app(self.ctx["ssh_port"], self.bundle)
             except Exception as e:
-                self.log(f"   [crane] kill KO: {str(e)[:80]}")
+                self.log(f"   [scalectl] kill KO: {str(e)[:80]}")
 
         # Release lock
         if self._lock_acquired and self._lock:
@@ -357,16 +354,12 @@ class DeviceSession:
         return self.ctx["mcp_port"] if self.ctx else DEFAULT_MCP_PORT
 
     @property
-    def crane_port(self) -> int:
-        return self.ctx["crane_port"] if self.ctx else DEFAULT_CRANE_PORT
+    def ssh_port(self) -> int:
+        return self.ctx["ssh_port"] if self.ctx else DEFAULT_SSH_PORT
 
     @property
     def mcp_url(self) -> str:
         return self.ctx["mcp_url"] if self.ctx else f"http://127.0.0.1:{DEFAULT_MCP_PORT}/mcp"
-
-    @property
-    def crane_url(self) -> str:
-        return self.ctx["crane_url"] if self.ctx else f"http://127.0.0.1:{DEFAULT_CRANE_PORT}"
 
     @property
     def device_id(self) -> str:
