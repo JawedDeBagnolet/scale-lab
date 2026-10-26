@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.schemas.iphone import (
     IPhoneCreate, IPhoneOut, IPhoneUpdate, ProvisionRequest,
-    TelemetryUpdate, USBMonitorStatus, USBScanResult,
+    TelemetryUpdate, TunnelProvisionRequest, TunnelProbeResult,
+    USBMonitorStatus, USBScanResult,
 )
 from app.services import iphones as service
 from app.services.usb import scan_usb_devices, provision_device, usb_monitor, _PYMOBILE_AVAILABLE
@@ -108,12 +109,93 @@ async def agent_status(iphone_id: UUID, db: AsyncSession = Depends(get_db)):
     iphone = await service.get_iphone(db, iphone_id)
     if not iphone:
         raise HTTPException(404, "iphone not found")
-    udid = (iphone.telemetry or {}).get("udid")
-    if not udid:
-        return {"reachable": False, "reason": "no UDID — re-provision via USB"}
 
-    from app.services.dispatch import check_agent_status
-    status = await check_agent_status(udid)
+    conn_type = iphone.connection_type or "usb"
+
+    if conn_type == "tunnel":
+        if not iphone.mcp_port:
+            return {"reachable": False, "reason": "tunnel mode but no mcp_port configured"}
+        from app.services.dispatch import check_agent_status
+        status = await check_agent_status(
+            "",
+            connection_type="tunnel",
+            mcp_port=iphone.mcp_port,
+            crane_port=iphone.crane_port,
+        )
+    else:
+        udid = (iphone.telemetry or {}).get("udid")
+        if not udid:
+            return {"reachable": False, "reason": "no UDID — re-provision via USB"}
+        from app.services.dispatch import check_agent_status
+        status = await check_agent_status(udid, connection_type="usb")
+
     if status is None:
         return {"reachable": False, "reason": "agent not reachable"}
     return {"reachable": True, "agent": status}
+
+
+# --- Tunnel provisioning ------------------------------------------------------
+
+@router.post("/tunnel/provision", response_model=IPhoneOut, status_code=201)
+async def tunnel_provision(
+    data: TunnelProvisionRequest, db: AsyncSession = Depends(get_db)
+):
+    """Register an iPhone connected via reverse SSH tunnel."""
+    # Create the iPhone with tunnel connection_type
+    create_data = IPhoneCreate(
+        name=data.name,
+        model=data.model,
+        ios_version=data.ios_version,
+        jailbreak=data.jailbreak,
+        rack=data.rack,
+        market=data.market,
+        max_comptes=data.max_comptes,
+        connection_type="tunnel",
+        mcp_port=data.mcp_port,
+        crane_port=data.crane_port,
+    )
+    iphone = await service.create_iphone(db, create_data)
+
+    # Store UDID in telemetry
+    telemetry = iphone.telemetry or {}
+    telemetry["udid"] = data.udid
+    await service.update_iphone(db, iphone, {"telemetry": telemetry, "status": "online"})
+
+    return iphone
+
+
+@router.get("/{iphone_id}/tunnel/probe", response_model=TunnelProbeResult)
+async def tunnel_probe_endpoint(
+    iphone_id: UUID, db: AsyncSession = Depends(get_db)
+):
+    """Probe MCP + crane endpoints for a tunnel-connected iPhone."""
+    iphone = await service.get_iphone(db, iphone_id)
+    if not iphone:
+        raise HTTPException(404, "iphone not found")
+
+    if (iphone.connection_type or "usb") != "tunnel":
+        raise HTTPException(400, "iPhone is not in tunnel mode")
+
+    from app.services.dispatch import tunnel_probe
+    result = await tunnel_probe(
+        mcp_port=iphone.mcp_port or 8190,
+        crane_port=iphone.crane_port or 8180,
+    )
+    return TunnelProbeResult(**result)
+
+
+@router.get("/{iphone_id}/containers")
+async def list_device_containers(
+    iphone_id: UUID, db: AsyncSession = Depends(get_db)
+):
+    """List containers on a tunnel-connected iPhone via crane-controller."""
+    iphone = await service.get_iphone(db, iphone_id)
+    if not iphone:
+        raise HTTPException(404, "iphone not found")
+
+    if (iphone.connection_type or "usb") != "tunnel":
+        raise HTTPException(400, "Containers only available for tunnel-connected iPhones")
+
+    from app.services.dispatch import list_containers
+    containers = await list_containers(iphone.crane_port or 8180)
+    return {"containers": containers}

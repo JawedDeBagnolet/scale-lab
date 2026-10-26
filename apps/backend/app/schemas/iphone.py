@@ -25,6 +25,9 @@ class IPhoneBase(BaseModel):
     jailbreak: bool | None = False
     max_comptes: int | None = 3
     proxy_id: UUID | None = None
+    connection_type: str | None = "usb"   # "usb" | "tunnel"
+    mcp_port: int | None = None           # tunnel only (default 8190)
+    crane_port: int | None = None         # tunnel only (default 8180)
 
 
 class IPhoneCreate(IPhoneBase):
@@ -41,6 +44,9 @@ class IPhoneUpdate(BaseModel):
     jailbreak: bool | None = None
     max_comptes: int | None = None
     proxy_id: UUID | None = None
+    connection_type: str | None = None
+    mcp_port: int | None = None
+    crane_port: int | None = None
 
 
 class TelemetryUpdate(BaseModel):
@@ -56,6 +62,9 @@ class TelemetryUpdate(BaseModel):
 
 class IPhoneOut(IPhoneBase):
     id: UUID
+    connection_type: str = "usb"
+    mcp_port: int | None = None
+    crane_port: int | None = None
     telemetry: dict | None = None
     created_at: datetime
     updated_at: datetime
@@ -102,3 +111,30 @@ class USBMonitorStatus(BaseModel):
     running: bool
     connected_count: int
     pymobiledevice_available: bool
+
+
+# --- Network / Tunnel provisioning --------------------------------------------
+
+class TunnelProvisionRequest(BaseModel):
+    """Register an iPhone connected via reverse SSH tunnel."""
+    name: str
+    model: str
+    ios_version: str
+    udid: str                              # device UDID (for tracking)
+    mcp_port: int = 8190                   # MCP server port on localhost
+    crane_port: int = 8180                 # crane-controller port on localhost
+    rack: str | None = None
+    market: str | None = None
+    jailbreak: bool = True
+    max_comptes: int = 3
+
+
+class TunnelProbeResult(BaseModel):
+    """Result of probing an iPhone's MCP endpoint over tunnel."""
+    reachable: bool
+    mcp_port: int
+    crane_port: int
+    mcp_ok: bool = False
+    crane_ok: bool = False
+    containers: list[dict] | None = None   # crane inventory snapshot
+    error: str | None = None

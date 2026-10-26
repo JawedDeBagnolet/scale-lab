@@ -238,12 +238,11 @@ async def _execute_iphone_action(
     values: dict,
     preset_ids: list,
 ) -> tuple[bool, str]:
-    """Execute an action on an iPhone via USB.
+    """Execute an action on an iPhone via USB or network tunnel.
 
-    The actual automation (tap sequences, app control) requires an agent
-    running on the jailbroken iPhone. For now this sends a command payload
-    to the device and logs it. The agent protocol will be implemented
-    when the on-device agent is ready.
+    Checks iPhone.connection_type to decide the dispatch path:
+      - "usb":    requires USB cable, uses pymobiledevice3 forwarder
+      - "tunnel": uses reverse SSH tunnel, MCP + crane-controller on localhost
     """
     from app.services.usb import usb_monitor
 
@@ -262,33 +261,68 @@ async def _execute_iphone_action(
         if not iphone:
             return False, "iPhone not found in database"
 
-        udid = (iphone.telemetry or {}).get("udid")
-        if not udid:
-            return False, "iPhone has no UDID — re-provision via USB"
+        conn_type = iphone.connection_type or "usb"
+        udid = (iphone.telemetry or {}).get("udid", "")
 
-        # Check USB connection
-        if usb_monitor.is_running and udid not in usb_monitor._known_serials:
-            return False, f"iPhone '{iphone.name}' not connected via USB"
+        if conn_type == "tunnel":
+            # --- Tunnel mode: MCP + crane on localhost ---
+            if not iphone.mcp_port:
+                return False, f"iPhone '{iphone.name}' is tunnel-mode but has no mcp_port configured"
 
-        # Build command payload for the on-device agent
-        command = {
-            "action": action_type,
-            "platform": platform,
-            "account_id": str(account_id),
-            "handle": compte.handle,
-            "values": values,
-            "preset_ids": preset_ids,
-        }
+            command = {
+                "action": action_type,
+                "platform": platform,
+                "account_id": str(account_id),
+                "handle": compte.handle,
+                "values": values,
+                "preset_ids": preset_ids,
+            }
 
-        logger.info(
-            "iPhone command: device=%s udid=%s action=%s account=%s",
-            iphone.name, udid, action_type, compte.handle,
-        )
+            logger.info(
+                "iPhone command (tunnel): device=%s mcp=:%d action=%s account=%s",
+                iphone.name, iphone.mcp_port, action_type, compte.handle,
+            )
 
-        # Dispatch command to on-device agent via USB tunnel
-        from app.services.dispatch import dispatch_command
+            from app.services.dispatch import dispatch_command
 
-        ok, msg, result = await dispatch_command(udid, command)
+            ok, msg, result = await dispatch_command(
+                udid,
+                command,
+                connection_type="tunnel",
+                mcp_port=iphone.mcp_port,
+                crane_port=iphone.crane_port,
+            )
+
+        else:
+            # --- USB mode (legacy) ---
+            if not udid:
+                return False, "iPhone has no UDID — re-provision via USB"
+
+            if usb_monitor.is_running and udid not in usb_monitor._known_serials:
+                return False, f"iPhone '{iphone.name}' not connected via USB"
+
+            command = {
+                "action": action_type,
+                "platform": platform,
+                "account_id": str(account_id),
+                "handle": compte.handle,
+                "values": values,
+                "preset_ids": preset_ids,
+            }
+
+            logger.info(
+                "iPhone command (USB): device=%s udid=%s action=%s account=%s",
+                iphone.name, udid, action_type, compte.handle,
+            )
+
+            from app.services.dispatch import dispatch_command
+
+            ok, msg, result = await dispatch_command(
+                udid,
+                command,
+                connection_type="usb",
+            )
+
         if ok:
             logger.info("iPhone OK: device=%s — %s", iphone.name, msg)
         else:
