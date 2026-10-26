@@ -238,96 +238,31 @@ async def _execute_iphone_action(
     values: dict,
     preset_ids: list,
 ) -> tuple[bool, str]:
-    """Execute an action on an iPhone via USB or network tunnel.
+    """Execute an action on an iPhone via the automation stack.
 
-    Checks iPhone.connection_type to decide the dispatch path:
-      - "usb":    requires USB cable, uses pymobiledevice3 forwarder
-      - "tunnel": uses reverse SSH tunnel, MCP + crane-controller on localhost
+    Uses DeviceSession + IGDriver/THDriver for real UI automation.
+    DeviceSession handles connection mode (USB/tunnel) transparently
+    by resolving the account → device → MCP/crane ports from PostgreSQL.
     """
-    from app.services.usb import usb_monitor
+    if platform == "ig_iph":
+        from app.services.automation.ig_runner import run_ig_task
+        return await run_ig_task(
+            account_id,
+            action_type,
+            values=values,
+            preset_ids=preset_ids,
+        )
 
-    # Find the iPhone for this account
-    async with AsyncSessionLocal() as db:
-        compte = await db.get(Compte, account_id)
-        if not compte or not compte.device_id:
-            return False, "No device assigned to account"
+    elif platform == "th_iph":
+        from app.services.automation.th_runner import run_th_task
+        return await run_th_task(
+            account_id,
+            action_type,
+            values=values,
+            preset_ids=preset_ids,
+        )
 
-        try:
-            device_uid = UUID(compte.device_id)
-            iphone = await db.get(IPhone, device_uid)
-        except (ValueError, AttributeError):
-            return False, "Invalid device_id"
-
-        if not iphone:
-            return False, "iPhone not found in database"
-
-        conn_type = iphone.connection_type or "usb"
-        udid = (iphone.telemetry or {}).get("udid", "")
-
-        if conn_type == "tunnel":
-            # --- Tunnel mode: MCP + crane on localhost ---
-            if not iphone.mcp_port:
-                return False, f"iPhone '{iphone.name}' is tunnel-mode but has no mcp_port configured"
-
-            command = {
-                "action": action_type,
-                "platform": platform,
-                "account_id": str(account_id),
-                "handle": compte.handle,
-                "values": values,
-                "preset_ids": preset_ids,
-            }
-
-            logger.info(
-                "iPhone command (tunnel): device=%s mcp=:%d action=%s account=%s",
-                iphone.name, iphone.mcp_port, action_type, compte.handle,
-            )
-
-            from app.services.dispatch import dispatch_command
-
-            ok, msg, result = await dispatch_command(
-                udid,
-                command,
-                connection_type="tunnel",
-                mcp_port=iphone.mcp_port,
-                crane_port=iphone.crane_port,
-            )
-
-        else:
-            # --- USB mode (legacy) ---
-            if not udid:
-                return False, "iPhone has no UDID — re-provision via USB"
-
-            if usb_monitor.is_running and udid not in usb_monitor._known_serials:
-                return False, f"iPhone '{iphone.name}' not connected via USB"
-
-            command = {
-                "action": action_type,
-                "platform": platform,
-                "account_id": str(account_id),
-                "handle": compte.handle,
-                "values": values,
-                "preset_ids": preset_ids,
-            }
-
-            logger.info(
-                "iPhone command (USB): device=%s udid=%s action=%s account=%s",
-                iphone.name, udid, action_type, compte.handle,
-            )
-
-            from app.services.dispatch import dispatch_command
-
-            ok, msg, result = await dispatch_command(
-                udid,
-                command,
-                connection_type="usb",
-            )
-
-        if ok:
-            logger.info("iPhone OK: device=%s — %s", iphone.name, msg)
-        else:
-            logger.warning("iPhone FAIL: device=%s — %s", iphone.name, msg)
-        return ok, f"iphone: {msg}"
+    return False, f"Plateforme iPhone inconnue : {platform}"
 
 
 # ---------------------------------------------------------------------------
