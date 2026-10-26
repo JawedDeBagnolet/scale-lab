@@ -258,10 +258,6 @@ a:hover { color: #b9d0ff; }
 </sc-for>
 <div onClick="{{ newMFolder }}" style="display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;margin-top:6px;border-radius:9px;font-size:12.5px;color:#8a91a8;cursor:pointer;border:1px dashed rgba(255,255,255,.12)" style-hover="color:#f2f3fa;border-color:rgba(255,255,255,.25)"><i class="ph ph-folder-plus" style="font-size:15px"></i>Nouveau dossier</div>
 </div>
-<div style="padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:12px">
-<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Quotas d’import · ce mois</div>
-<sc-for list="{{ quotas }}" as="q" hint-placeholder-count="2"><div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:#c5c9d8">{{ q.label }}</span><span style="color:#f2f3fa;font-weight:600;font-variant-numeric:tabular-nums">{{ q.txt }}</span></div><div style="height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden"><div style="{{ q.bar }}"></div></div><div style="font-size:11px;color:#6b7289">{{ q.left }}</div></div></sc-for>
-</div>
 </div>
 <div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px;min-width:0">
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:600;color:#f2f3fa">{{ mdTitle }}</div><div style="font-size:12px;color:#8a91a8;margin-top:3px">{{ mdSub }}</div></div>
@@ -576,7 +572,7 @@ class Component extends DCLogic {
     rules: { unlock: 12, noSaleH: 24, module: true, tg: true }, rulesEd: null, ignored: {}, crEd: null,
     fanSeg: 'all', fanQ: '', inactD: 14, fanLimit: 40, fanSel: null, noteDraft: null, fanSort: ['spent', -1],
     folder: 'all', scSort: ['rev', -1], moveMenu: null, renaming: null, renameDraft: '', scEd: null, picker: null,
-    mFolder: 'all', syncing: false, editDesc: null, descDraft: '', imp: null, quota: { scripts: { used: 8, max: 20 }, media: { used: 340, max: 500 } },
+    mFolder: 'all', syncing: false, editDesc: null, descDraft: '', imp: null,
     txPer: '30', txFrom: '', txTo: '', txTypes: [], txMin: '', txMax: '', txCh: 'all', txQ: '', txGran: 'day', txLimit: 50,
     toast: null, showTop: false, navCollapsed: false };
 
@@ -1243,25 +1239,24 @@ class Component extends DCLogic {
     out.syncIconStyle = { fontSize: 14, animation: s.syncing ? 'crmspin 1s linear infinite' : 'none' };
     out.syncVault = () => { if (s.syncing) return; this.setState({ syncing: true }); clearTimeout(this._sy); this._sy = setTimeout(() => { let vf = D.mFolders.find(f => f.cr === crS && f.name === 'Vault OnlyFans'); if (!vf) { vf = { id: 'm' + crS + 'vault', cr: crS, name: 'Vault OnlyFans' }; D.mFolders.push(vf); } const n = 3 + Math.floor(Math.random() * 4); for (let i = 0; i < n; i++) { const vid = Math.random() < .5; D.media.push({ id: 'md' + Date.now().toString(36) + 'v' + i, cr: crS, folder: vf.id, type: vid ? 'video' : 'photo', dur: vid ? 20 + Math.floor(Math.random() * 120) : 0, desc: (vid ? 'Vidéo' : 'Photo') + ' vault ' + (i + 1), vault: true, added: N - 1 }); } D.lastSync = Date.now(); this.setState({ syncing: false }); this.bump(); this.toastMsg(n + ' nouveaux médias synchronisés depuis le vault'); }, 1600); };
     out.openImpMedia = () => this.setState({ imp: { kind: 'media', src: D.creators.find(x => x.id !== crS).id, sel: [] } });
-    const Q = s.quota; out.quotas = [['scripts', 'Scripts'], ['media', 'Médias']].map(k => { const q = Q[k[0]]; const r = q.used / q.max; return { label: k[1], txt: q.used + ' / ' + q.max, left: (q.max - q.used) + ' imports restants', bar: { height: '100%', width: Math.min(100, r * 100) + '%', borderRadius: 99, background: r > .85 ? '#f4728c' : 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' } }; });
   }
 
   vImp(out, ctx) {
     const { s, D, crS } = ctx; const E = s.imp; out.impOpen = !!E; out.closeImp = () => this.setState({ imp: null });
     if (!E) { out.im = { srcs: [], items: [] }; out.confirmImp = () => {}; return; }
-    const dest = ctx.cr(crS); const isSc = E.kind === 'scripts'; const q = s.quota[isSc ? 'scripts' : 'media']; const left = q.max - q.used;
+    const dest = ctx.cr(crS); const isSc = E.kind === 'scripts';
     const items = isSc ? D.scripts.filter(x => x.cr === E.src && x.acc === ctx.cr(E.src).ofAcc).map(x => { const f = D.folders.find(y => y.id === x.folder); return { id: x.id, name: x.name, icon: 'ph ph-scroll', meta: (f ? f.name : 'Sans dossier') + ' · ' + x.versions.length + ' version' + (x.versions.length > 1 ? 's' : '') + ' · ' + x.paid.length + ' étapes payantes', cost: 1 }; }) : D.mFolders.filter(f => f.cr === E.src).map(f => { const n = D.media.filter(m => m.folder === f.id).length; return { id: f.id, name: f.name, icon: 'ph ph-folder', meta: n + ' médias', cost: n }; });
-    const cost = items.filter(it => E.sel.indexOf(it.id) >= 0).reduce((x, it) => x + it.cost, 0); const over = cost > left; const ok = cost > 0 && !over;
+    const cost = items.filter(it => E.sel.indexOf(it.id) >= 0).reduce((x, it) => x + it.cost, 0); const ok = cost > 0;
     out.im = { title: isSc ? 'Importer des scripts' : 'Importer un dossier de médias', sub: 'Vers ' + dest.profile.displayName + ' · les éléments sont copiés, l’original ne bouge pas',
       srcs: D.creators.filter(c => c.id !== crS).map(c => ({ name: c.profile.displayName, dot: this.dotSt(c.p.color), style: this.chip(E.src === c.id, c.p.color), go: () => this.setState({ imp: { ...E, src: c.id, sel: [] } }) })),
       items: items.map(it => { const on = E.sel.indexOf(it.id) >= 0; return { name: it.name, meta: it.meta, icon: it.icon, box: { width: 18, height: 18, flex: 'none', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', color: on ? '#ffffff' : 'transparent', background: on ? '#7c6cf6' : 'transparent', border: on ? 'none' : '1px solid rgba(255,255,255,.25)' }, go: () => this.setState({ imp: { ...E, sel: on ? E.sel.filter(z => z !== it.id) : E.sel.concat([it.id]) } }) }; }),
-      quota: (isSc ? 'Scripts' : 'Médias') + ' : ' + cost + ' à importer · ' + left + ' restants ce mois', quotaStyle: { flex: 1, fontSize: 12, color: over ? '#fda4af' : '#8a91a8' },
+      quota: (isSc ? 'Scripts' : 'Médias') + ' : ' + cost + ' à importer', quotaStyle: { flex: 1, fontSize: 12, color: '#8a91a8' },
       btn: isSc ? 'Importer ' + E.sel.length + ' script' + (E.sel.length > 1 ? 's' : '') : 'Importer ' + E.sel.length + ' dossier' + (E.sel.length > 1 ? 's' : ''),
       btnStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 38, padding: '0 18px', borderRadius: 10, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: ok ? 'pointer' : 'default', opacity: ok ? 1 : .4 } };
     out.confirmImp = () => { if (!ok) return; const src = ctx.cr(E.src); const st = Date.now().toString(36);
       if (isSc) { E.sel.forEach((id, i) => { const x = D.scById[id]; const sf = D.folders.find(f => f.id === x.folder); let df = D.folders.find(f => f.cr === crS && sf && f.name === sf.name); if (!df) { df = { id: 'f' + crS + st + i, cr: crS, name: sf ? sf.name : 'Importés' }; D.folders.push(df); } const y = { id: 's' + st + i, cr: crS, acc: dest.ofAcc, group: 's' + st + i, name: x.name, folder: df.id, active: false, first: false, desc: x.desc, timeout: x.timeout, strict: x.strict, versions: JSON.parse(JSON.stringify(x.versions)).map(v => ({ ...v, free: v.free.map(z => ({ ...z, media: [], postMedia: [] })) })), paid: JSON.parse(JSON.stringify(x.paid)).map(z => ({ ...z, media: [], postMedia: [] })), ul: x.ul, op: x.op, ...this.newStats() }; D.scripts.push(y); D.scById[y.id] = y; }); }
       else { E.sel.forEach((id, i) => { const sf = D.mFolders.find(f => f.id === id); const nf = { id: 'm' + crS + st + i, cr: crS, name: sf.name + ' (' + src.profile.displayName + ')' }; D.mFolders.push(nf); D.media.filter(m => m.folder === id).forEach((m, k) => D.media.push({ ...m, id: 'md' + st + i + '_' + k, cr: crS, folder: nf.id, added: ctx.N - 1 })); }); }
-      this.setState(y => ({ imp: null, quota: { ...y.quota, [isSc ? 'scripts' : 'media']: { ...q, used: q.used + cost } } })); this.bump(); this.toastMsg(isSc ? E.sel.length + ' script' + (E.sel.length > 1 ? 's' : '') + ' importé' + (E.sel.length > 1 ? 's' : '') + ', désactivés par défaut' : 'Dossier importé · ' + cost + ' médias'); };
+      this.setState({ imp: null }); this.bump(); this.toastMsg(isSc ? E.sel.length + ' script' + (E.sel.length > 1 ? 's' : '') + ' importé' + (E.sel.length > 1 ? 's' : '') + ', désactivés par défaut' : 'Dossier importé · ' + cost + ' médias'); };
   }
 }
 </script>

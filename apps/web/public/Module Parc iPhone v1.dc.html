@@ -254,7 +254,7 @@ class Component extends DCLogic {
   PL = { ig: ['Instagram', 'ph ph-instagram-logo'], th: ['Threads', 'ph ph-threads-logo'], x: ['X', 'ph ph-x-logo'] };
   PXST = { 'proxy-fr-12': 'down', 'proxy-us-03': 'slow' };
   PXL = { ok: ['En ligne', '#4ade80'], slow: ['Lent', '#f5c77e'], down: ['Hors ligne', '#f4728c'], none: ['Aucun proxy', '#f5c77e'] };
-  readInfo() { const R = a => a[Math.floor(Math.random() * a.length)]; const hx = n => Array.from({ length: n }, () => '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 34)]).join(''); return { model: R(['iPhone 12', 'iPhone 13', 'iPhone 13 mini', 'iPhone 14', 'iPhone 15', 'iPhone SE (3e génération)']), ios: R(['17.5', '17.6', '18.0', '18.1']), cap: R([64, 128, 128, 256]), serial: hx(10), jb: true }; }
+  readInfo() { return null; }
   CAP = { 'iPhone 12': 64, 'iPhone 13': 128, 'iPhone 13 mini': 128, 'iPhone 14': 128, 'iPhone 15': 128 };
   TONE = { bad: '#f4728c', warn: '#f5c77e', ok: '#4ade80', info: '#a5a0f5', muted: '#8a91a8' };
   ALK = { off: ['hors ligne', 'hors ligne'], px: ['proxy hors ligne', 'proxies hors ligne'], agent: ['agent figé', 'agents figés'], temp: ['surchauffe', 'surchauffes'], sto: ['stockage plein', 'stockages pleins'], nopx: ['sans proxy', 'sans proxy'], jb: ['jailbreak perdu', 'jailbreaks perdus'] };
@@ -416,12 +416,12 @@ class Component extends DCLogic {
     const loser = A.proxy ? devs.find(d => d.proxy === A.proxy) : null;
     const elig = devs.filter(d => d.market === A.market && d.status === 'online' && d.proxy && this.pxSt(d) !== 'down' && (!loser || d.id !== loser.id));
     const T = elig.reduce((a, d) => a + this.accsOf(d.id).length, 0); const target = A.proxy && A.rebal ? Math.min(A.max, Math.floor(T / (elig.length + 1))) : 0; const fits = a => A.plats.indexOf(a.plat) >= 0 && (!A.personas.length || A.personas.indexOf(a.persona) >= 0);
-    const ok = udOk && !dup && !!slot && !running;
+    const ok = udOk && !dup && !!slot && !running && !!A.info;
     const segs = (list, cur, key) => list.map(o => ({ label: o, style: this.segStyle(cur === o), go: () => { if (!running) au({ [key]: o, ...(key === 'market' ? { proxy: null, personas: [] } : {}) }); } }));
     const go = () => {
       if (!ok) return; const steps = ['Détection sur le hub USB (port ' + slot + ')…', 'Appairage et confiance de l’ordinateur…', 'Lecture du modèle, d’iOS, de la capacité et du jailbreak…', 'Installation de l’agent 2.4.1…', 'Premier heartbeat…']; let k = 0; au({ step: 0, steps }); clearInterval(this._ai);
       this._ai = setInterval(() => { k++; if (k < steps.length) { au({ step: k }); return; } clearInterval(this._ai);
-        const now = Date.now(); const name = A.name.trim() || namePh; const inf = A.info || this.readInfo(); const cap = inf.cap;
+        const now = Date.now(); const name = A.name.trim() || namePh; const inf = A.info; if (!inf) { au({ step: null }); this.toastMsg('Appareil non détecté · connectez l'iPhone et relancez la détection USB'); return; } const cap = inf.cap;
         const SD = window.SCALE_DATA; let id = 'iphone-' + nn;
         if (SD && SD._live) { const res = SD.apiPost('/iphones', { name: name, model: inf.model, ios_version: inf.ios, rack: slot, market: A.market, status: 'online', jailbreak: inf.jb !== false, max_comptes: A.max, proxy_id: A.proxy || null }); if (res && res.id) id = res.id; }
         const nd = { id, name, udid: u, serial: inf.serial, jb: inf.jb !== false, model: inf.model, ios: inf.ios, slot, rack: slot.charAt(0), market: A.market, proxy: A.proxy, status: 'online', agent: 'running', ver: '2.4.1', rules: { max: A.max, personas: A.personas.slice(), plats: A.plats.slice() }, hbAt: now, bootAt: now - 60000, temp: 31.8, stoCap: cap, sto: Math.round(cap * .18), batt: 100, offAt: null };
@@ -436,7 +436,7 @@ class Component extends DCLogic {
     };
     return { addOpen: true, ad: {
       udid: A.udid, setUdid: e => au({ udid: e.target.value, info: null }), parse: A.detecting ? 'Recherche d’un iPhone branché…' : !u ? 'Format attendu : 00008101-001A2B3C4D5E6F7A ou 40 caractères hexadécimaux' : dup ? 'Cet iPhone est déjà dans le parc' : udOk ? 'UDID valide' : 'Format invalide', parseStyle: { fontSize: 11.5, marginTop: 6, color: !u || A.detecting ? '#5b6175' : udOk && !dup ? '#86efac' : '#fda4af' },
-      detect: () => { if (A.detecting || running) return; au({ detecting: true }); clearTimeout(this._dt); this._dt = setTimeout(() => { const hx = n => Array.from({ length: n }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join(''); au({ detecting: false, udid: '00008' + hx(3) + '-' + hx(16), info: this.readInfo() }); }, 1100); },
+      detect: () => { if (A.detecting || running) return; au({ detecting: true }); clearTimeout(this._dt); this._dt = setTimeout(() => { const SD = window.SCALE_DATA; if (SD && SD._live) { try { const r = SD.apiPost('/iphones/usb/scan', {}); if (r && r.devices && r.devices.length > 0) { const d = r.devices[0]; au({ detecting: false, udid: d.udid, info: { model: d.model_name || d.model, ios: d.ios_version, cap: Math.round(d.storage_total_gb || 128), serial: d.serial_number || '', jb: d.jailbreak !== false } }); } else { au({ detecting: false }); this.toastMsg(r && r.usbmuxd_available === false ? 'Service usbmuxd non disponible sur le serveur' : 'Aucun appareil détecté sur le hub USB'); } } catch(e) { au({ detecting: false }); this.toastMsg('Erreur de connexion · impossible de scanner le hub USB'); } } else { au({ detecting: false }); this.toastMsg('Aucun appareil détecté · connectez-vous à l'API pour la détection USB'); } }, 500); },
       detectLabel: A.detecting ? 'Détection…' : 'Détecter via USB', detectIcon: A.detecting ? 'ph ph-circle-notch' : 'ph ph-usb', detectBtn: { display: 'flex', alignItems: 'center', gap: 7, height: 40, padding: '0 14px', flex: 'none', borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: '#c5c9d8', border: '1px solid rgba(255,255,255,.12)' },
       name: A.name, setName: e => au({ name: e.target.value }), namePh,
       markets: segs(['FR', 'US', 'ES'], A.market, 'market'),
