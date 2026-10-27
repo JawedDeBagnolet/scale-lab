@@ -17,6 +17,7 @@ export interface CompteInput {
   env: Record<string, unknown> | null
   sessions: number
   follows: number
+  creds_encrypted?: Record<string, string> | null
 }
 
 export interface Compte extends CompteInput {

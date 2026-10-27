@@ -23,7 +23,7 @@ class CompteBase(BaseModel):
 
 
 class CompteCreate(CompteBase):
-    pass
+    creds_encrypted: dict | None = None  # {password, two_fa, token}
 
 
 class CompteUpdate(BaseModel):
@@ -37,6 +37,7 @@ class CompteUpdate(BaseModel):
     env: dict | None = None
     sessions: int | None = Field(default=None, ge=0)
     follows: int | None = Field(default=None, ge=0)
+    creds_encrypted: dict | None = None  # {password, two_fa, token}
 
 
 class CompteOut(BaseModel):
