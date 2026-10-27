@@ -23,6 +23,7 @@ Task types:
 
 import asyncio
 import logging
+import os
 import random
 from typing import Any, Callable
 from uuid import UUID
@@ -35,6 +36,7 @@ from app.services.automation.device_session import (
     LoginRequired,
 )
 from app.services.automation.ig_driver import IGDriver
+from app.services.dispatch import _ssh_exec
 
 logger = logging.getLogger("automation.ig_runner")
 
@@ -296,6 +298,105 @@ async def _profile_visit(
     return True, msg
 
 
+# ── Media transfer ───────────────────────────────────────────────────────────
+
+async def _transfer_media_to_iphone(
+    ssh_port: int,
+    local_path: str,
+    *,
+    log: Callable = logger.info,
+) -> str | None:
+    """Transfer a media file from VPS to iPhone via SCP over SSH tunnel.
+
+    The file is placed in /var/mobile/Media/DCIM/100APPLE/ on the iPhone
+    so it appears in the Camera Roll.
+
+    Returns the remote path on success, None on failure.
+    """
+    filename = os.path.basename(local_path)
+    remote_dir = "/var/mobile/Media/DCIM/100APPLE"
+    remote_path = f"{remote_dir}/{filename}"
+
+    # Ensure target dir exists
+    await _ssh_exec(ssh_port, f"mkdir -p {remote_dir}", timeout=5)
+
+    # SCP the file
+    log(f"   [media] transfert {filename} → iPhone")
+    proc = await asyncio.create_subprocess_exec(
+        "scp",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "ConnectTimeout=10",
+        "-o", "LogLevel=ERROR",
+        "-P", str(ssh_port),
+        local_path,
+        f"root@127.0.0.1:{remote_path}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+
+    if proc.returncode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        log(f"   [media] SCP échoué: {err}")
+        return None
+
+    # Trigger iOS media library scan so the file appears in gallery
+    await _ssh_exec(
+        ssh_port,
+        'su mobile -c "open com.apple.mobileslideshow" 2>/dev/null; '
+        "sleep 1; "
+        'killall -9 MobileSlideShow 2>/dev/null; '
+        "true",
+        timeout=10,
+    )
+
+    log(f"   [media] ✓ {filename} transféré")
+    return remote_path
+
+
+async def _download_r2_media(
+    media_url: str,
+    *,
+    log: Callable = logger.info,
+) -> str | None:
+    """Download a media file from R2/URL to a local temp path.
+
+    Returns local file path or None on failure.
+    """
+    import httpx
+    import tempfile
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(media_url)
+            resp.raise_for_status()
+
+            # Determine extension from content-type
+            ct = resp.headers.get("content-type", "")
+            ext = ".jpg"
+            if "video" in ct or "mp4" in ct:
+                ext = ".mp4"
+            elif "png" in ct:
+                ext = ".png"
+            elif "webp" in ct:
+                ext = ".webp"
+            elif "heic" in ct:
+                ext = ".heic"
+
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=ext, prefix="scale_media_", delete=False
+            )
+            tmp.write(resp.content)
+            tmp.close()
+            log(f"   [media] téléchargé {len(resp.content)} bytes → {tmp.name}")
+            return tmp.name
+
+    except Exception as e:
+        log(f"   [media] erreur téléchargement R2: {e}")
+        return None
+
+
 # ── Post publication ─────────────────────────────────────────────────────────
 
 @_handler("ig_post")
@@ -307,19 +408,196 @@ async def _publish_post(
 ) -> tuple[bool, str]:
     """Publish an IG post (photo, video, or carousel).
 
-    This is a stub — the full publish flow requires:
-    - Media import from R2 to device gallery
-    - Gallery selection
-    - Caption typing
-    - Hashtag insertion
-    - Location tagging
-    - Sharing
-
-    These need the VPS ig_iphone/interact/publish.py module.
+    values:
+        media_urls: list[str]   — R2 URLs of media to post
+        media_paths: list[str]  — local VPS paths (alternative to URLs)
+        caption: str            — post caption (with hashtags)
+        location: str | None    — location name to tag
+        post_type: str          — "photo", "video", "carousel" (auto-detected if 1 media)
     """
-    log("   [ig_post] Publication — flow complet en attente des modules publish")
-    # TODO: implement when ig_iphone/interact/publish.py is ported
-    return False, "ig_post pas encore implémenté — modules publish nécessaires"
+    media_urls = values.get("media_urls", [])
+    media_paths = values.get("media_paths", [])
+    caption = values.get("caption", "")
+    location = values.get("location")
+
+    if not media_urls and not media_paths:
+        return False, "ig_post: media_urls ou media_paths requis"
+
+    # Step 1: Download from R2 if needed, then transfer to iPhone
+    local_files = list(media_paths)
+    for url in media_urls:
+        local = await _download_r2_media(url, log=log)
+        if not local:
+            return False, f"ig_post: échec téléchargement {url}"
+        local_files.append(local)
+
+    # Step 2: Transfer each file to iPhone
+    for f in local_files:
+        remote = await _transfer_media_to_iphone(sess.ssh_port, f, log=log)
+        if not remote:
+            return False, f"ig_post: échec transfert {os.path.basename(f)} vers iPhone"
+
+    # Cleanup R2 downloads (not user-provided paths)
+    for url in media_urls:
+        for f in local_files[len(media_paths):]:
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+
+    # Step 3: Wait for media to appear in gallery
+    await asyncio.sleep(2.0)
+
+    # Step 4: UI automation — create new post
+    log("   [ig_post] ouverture flow de publication...")
+
+    # Tap the "+" create button (center of bottom bar or "Créer" / "Create")
+    await drv.refresh_elements()
+    tapped = (
+        await drv.tap_element("Nouveau post", contains=True, refresh=False)
+        or await drv.tap_element("Créer", contains=True, refresh=False)
+        or await drv.tap_element("Create", contains=True, refresh=False)
+    )
+
+    if not tapped:
+        # Fallback: tap the center bottom "+" button
+        await drv.ht._ensure_screen()
+        await drv.ht.tap(drv.ht.screen_w / 2, drv.ht.screen_h * 0.96)
+
+    await asyncio.sleep(1.5)
+
+    # If a menu appears (Post, Reel, Story), tap "Post" / "Publication"
+    await drv.refresh_elements()
+    all_text = " ".join((e.get("text") or "").lower() for e in drv.elements)
+    if "publication" in all_text or "post" in all_text:
+        tapped = (
+            await drv.tap_element("Publication", refresh=False)
+            or await drv.tap_element("Post", refresh=False)
+        )
+        if tapped:
+            await asyncio.sleep(1.5)
+
+    # Step 5: Gallery selection — tap first (most recent) photo/video
+    log("   [ig_post] sélection du média dans la galerie...")
+    await drv.refresh_elements()
+
+    # For carousel (multiple media), we'd need to tap "Sélection multiple"
+    is_carousel = len(local_files) > 1
+    if is_carousel:
+        multi = (
+            await drv.tap_element("Sélection multiple", contains=True, refresh=False)
+            or await drv.tap_element("Select Multiple", contains=True, refresh=False)
+        )
+        await asyncio.sleep(0.5)
+
+    # Tap the first gallery thumbnail (usually top-left of grid)
+    # The gallery grid starts below the preview area
+    await drv.ht._ensure_screen()
+    grid_y = drv.ht.screen_h * 0.62  # gallery grid area
+    cell_w = drv.ht.screen_w / 4
+    for i in range(min(len(local_files), 10)):
+        col = i % 4
+        row = i // 4
+        x = cell_w * col + cell_w / 2
+        y = grid_y + row * cell_w + cell_w / 2
+        await drv.ht.tap(x, y)
+        await asyncio.sleep(0.4)
+
+    # Step 6: Tap "Suivant" / "Next"
+    log("   [ig_post] validation sélection...")
+    await asyncio.sleep(0.5)
+    tapped = (
+        await drv.tap_element("Suivant")
+        or await drv.tap_element("Next")
+    )
+    if not tapped:
+        # Tap top-right area (where Next usually is)
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+    await asyncio.sleep(1.5)
+
+    # Step 7: Skip filter/edit screen → "Suivant" again
+    tapped = (
+        await drv.tap_element("Suivant")
+        or await drv.tap_element("Next")
+    )
+    if not tapped:
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+    await asyncio.sleep(1.5)
+
+    # Step 8: Type caption
+    if caption:
+        log(f"   [ig_post] saisie légende ({len(caption)} chars)...")
+        await drv.refresh_elements()
+        caption_field = (
+            drv.find_element("légende", contains=True)
+            or drv.find_element("caption", contains=True)
+            or drv.find_element("Écrire une légende", contains=True)
+            or drv.find_element("Write a caption", contains=True)
+        )
+
+        if caption_field:
+            x = caption_field.get("x", 0)
+            y = caption_field.get("y", 0)
+            await drv.ht.tap(x, y)
+        else:
+            # Tap at typical caption position
+            await drv.ht.tap_pos(0.5, 0.25)
+
+        await asyncio.sleep(0.5)
+        await drv.ht.type_text(caption, interval=random.randint(20, 50))
+        await asyncio.sleep(0.5)
+
+    # Step 9: Add location if specified
+    if location:
+        log(f"   [ig_post] ajout lieu: {location}")
+        tapped = (
+            await drv.tap_element("Ajouter un lieu", contains=True)
+            or await drv.tap_element("Add Location", contains=True)
+            or await drv.tap_element("lieu", contains=True)
+        )
+        if tapped:
+            await asyncio.sleep(1.0)
+            await drv.ht.type_text(location, interval=random.randint(40, 80))
+            await asyncio.sleep(1.5)
+            # Tap first search result
+            await drv.refresh_elements()
+            location_result = drv.find_element(location, contains=True)
+            if location_result:
+                x = location_result.get("x", 0)
+                y = location_result.get("y", 0)
+                await drv.ht.tap(x, y)
+                await asyncio.sleep(0.5)
+
+    # Step 10: Share!
+    log("   [ig_post] publication...")
+    tapped = (
+        await drv.tap_element("Partager")
+        or await drv.tap_element("Share")
+        or await drv.tap_element("Publier")
+    )
+    if not tapped:
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+
+    # Wait for upload
+    await asyncio.sleep(5.0)
+
+    # Verify we're back on feed
+    screen = await drv.detect_current_screen()
+    if screen in ("feed", "own_profile"):
+        msg = f"Post publié ({len(local_files)} média(s))"
+        if caption:
+            msg += f", légende {len(caption)} chars"
+        log(f"   [ig_post] ✓ {msg}")
+        return True, msg
+
+    # Might still be uploading
+    log("   [ig_post] upload en cours, attente...")
+    await asyncio.sleep(10.0)
+    screen = await drv.detect_current_screen()
+    if screen in ("feed", "own_profile", "explore"):
+        return True, f"Post publié ({len(local_files)} média(s))"
+
+    return False, f"ig_post: état post-publication incertain (écran: {screen})"
 
 
 @_handler("ig_story_post")
@@ -329,9 +607,104 @@ async def _publish_story(
     values: dict,
     log: Callable,
 ) -> tuple[bool, str]:
-    """Publish an IG story."""
-    log("   [ig_story_post] Story — flow complet en attente des modules publish")
-    return False, "ig_story_post pas encore implémenté"
+    """Publish an IG story.
+
+    values:
+        media_url: str     — R2 URL of media (photo or video, max 15s)
+        media_path: str    — local VPS path (alternative)
+        stickers: list     — sticker config (optional, future)
+        text: str          — text overlay (optional)
+    """
+    media_url = values.get("media_url")
+    media_path = values.get("media_path")
+
+    if not media_url and not media_path:
+        return False, "ig_story_post: media_url ou media_path requis"
+
+    # Download + transfer
+    if media_url and not media_path:
+        media_path = await _download_r2_media(media_url, log=log)
+        if not media_path:
+            return False, f"ig_story_post: échec téléchargement {media_url}"
+
+    remote = await _transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
+    if not remote:
+        return False, "ig_story_post: échec transfert média vers iPhone"
+
+    # Cleanup temp download
+    if media_url:
+        try:
+            os.unlink(media_path)
+        except OSError:
+            pass
+
+    await asyncio.sleep(2.0)
+
+    # UI automation: open story creation
+    log("   [ig_story] ouverture création de story...")
+
+    # Navigate to feed first
+    await drv.go_home()
+    await asyncio.sleep(1.0)
+
+    # Tap own story avatar or "Votre story" / camera icon
+    tapped = (
+        await drv.tap_element("Votre story", contains=True)
+        or await drv.tap_element("Your story", contains=True)
+    )
+
+    if not tapped:
+        # Tap camera icon (top-left) or "+" on story tray
+        await drv.ht._ensure_screen()
+        await drv.ht.tap(40, 100)  # camera icon position
+
+    await asyncio.sleep(1.5)
+
+    # In story camera: tap gallery button (bottom-left) to select from gallery
+    log("   [ig_story] sélection depuis galerie...")
+    await drv.ht._ensure_screen()
+    await drv.ht.tap(40, drv.ht.screen_h * 0.92)  # gallery thumbnail (bottom-left)
+    await asyncio.sleep(1.5)
+
+    # Select the most recent media (first item)
+    await drv.ht.tap(drv.ht.screen_w * 0.13, drv.ht.screen_h * 0.22)
+    await asyncio.sleep(1.0)
+
+    # Add text overlay if specified
+    text = values.get("text")
+    if text:
+        log(f"   [ig_story] ajout texte: {text[:30]}...")
+        # Tap "Aa" text button
+        tapped = await drv.tap_element("Aa", contains=True)
+        if tapped:
+            await asyncio.sleep(0.5)
+            await drv.ht.type_text(text, interval=random.randint(30, 60))
+            await asyncio.sleep(0.3)
+            # Tap "OK" / "Terminé"
+            await drv.tap_element("Terminé") or await drv.tap_element("Done")
+            await asyncio.sleep(0.5)
+
+    # Share story: tap "Votre story" button or "Partager"
+    log("   [ig_story] publication story...")
+    tapped = (
+        await drv.tap_element("Votre story", contains=True)
+        or await drv.tap_element("Your Story", contains=True)
+        or await drv.tap_element("Partager", contains=True)
+        or await drv.tap_element("Share", contains=True)
+    )
+
+    if not tapped:
+        # Bottom send button
+        await drv.ht.tap(drv.ht.screen_w * 0.5, drv.ht.screen_h * 0.92)
+
+    await asyncio.sleep(4.0)
+
+    screen = await drv.detect_current_screen()
+    if screen in ("feed", "own_profile", "story"):
+        log("   [ig_story] ✓ Story publiée")
+        return True, "Story publiée"
+
+    return False, f"ig_story_post: état post-publication incertain (écran: {screen})"
 
 
 @_handler("ig_reel_post")
@@ -341,9 +714,153 @@ async def _publish_reel(
     values: dict,
     log: Callable,
 ) -> tuple[bool, str]:
-    """Publish an IG reel."""
-    log("   [ig_reel_post] Reel — flow complet en attente des modules publish")
-    return False, "ig_reel_post pas encore implémenté"
+    """Publish an IG reel.
+
+    values:
+        media_url: str     — R2 URL of video (up to 90s)
+        media_path: str    — local VPS path
+        caption: str       — reel caption with hashtags
+        audio: str | None  — audio name to use (optional)
+        cover_time: float  — timestamp for cover photo (optional)
+    """
+    media_url = values.get("media_url")
+    media_path = values.get("media_path")
+    caption = values.get("caption", "")
+
+    if not media_url and not media_path:
+        return False, "ig_reel_post: media_url ou media_path requis"
+
+    # Download + transfer
+    if media_url and not media_path:
+        media_path = await _download_r2_media(media_url, log=log)
+        if not media_path:
+            return False, f"ig_reel_post: échec téléchargement {media_url}"
+
+    remote = await _transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
+    if not remote:
+        return False, "ig_reel_post: échec transfert vidéo vers iPhone"
+
+    if media_url:
+        try:
+            os.unlink(media_path)
+        except OSError:
+            pass
+
+    await asyncio.sleep(2.0)
+
+    # UI automation: create reel
+    log("   [ig_reel] ouverture création de reel...")
+
+    # Tap "+" create button
+    await drv.refresh_elements()
+    tapped = (
+        await drv.tap_element("Nouveau post", contains=True, refresh=False)
+        or await drv.tap_element("Créer", contains=True, refresh=False)
+        or await drv.tap_element("Create", contains=True, refresh=False)
+    )
+
+    if not tapped:
+        await drv.ht._ensure_screen()
+        await drv.ht.tap(drv.ht.screen_w / 2, drv.ht.screen_h * 0.96)
+
+    await asyncio.sleep(1.5)
+
+    # Select "Reel" from the creation menu
+    await drv.refresh_elements()
+    tapped = (
+        await drv.tap_element("Reel", refresh=False)
+        or await drv.tap_element("Reels", refresh=False)
+    )
+    if tapped:
+        await asyncio.sleep(1.5)
+
+    # Select video from gallery (bottom-left gallery picker)
+    log("   [ig_reel] sélection vidéo depuis galerie...")
+    await drv.ht._ensure_screen()
+    await drv.ht.tap(40, drv.ht.screen_h * 0.92)
+    await asyncio.sleep(1.5)
+
+    # Tap first (most recent) video
+    await drv.ht.tap(drv.ht.screen_w * 0.13, drv.ht.screen_h * 0.22)
+    await asyncio.sleep(1.5)
+
+    # Tap "Ajouter" / "Add" to confirm video selection
+    tapped = (
+        await drv.tap_element("Ajouter")
+        or await drv.tap_element("Add")
+        or await drv.tap_element("Suivant")
+        or await drv.tap_element("Next")
+    )
+    if not tapped:
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+    await asyncio.sleep(1.5)
+
+    # Skip edit screen → "Suivant"
+    tapped = (
+        await drv.tap_element("Suivant")
+        or await drv.tap_element("Next")
+        or await drv.tap_element("Aperçu")
+        or await drv.tap_element("Preview")
+    )
+    if not tapped:
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+    await asyncio.sleep(1.5)
+
+    # Another "Suivant" may appear (audio, effects page)
+    tapped = (
+        await drv.tap_element("Suivant")
+        or await drv.tap_element("Next")
+    )
+    if tapped:
+        await asyncio.sleep(1.5)
+
+    # Type caption
+    if caption:
+        log(f"   [ig_reel] saisie légende ({len(caption)} chars)...")
+        await drv.refresh_elements()
+        caption_field = (
+            drv.find_element("légende", contains=True)
+            or drv.find_element("caption", contains=True)
+            or drv.find_element("Écrire une légende", contains=True)
+        )
+
+        if caption_field:
+            x = caption_field.get("x", 0)
+            y = caption_field.get("y", 0)
+            await drv.ht.tap(x, y)
+        else:
+            await drv.ht.tap_pos(0.5, 0.25)
+
+        await asyncio.sleep(0.5)
+        await drv.ht.type_text(caption, interval=random.randint(20, 50))
+        await asyncio.sleep(0.5)
+
+    # Share
+    log("   [ig_reel] publication reel...")
+    tapped = (
+        await drv.tap_element("Partager")
+        or await drv.tap_element("Share")
+        or await drv.tap_element("Publier")
+    )
+    if not tapped:
+        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
+
+    # Wait for upload (reels take longer)
+    await asyncio.sleep(8.0)
+
+    screen = await drv.detect_current_screen()
+    if screen in ("feed", "own_profile", "reels"):
+        log("   [ig_reel] ✓ Reel publié")
+        return True, f"Reel publié" + (f", légende {len(caption)} chars" if caption else "")
+
+    # Might still be processing
+    log("   [ig_reel] traitement en cours, attente...")
+    await asyncio.sleep(15.0)
+    screen = await drv.detect_current_screen()
+    if screen in ("feed", "own_profile", "reels", "explore"):
+        return True, "Reel publié"
+
+    return False, f"ig_reel_post: état post-publication incertain (écran: {screen})"
 
 
 # ── Warmup ───────────────────────────────────────────────────────────────────
@@ -464,15 +981,51 @@ async def _media_import(
     values: dict,
     log: Callable,
 ) -> tuple[bool, str]:
-    """Import media from R2 to device gallery.
+    """Import media from R2/URL to device gallery.
 
-    This needs the VPS media_transfer module for:
-    - Download from R2
-    - EXIF metadata spoofing
-    - Gallery injection via scalectl
+    values:
+        media_urls: list[str]   — R2 URLs of media to import
+        media_paths: list[str]  — local VPS paths (alternative)
     """
-    log("   [ig_media_import] Import — en attente du module media_transfer")
-    return False, "ig_media_import pas encore implémenté"
+    media_urls = values.get("media_urls", [])
+    media_paths = values.get("media_paths", [])
+
+    if not media_urls and not media_paths:
+        return False, "ig_media_import: media_urls ou media_paths requis"
+
+    imported = 0
+    errors = 0
+
+    # Download from R2 first
+    local_files = list(media_paths)
+    for url in media_urls:
+        local = await _download_r2_media(url, log=log)
+        if local:
+            local_files.append(local)
+        else:
+            errors += 1
+
+    # Transfer each to iPhone
+    for f in local_files:
+        remote = await _transfer_media_to_iphone(sess.ssh_port, f, log=log)
+        if remote:
+            imported += 1
+        else:
+            errors += 1
+
+    # Cleanup temp downloads
+    for f in local_files[len(media_paths):]:
+        try:
+            os.unlink(f)
+        except OSError:
+            pass
+
+    if imported == 0:
+        return False, f"ig_media_import: aucun média importé ({errors} erreurs)"
+
+    return True, f"{imported} média(s) importé(s) sur l'iPhone" + (
+        f" ({errors} erreurs)" if errors else ""
+    )
 
 
 # ── Story sticker ────────────────────────────────────────────────────────────

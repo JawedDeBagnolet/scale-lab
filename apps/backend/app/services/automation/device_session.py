@@ -15,7 +15,9 @@ Usage:
 """
 
 import asyncio
+import json
 import logging
+import random
 from datetime import UTC, datetime
 from typing import Any, Callable
 from uuid import UUID
@@ -28,6 +30,7 @@ from app.services.dispatch import (
     scalectl_kill_app,
     scalectl_list_containers,
     scalectl_switch_container,
+    scalectl_inject_session,
 )
 
 logger = logging.getLogger("automation.device")
@@ -328,6 +331,10 @@ class DeviceSession:
 
         Call this right after constructing the driver, before any action.
         Raises LoginRequired if login fails.
+
+        Args:
+            drv: IGDriver (or ThDriver for Threads)
+            nav: unused legacy arg, kept for compat
         """
         if self.bundle == BUNDLE_THREADS:
             return await self._ensure_login_threads(drv, nav)
@@ -336,16 +343,328 @@ class DeviceSession:
         return False
 
     async def _ensure_login_threads(self, drv, nav):
-        """Check and login Threads if needed."""
-        # Will be implemented when th_iphone interaction modules are ported
-        self.log("   [login] Threads login check — stub")
-        return False
+        """Check and login Threads if needed.
+
+        Threads uses the same Instagram credentials — the flow is similar
+        but the app UI is different. For now, we check screen state and
+        attempt login if needed.
+        """
+        self.log("   [login] Threads login check")
+        screen = await drv.detect_current_screen()
+
+        if screen == "login":
+            self.log("   [login] Threads: écran de login détecté, tentative...")
+            return await self._do_ig_login(drv)
+
+        self.log(f"   [login] Threads: pas sur l'écran de login (screen={screen})")
+        return True
 
     async def _ensure_login_instagram(self, drv, nav):
-        """Check and login Instagram if needed."""
-        # Will be implemented when ig_iphone auth modules are ported
-        self.log("   [login] Instagram login check — stub")
-        return False
+        """Check and login Instagram if needed.
+
+        Flow:
+          1. Detect current screen via MCP accessibility tree
+          2. If on login screen → perform full login (username, password, 2FA)
+          3. If on feed/profile/etc → already logged in
+          4. If on checkpoint/error → raise LoginRequired
+        """
+        self.log("   [login] Instagram login check")
+
+        # Wait for the app to settle after container switch + relaunch
+        await asyncio.sleep(2.0)
+
+        screen = await drv.detect_current_screen()
+        self.log(f"   [login] écran détecté: {screen}")
+
+        if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
+            self.log("   [login] IG: déjà connecté")
+            return True
+
+        if screen == "login":
+            self.log("   [login] IG: écran de login, tentative de connexion...")
+            return await self._do_ig_login(drv)
+
+        # Unknown screen — might be a loading state or an in-between screen
+        # Wait a bit and retry
+        self.log("   [login] IG: écran inconnu, attente 3s...")
+        await asyncio.sleep(3.0)
+        screen = await drv.detect_current_screen()
+        self.log(f"   [login] écran après attente: {screen}")
+
+        if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
+            return True
+
+        if screen == "login":
+            return await self._do_ig_login(drv)
+
+        # Still unknown — might be checkpoint, age verification, etc.
+        # Check for known blockers
+        await drv.refresh_elements()
+        all_text = " ".join((e.get("text") or "").lower() for e in drv.elements)
+
+        if any(kw in all_text for kw in ("vérifier", "confirmer", "checkpoint", "suspect")):
+            raise LoginRequired(
+                f"Checkpoint détecté sur {self.username} — intervention manuelle requise"
+            )
+
+        if any(kw in all_text for kw in ("suspendu", "suspended", "disabled", "désactivé")):
+            raise LoginRequired(
+                f"Compte {self.username} suspendu ou désactivé"
+            )
+
+        # Last resort: try tapping "Se connecter" / "Log In" if visible
+        if screen == "other":
+            tapped = await drv.tap_element("Se connecter", refresh=False)
+            if not tapped:
+                tapped = await drv.tap_element("Log In", refresh=False)
+            if tapped:
+                await asyncio.sleep(2.0)
+                screen = await drv.detect_current_screen()
+                if screen == "login":
+                    return await self._do_ig_login(drv)
+                elif screen in ("feed", "reels", "own_profile"):
+                    return True
+
+        raise LoginRequired(
+            f"État inconnu pour {self.username} — écran: {screen}"
+        )
+
+    async def _do_ig_login(self, drv) -> bool:
+        """Perform the actual Instagram login flow via MCP UI automation.
+
+        Steps:
+          1. Load credentials from DB (encrypted)
+          2. Find and tap username field, type username
+          3. Find and tap password field, type password
+          4. Tap "Se connecter" / "Log In"
+          5. Handle 2FA if prompted
+          6. Verify we land on feed
+        """
+        # Load credentials
+        creds = await self._load_credentials()
+        if not creds:
+            raise LoginRequired(
+                f"Pas de credentials pour {self.username} — "
+                "ajoute-les via PATCH /comptes/{id} avec creds_encrypted"
+            )
+
+        username = creds.get("username") or self.username
+        password = creds.get("password")
+        two_fa_code = creds.get("two_fa")
+
+        if not password:
+            raise LoginRequired(f"Mot de passe manquant pour {self.username}")
+
+        self.log(f"   [login] connexion {username}...")
+
+        # Step 1: tap username field
+        await drv.refresh_elements()
+
+        # Look for username input field
+        username_field = (
+            drv.find_element("nom d'utilisateur", contains=True)
+            or drv.find_element("username", contains=True)
+            or drv.find_element("téléphone", contains=True)
+            or drv.find_element("e-mail", contains=True)
+            or drv.find_element("numéro de téléphone", contains=True)
+        )
+
+        if username_field:
+            x = username_field.get("x", 0)
+            y = username_field.get("y", 0)
+            w = username_field.get("width", 0)
+            h = username_field.get("height", 0)
+            await drv.ht.tap(x, y, bounds=(w, h) if w > 0 else None)
+            await asyncio.sleep(0.5)
+        else:
+            # Fallback: tap at typical username field position (top area)
+            self.log("   [login] champ username non trouvé, tap position par défaut")
+            await drv.ht.tap_pos(0.5, 0.35)
+            await asyncio.sleep(0.5)
+
+        # Clear any existing text and type username
+        await drv.ht.type_text(username, interval=random.randint(40, 90))
+        await asyncio.sleep(0.3)
+
+        # Step 2: tap password field
+        await drv.refresh_elements()
+        password_field = (
+            drv.find_element("mot de passe", contains=True)
+            or drv.find_element("password", contains=True)
+        )
+
+        if password_field:
+            x = password_field.get("x", 0)
+            y = password_field.get("y", 0)
+            w = password_field.get("width", 0)
+            h = password_field.get("height", 0)
+            await drv.ht.tap(x, y, bounds=(w, h) if w > 0 else None)
+            await asyncio.sleep(0.5)
+        else:
+            self.log("   [login] champ password non trouvé, tap position par défaut")
+            await drv.ht.tap_pos(0.5, 0.45)
+            await asyncio.sleep(0.5)
+
+        await drv.ht.type_text(password, interval=random.randint(30, 70))
+        await asyncio.sleep(0.3)
+
+        # Step 3: tap login button
+        tapped = (
+            await drv.tap_element("Se connecter")
+            or await drv.tap_element("Connexion")
+            or await drv.tap_element("Log In")
+            or await drv.tap_element("Log in")
+        )
+
+        if not tapped:
+            self.log("   [login] bouton login non trouvé, tap position par défaut")
+            await drv.ht.tap_pos(0.5, 0.60)
+
+        # Wait for response (network round-trip)
+        self.log("   [login] attente réponse serveur...")
+        await asyncio.sleep(4.0)
+
+        # Step 4: check what happened
+        screen = await drv.detect_current_screen()
+        self.log(f"   [login] écran post-login: {screen}")
+
+        if screen in ("feed", "reels", "own_profile", "explore"):
+            self.log(f"   [login] ✓ connecté en tant que {username}")
+            return True
+
+        # Check for 2FA
+        await drv.refresh_elements()
+        all_text = " ".join((e.get("text") or "").lower() for e in drv.elements)
+
+        if any(kw in all_text for kw in (
+            "code de sécurité", "security code", "authentification",
+            "code de vérification", "verification code", "deux facteurs",
+            "two-factor", "confirmer votre identité", "confirm your identity",
+            "code à 6 chiffres", "6-digit code",
+        )):
+            self.log("   [login] 2FA détecté")
+            if two_fa_code:
+                return await self._handle_2fa(drv, two_fa_code)
+            else:
+                raise LoginRequired(
+                    f"2FA requis pour {self.username} mais pas de code 2FA configuré"
+                )
+
+        # Check for checkpoint / suspicious activity
+        if any(kw in all_text for kw in ("vérifier", "suspect", "checkpoint", "confirm")):
+            raise LoginRequired(
+                f"Checkpoint IG après login de {self.username} — intervention manuelle requise"
+            )
+
+        # Check for wrong password
+        if any(kw in all_text for kw in (
+            "mot de passe incorrect", "incorrect password",
+            "réessayer", "try again", "identifiants",
+        )):
+            raise LoginRequired(
+                f"Mot de passe incorrect pour {self.username}"
+            )
+
+        # Still on login? Try one more wait
+        if screen == "login":
+            await asyncio.sleep(3.0)
+            screen = await drv.detect_current_screen()
+            if screen in ("feed", "reels", "own_profile"):
+                self.log(f"   [login] ✓ connecté (retardé) en tant que {username}")
+                return True
+
+        raise LoginRequired(
+            f"Login échoué pour {self.username} — écran: {screen}"
+        )
+
+    async def _handle_2fa(self, drv, two_fa_code: str) -> bool:
+        """Handle 2FA code entry.
+
+        Supports static backup codes and TOTP (if pyotp available).
+        """
+        self.log("   [login] saisie du code 2FA...")
+
+        # If it looks like a TOTP secret (base32, 16+ chars), generate code
+        code = two_fa_code
+        if len(two_fa_code) >= 16 and two_fa_code.isalnum():
+            try:
+                import pyotp
+                totp = pyotp.TOTP(two_fa_code)
+                code = totp.now()
+                self.log(f"   [login] TOTP généré: {code[:2]}****")
+            except ImportError:
+                self.log("   [login] pyotp non installé, utilisation du code brut")
+            except Exception:
+                self.log("   [login] erreur TOTP, utilisation du code brut")
+
+        # Find the code input field
+        await drv.refresh_elements()
+        code_field = (
+            drv.find_element("code", contains=True)
+            or drv.find_element("sécurité", contains=True)
+            or drv.find_element("security", contains=True)
+        )
+
+        if code_field:
+            x = code_field.get("x", 0)
+            y = code_field.get("y", 0)
+            await drv.ht.tap(x, y)
+            await asyncio.sleep(0.3)
+        else:
+            # Fallback: tap center of screen
+            await drv.ht.tap_pos(0.5, 0.4)
+            await asyncio.sleep(0.3)
+
+        await drv.ht.type_text(code, interval=random.randint(50, 100))
+        await asyncio.sleep(0.5)
+
+        # Submit
+        tapped = (
+            await drv.tap_element("Confirmer")
+            or await drv.tap_element("Confirm")
+            or await drv.tap_element("Suivant")
+            or await drv.tap_element("Next")
+            or await drv.tap_element("Envoyer")
+            or await drv.tap_element("Submit")
+        )
+
+        if not tapped:
+            await drv.ht.tap_pos(0.5, 0.6)
+
+        # Wait and check
+        await asyncio.sleep(4.0)
+        screen = await drv.detect_current_screen()
+
+        if screen in ("feed", "reels", "own_profile", "explore"):
+            self.log(f"   [login] ✓ 2FA validé, connecté")
+            return True
+
+        raise LoginRequired(
+            f"2FA échoué pour {self.username} — écran post-2FA: {screen}"
+        )
+
+    async def _load_credentials(self) -> dict | None:
+        """Load account credentials from the database.
+
+        Returns dict with username, password, two_fa or None.
+        """
+        async with AsyncSessionLocal() as db:
+            compte = await db.get(Compte, self.compte_id)
+            if not compte:
+                return None
+
+            creds = compte.creds_encrypted
+            if not creds:
+                return None
+
+            # For now, creds are stored as plain JSONB
+            # TODO: implement Fernet decryption when encryption is enabled
+            return {
+                "username": compte.handle,
+                "password": creds.get("password"),
+                "two_fa": creds.get("two_fa"),
+                "token": creds.get("token"),
+            }
 
     # ── Convenience properties ─────────────────────────────────────────
 
