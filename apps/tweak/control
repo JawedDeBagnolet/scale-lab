@@ -1,0 +1,9 @@
+Package: com.scale.tweak
+Name: ScaleTweak
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Multi-container management for Instagram with fingerprint isolation
+Maintainer: dev
+Author: dev
+Section: Tweaks
+Depends: mobilesubstrate
