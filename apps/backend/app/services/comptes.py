@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Sequence
 from uuid import UUID
@@ -126,6 +127,30 @@ async def get_compte(db: AsyncSession, compte_id: UUID) -> Compte | None:
     return await db.get(Compte, compte_id)
 
 
+async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
+    """Fire the automatic login task after compte creation.
+
+    Runs as a background asyncio task — errors are logged, not raised.
+    """
+    try:
+        if plateforme == "ig":
+            from app.services.automation.ig_runner import run_ig_task
+            ok, msg = await run_ig_task(compte_id, "ig_login")
+        elif plateforme == "th":
+            from app.services.automation.th_runner import run_th_task
+            ok, msg = await run_th_task(compte_id, "th_login")
+        else:
+            logger.info("auto_login: pas de script login pour plateforme '%s'", plateforme)
+            return
+
+        if ok:
+            logger.info("auto_login: compte %s connecté — %s", compte_id, msg)
+        else:
+            logger.error("auto_login: échec compte %s — %s", compte_id, msg)
+    except Exception:
+        logger.exception("auto_login: erreur inattendue pour compte %s", compte_id)
+
+
 async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     await _check_persona(db, data.persona_id)
     dump = data.model_dump()
@@ -138,6 +163,20 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
         await _ensure_container_on_assign(db, compte, compte.device_id)
     db.add(compte)
     await db.commit()
+
+    # ── Auto-login dispatch ──────────────────────────────────────────────
+    # If a device was assigned and a container successfully created,
+    # fire the platform login script as a background task.
+    if compte.device_id and (compte.env or {}).get("container_uuid"):
+        asyncio.create_task(
+            _dispatch_auto_login(compte.id, compte.plateforme),
+            name=f"auto_login_{compte.handle}",
+        )
+        logger.info(
+            "create_compte: login auto lancé pour %s sur device %s (container %s)",
+            compte.handle, compte.device_id, compte.env["container_uuid"][:8],
+        )
+
     return compte
 
 

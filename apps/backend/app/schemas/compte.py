@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 Plateforme = Literal["ig", "th", "x"]
-Workflow = Literal["Onboarding", "Warmup", "Actif"]
+Workflow = Literal["Onboarding", "Warmup", "Actif", "Pause"]
 Status = Literal["ok", "session", "error", "suspendu"]
 
 

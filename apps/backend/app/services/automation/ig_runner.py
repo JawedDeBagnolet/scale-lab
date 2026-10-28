@@ -1033,3 +1033,21 @@ async def _media_import(
 @_handler("ig_story_sticker")
 async def _story_sticker(drv, sess, values, log):
     return False, "ig_story_sticker pas encore implémenté"
+
+
+# ── Frontend action-name aliases ─────────────────────────────────────────────
+# The Scenarios frontend stores short identifiers (igi_feed, igi_prof, …)
+# that differ from the canonical handler names. Register aliases so the
+# engine can dispatch them without a mapping layer.
+
+_ALIASES: dict[str, str] = {
+    "igi_feed":  "ig_feed",
+    "igi_prof":  "ig_profile",
+    "igi_reels": "ig_reels",
+    "igi_conf":  "ig_config",
+    "igi_camp":  "ig_post",      # campaign enrollment → posting handler
+}
+
+for _alias, _canonical in _ALIASES.items():
+    if _canonical in TASK_HANDLERS:
+        TASK_HANDLERS[_alias] = TASK_HANDLERS[_canonical]
