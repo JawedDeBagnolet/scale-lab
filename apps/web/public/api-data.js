@@ -14,88 +14,103 @@
   // ─── Login Gate ─────────────────────────────────────────────────────
   // Si pas de token, afficher un overlay de login et bloquer le chargement.
   if (!TOKEN) {
+    // ── Login : fonction globale, appelable depuis onclick inline ──
+    window.__slDoLogin = function () {
+      var pwInput = document.getElementById('sl-login-pw');
+      var btn = document.getElementById('sl-login-btn');
+      var errDiv = document.getElementById('sl-login-err');
+      if (!pwInput || !btn || !errDiv) { console.warn('[SL] login elements introuvables'); return; }
+
+      var pw = pwInput.value.trim();
+      if (!pw) { errDiv.textContent = 'Entrez le mot de passe'; errDiv.style.display = 'block'; return; }
+      btn.disabled = true;
+      btn.textContent = '...';
+      errDiv.style.display = 'none';
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', AUTH_BASE + '/auth/login', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try {
+            var resp = JSON.parse(xhr.responseText);
+            if (resp.token) {
+              try { localStorage.setItem('sl_api_token', resp.token); } catch (e) {}
+              location.reload();
+              return;
+            }
+          } catch (e) {}
+        }
+        errDiv.textContent = 'Mot de passe incorrect';
+        errDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Connexion';
+      };
+      xhr.onerror = function () {
+        errDiv.textContent = 'Erreur réseau';
+        errDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Connexion';
+      };
+      xhr.send(JSON.stringify({ password: pw }));
+    };
+
     (function showLoginOverlay() {
-      var overlay = document.createElement('div');
-      overlay.id = 'sl-login-overlay';
-      overlay.innerHTML = [
-        '<div style="position:fixed;inset:0;z-index:99999;background:#0b0d16;display:flex;align-items:center;justify-content:center;font-family:Manrope,system-ui,sans-serif">',
+      // HTML avec onclick inline — impossible a perdre par React/support.js
+      var html = [
+        '<div id="sl-login-overlay" style="position:fixed;inset:0;z-index:99999;background:#0b0d16;display:flex;align-items:center;justify-content:center;font-family:Manrope,system-ui,sans-serif">',
         '  <div style="background:#12141f;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:40px;width:360px;text-align:center">',
         '    <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">Scale Lab</div>',
         '    <div style="font-size:13px;color:#8b8fa3;margin-bottom:28px">Connexion requise</div>',
         '    <input id="sl-login-pw" type="password" placeholder="Mot de passe" autocomplete="current-password"',
+        '      onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.__slDoLogin()}"',
         '      style="width:100%;box-sizing:border-box;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px" />',
-        '    <button id="sl-login-btn" style="width:100%;padding:12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Connexion</button>',
+        '    <button id="sl-login-btn" type="button"',
+        '      onclick="window.__slDoLogin()"',
+        '      style="width:100%;padding:12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Connexion</button>',
         '    <div id="sl-login-err" style="color:#ef4444;font-size:12px;margin-top:12px;display:none"></div>',
         '  </div>',
         '</div>'
       ].join('\n');
 
-      function ready(fn) {
-        if (document.body) fn();
-        else document.addEventListener('DOMContentLoaded', fn);
+      function injectOverlay() {
+        // Supprime l'ancien s'il existe
+        var old = document.getElementById('sl-login-overlay');
+        if (old) old.parentNode.removeChild(old);
+        // Insere a la fin de body
+        document.body.insertAdjacentHTML('beforeend', html);
+        var pw = document.getElementById('sl-login-pw');
+        if (pw) pw.focus();
       }
 
-      // Delegation d'evenements sur document — survit meme si support.js
-      // re-cree le DOM (innerHTML, React render, etc.)
-      function doLogin() {
-        var pwInput = document.getElementById('sl-login-pw');
-        var btn = document.getElementById('sl-login-btn');
-        var errDiv = document.getElementById('sl-login-err');
-        if (!pwInput || !btn || !errDiv) return;
-
-        var pw = pwInput.value.trim();
-        if (!pw) { errDiv.textContent = 'Entrez le mot de passe'; errDiv.style.display = 'block'; return; }
-        btn.disabled = true;
-        btn.textContent = '...';
-        errDiv.style.display = 'none';
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', AUTH_BASE + '/auth/login', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function () {
-          if (xhr.status === 200) {
-            try {
-              var resp = JSON.parse(xhr.responseText);
-              if (resp.token) {
-                try { localStorage.setItem('sl_api_token', resp.token); } catch (e) {}
-                location.reload();
-                return;
-              }
-            } catch (e) {}
-          }
-          errDiv.textContent = 'Mot de passe incorrect';
-          errDiv.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = 'Connexion';
-        };
-        xhr.onerror = function () {
-          errDiv.textContent = 'Erreur réseau';
-          errDiv.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = 'Connexion';
-        };
-        xhr.send(JSON.stringify({ password: pw }));
+      // Injecter des que body existe
+      if (document.body) {
+        injectOverlay();
+      } else {
+        document.addEventListener('DOMContentLoaded', injectOverlay);
       }
 
-      // Event delegation : le listener est sur document, jamais perdu
-      document.addEventListener('click', function (e) {
-        if (e.target && (e.target.id === 'sl-login-btn' || e.target.closest && e.target.closest('#sl-login-btn'))) {
-          e.preventDefault();
-          doLogin();
+      // Polling : si React/support.js supprime l'overlay, on le reinjecte
+      setInterval(function () {
+        if (!document.getElementById('sl-login-overlay') && !localStorage.getItem('sl_api_token')) {
+          if (document.body) injectOverlay();
         }
-      }, true);  // capture phase — garantit qu'on intercepte avant tout stopPropagation
+      }, 1000);
+
+      // Delegation en backup (capture phase)
+      document.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && (t.id === 'sl-login-btn' || (t.closest && t.closest('#sl-login-btn')))) {
+          e.preventDefault();
+          window.__slDoLogin();
+        }
+      }, true);
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && e.target && e.target.id === 'sl-login-pw') {
           e.preventDefault();
-          doLogin();
+          window.__slDoLogin();
         }
       }, true);
-
-      ready(function () {
-        document.body.appendChild(overlay);
-        var pwInput = document.getElementById('sl-login-pw');
-        if (pwInput) pwInput.focus();
-      });
     })();
     // Stop SCALE_DATA initialization — page will reload after login
     window.SCALE_DATA = { _live: false, _loaded: false, _error: 'not authenticated' };
