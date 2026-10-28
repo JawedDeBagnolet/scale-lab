@@ -35,50 +35,66 @@
         else document.addEventListener('DOMContentLoaded', fn);
       }
 
-      ready(function () {
-        document.body.appendChild(overlay);
+      // Delegation d'evenements sur document — survit meme si support.js
+      // re-cree le DOM (innerHTML, React render, etc.)
+      function doLogin() {
         var pwInput = document.getElementById('sl-login-pw');
         var btn = document.getElementById('sl-login-btn');
         var errDiv = document.getElementById('sl-login-err');
+        if (!pwInput || !btn || !errDiv) return;
 
-        function doLogin() {
-          var pw = pwInput.value.trim();
-          if (!pw) { errDiv.textContent = 'Entrez le mot de passe'; errDiv.style.display = 'block'; return; }
-          btn.disabled = true;
-          btn.textContent = '...';
-          errDiv.style.display = 'none';
+        var pw = pwInput.value.trim();
+        if (!pw) { errDiv.textContent = 'Entrez le mot de passe'; errDiv.style.display = 'block'; return; }
+        btn.disabled = true;
+        btn.textContent = '...';
+        errDiv.style.display = 'none';
 
-          var xhr = new XMLHttpRequest();
-          xhr.open('POST', AUTH_BASE + '/auth/login', true);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.onload = function () {
-            if (xhr.status === 200) {
-              try {
-                var resp = JSON.parse(xhr.responseText);
-                if (resp.token) {
-                  try { localStorage.setItem('sl_api_token', resp.token); } catch (e) {}
-                  location.reload();
-                  return;
-                }
-              } catch (e) {}
-            }
-            errDiv.textContent = 'Mot de passe incorrect';
-            errDiv.style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = 'Connexion';
-          };
-          xhr.onerror = function () {
-            errDiv.textContent = 'Erreur réseau';
-            errDiv.style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = 'Connexion';
-          };
-          xhr.send(JSON.stringify({ password: pw }));
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', AUTH_BASE + '/auth/login', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            try {
+              var resp = JSON.parse(xhr.responseText);
+              if (resp.token) {
+                try { localStorage.setItem('sl_api_token', resp.token); } catch (e) {}
+                location.reload();
+                return;
+              }
+            } catch (e) {}
+          }
+          errDiv.textContent = 'Mot de passe incorrect';
+          errDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Connexion';
+        };
+        xhr.onerror = function () {
+          errDiv.textContent = 'Erreur réseau';
+          errDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Connexion';
+        };
+        xhr.send(JSON.stringify({ password: pw }));
+      }
+
+      // Event delegation : le listener est sur document, jamais perdu
+      document.addEventListener('click', function (e) {
+        if (e.target && (e.target.id === 'sl-login-btn' || e.target.closest && e.target.closest('#sl-login-btn'))) {
+          e.preventDefault();
+          doLogin();
         }
+      }, true);  // capture phase — garantit qu'on intercepte avant tout stopPropagation
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target && e.target.id === 'sl-login-pw') {
+          e.preventDefault();
+          doLogin();
+        }
+      }, true);
 
-        btn.addEventListener('click', doLogin);
-        pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
-        pwInput.focus();
+      ready(function () {
+        document.body.appendChild(overlay);
+        var pwInput = document.getElementById('sl-login-pw');
+        if (pwInput) pwInput.focus();
       });
     })();
     // Stop SCALE_DATA initialization — page will reload after login
