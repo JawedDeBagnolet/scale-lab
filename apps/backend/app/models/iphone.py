@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,7 +23,9 @@ class IPhone(Base):
     status: Mapped[str] = mapped_column(String(20), default="offline")  # online, offline
     jailbreak: Mapped[bool] = mapped_column(Boolean, default=False)
     max_comptes: Mapped[int] = mapped_column(Integer, default=3)
-    proxy_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    proxy_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("proxies.id", ondelete="SET NULL"), nullable=True
+    )
     # --- Connection mode ----------------------------------------------------------
     # "usb"    : USB cable via pymobiledevice3 (default, legacy)
     # "tunnel" : reverse SSH tunnel exposing MCP + SSH on localhost

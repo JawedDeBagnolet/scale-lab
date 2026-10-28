@@ -8,10 +8,26 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
 from app.db import Base
+
+# Import ALL models so autogenerate detects every table
 from app.models.compte import Compte  # noqa: F401
 from app.models.marche import Marche  # noqa: F401
 from app.models.niche import Niche  # noqa: F401
 from app.models.persona import Persona  # noqa: F401
+from app.models.comportement import Preset  # noqa: F401
+from app.models.crm import Fan, Transaction, Script  # noqa: F401
+from app.models.iphone import IPhone  # noqa: F401
+from app.models.lien import Domain, TrackedLink, ClickEvent  # noqa: F401
+from app.models.log import Event, Incident, AlertRule  # noqa: F401
+from app.models.posting import Collection, Media, Template, Campagne, Publication  # noqa: F401
+from app.models.proxy import Proxy  # noqa: F401
+from app.models.scenario import Scenario, Run, PlageHoraire  # noqa: F401
+from app.models.settings import WorkspaceSettings  # noqa: F401
+from app.models.statistique import DailyStat  # noqa: F401
+from app.models.target import Target  # noqa: F401
+from app.models.telegram_pending import TelegramPending  # noqa: F401
+from app.models.telegram_pending_group import TelegramPendingGroup  # noqa: F401
+from app.models.veille import VeilleSource, Inspiration, Favorite, Snipe, Album  # noqa: F401
 
 config = context.config
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,12 +32,18 @@ class Transaction(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     oc_external_id: Mapped[str | None] = mapped_column(String(200), unique=True)  # OnlyChat tx ID
-    fan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    fan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fans.id", ondelete="CASCADE")
+    )
     creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     transaction_type: Mapped[str] = mapped_column(String(10))  # sub / ppv / tip
     amount: Mapped[int] = mapped_column(Integer)  # dollars
-    script_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    compte_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    script_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("scripts.id", ondelete="SET NULL")
+    )
+    compte_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("comptes.id", ondelete="SET NULL")
+    )
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 

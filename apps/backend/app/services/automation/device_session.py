@@ -41,7 +41,7 @@ BUNDLE_THREADS = "com.burbn.barcelona"
 BUNDLE_INSTAGRAM = "com.burbn.instagram"
 
 DEFAULT_MCP_PORT = 8190
-DEFAULT_SSH_PORT = 2222
+DEFAULT_SSH_PORT = 2223
 
 # Lock screen markers (iOS FR locale)
 _LOCK_MARKERS = ("lampe torche", "appareil photo", "afficher les notifications")
@@ -653,12 +653,16 @@ class DeviceSession:
             if not compte:
                 return None
 
-            creds = compte.creds_encrypted
+            creds_raw = compte.creds_encrypted
+            if not creds_raw:
+                return None
+
+            # Decrypt via Fernet (handles both encrypted and legacy plaintext)
+            from app.crypto import decrypt_creds
+            creds = decrypt_creds(creds_raw)
             if not creds:
                 return None
 
-            # For now, creds are stored as plain JSONB
-            # TODO: implement Fernet decryption when encryption is enabled
             return {
                 "username": compte.handle,
                 "password": creds.get("password"),

@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crypto import decrypt_creds, encrypt_creds
 from app.models.compte import Compte
 from app.models.iphone import IPhone
 from app.models.persona import Persona
@@ -127,7 +128,11 @@ async def get_compte(db: AsyncSession, compte_id: UUID) -> Compte | None:
 
 async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     await _check_persona(db, data.persona_id)
-    compte = Compte(**data.model_dump())
+    dump = data.model_dump()
+    # Encrypt credentials before storing
+    if dump.get("creds_encrypted"):
+        dump["creds_encrypted"] = encrypt_creds(dump["creds_encrypted"])
+    compte = Compte(**dump)
     # Auto-assign container if device_id provided at creation
     if compte.device_id:
         await _ensure_container_on_assign(db, compte, compte.device_id)
@@ -136,9 +141,21 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     return compte
 
 
+async def get_compte_creds(db: AsyncSession, compte_id: UUID) -> dict | None:
+    """Return decrypted credentials for a compte (internal use only)."""
+    compte = await db.get(Compte, compte_id)
+    if not compte or not compte.creds_encrypted:
+        return None
+    return decrypt_creds(compte.creds_encrypted)
+
+
 async def update_compte(db: AsyncSession, compte: Compte, data: CompteUpdate) -> Compte:
     changes = data.model_dump(exclude_unset=True)
     await _check_persona(db, changes.get("persona_id"))
+
+    # Encrypt credentials before storing
+    if "creds_encrypted" in changes and changes["creds_encrypted"]:
+        changes["creds_encrypted"] = encrypt_creds(changes["creds_encrypted"])
 
     # Detect device_id change → auto container
     new_device_id = changes.get("device_id")

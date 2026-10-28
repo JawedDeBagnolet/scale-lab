@@ -49,7 +49,7 @@ logger = logging.getLogger("dispatch")
 AGENT_PORT = 8765
 # Default MCP / SSH ports for tunnel mode (overridden per device)
 DEFAULT_MCP_PORT = 8190
-DEFAULT_SSH_PORT = 2222
+DEFAULT_SSH_PORT = 2223
 
 # Timeouts (seconds)
 COMMAND_TIMEOUT = 30

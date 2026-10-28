@@ -19,7 +19,7 @@ jobs:
             cd /root/scale-lab
             git pull origin main
             cd apps/backend
-            source .venv/bin/activate
+            source venv/bin/activate
             pip install -r requirements.txt
             alembic upgrade head
             sudo systemctl restart scalelab-api

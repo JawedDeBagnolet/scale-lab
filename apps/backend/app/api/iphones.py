@@ -179,7 +179,7 @@ async def tunnel_probe_endpoint(
     from app.services.dispatch import tunnel_probe
     result = await tunnel_probe(
         mcp_port=iphone.mcp_port or 8190,
-        ssh_port=iphone.ssh_port or 2222,
+        ssh_port=iphone.ssh_port or 2223,
     )
     return TunnelProbeResult(**result)
 
@@ -197,5 +197,5 @@ async def list_device_containers(
         raise HTTPException(400, "Containers only available for tunnel-connected iPhones")
 
     from app.services.dispatch import scalectl_list_containers
-    containers = await scalectl_list_containers(iphone.ssh_port or 2222)
+    containers = await scalectl_list_containers(iphone.ssh_port or 2223)
     return {"containers": containers}

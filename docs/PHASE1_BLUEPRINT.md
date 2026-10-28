@@ -33,6 +33,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+venv/
 *.egg
 
 # Node
@@ -117,7 +118,7 @@ jobs:
             cd /root/scale-lab
             git pull origin main
             cd apps/backend
-            source .venv/bin/activate
+            source venv/bin/activate
             pip install -r requirements.txt --break-system-packages
             sudo systemctl restart scalelab-api
 ```
@@ -676,8 +677,8 @@ async def delete_compte(compte_id: UUID, db: AsyncSession = Depends(get_db)):
 
 ```bash
 cd apps/backend
-python -m venv .venv
-source .venv/bin/activate
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 
 alembic init alembic
@@ -731,7 +732,7 @@ SQL
 ### Lancer le backend
 
 ```bash
-source .venv/bin/activate
+source venv/bin/activate
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 # Tester via le tunnel
@@ -750,7 +751,7 @@ After=postgresql.service cloudflared.service
 [Service]
 User=root
 WorkingDirectory=/root/scale-lab/apps/backend
-ExecStart=/root/scale-lab/apps/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/root/scale-lab/apps/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 EnvironmentFile=/root/scale-lab/apps/backend/.env
 

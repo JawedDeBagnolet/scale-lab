@@ -6,7 +6,7 @@ After=postgresql.service cloudflared.service
 [Service]
 User=root
 WorkingDirectory=/root/scale-lab/apps/backend
-ExecStart=/root/scale-lab/apps/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/root/scale-lab/apps/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 EnvironmentFile=/root/scale-lab/apps/backend/.env
 

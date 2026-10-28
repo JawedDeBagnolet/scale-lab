@@ -6,9 +6,85 @@
 
   // ─── Config ──────────────────────────────────────────────────────────
   var API_BASE = 'https://api.scalelab.win/api';
+  var AUTH_BASE = 'https://api.scalelab.win';
   var TOKEN = (function () {
     try { return localStorage.getItem('sl_api_token'); } catch (e) { return null; }
-  })() || '75640332d36f253e8debecbcc6dba4d0eebfd9fafaeac96812b67593d77886b7';
+  })();
+
+  // ─── Login Gate ─────────────────────────────────────────────────────
+  // Si pas de token, afficher un overlay de login et bloquer le chargement.
+  if (!TOKEN) {
+    (function showLoginOverlay() {
+      var overlay = document.createElement('div');
+      overlay.id = 'sl-login-overlay';
+      overlay.innerHTML = [
+        '<div style="position:fixed;inset:0;z-index:99999;background:#0b0d16;display:flex;align-items:center;justify-content:center;font-family:Manrope,system-ui,sans-serif">',
+        '  <div style="background:#12141f;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:40px;width:360px;text-align:center">',
+        '    <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">Scale Lab</div>',
+        '    <div style="font-size:13px;color:#8b8fa3;margin-bottom:28px">Connexion requise</div>',
+        '    <input id="sl-login-pw" type="password" placeholder="Mot de passe" autocomplete="current-password"',
+        '      style="width:100%;box-sizing:border-box;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px" />',
+        '    <button id="sl-login-btn" style="width:100%;padding:12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Connexion</button>',
+        '    <div id="sl-login-err" style="color:#ef4444;font-size:12px;margin-top:12px;display:none"></div>',
+        '  </div>',
+        '</div>'
+      ].join('\n');
+
+      function ready(fn) {
+        if (document.body) fn();
+        else document.addEventListener('DOMContentLoaded', fn);
+      }
+
+      ready(function () {
+        document.body.appendChild(overlay);
+        var pwInput = document.getElementById('sl-login-pw');
+        var btn = document.getElementById('sl-login-btn');
+        var errDiv = document.getElementById('sl-login-err');
+
+        function doLogin() {
+          var pw = pwInput.value.trim();
+          if (!pw) { errDiv.textContent = 'Entrez le mot de passe'; errDiv.style.display = 'block'; return; }
+          btn.disabled = true;
+          btn.textContent = '...';
+          errDiv.style.display = 'none';
+
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', AUTH_BASE + '/auth/login', true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.onload = function () {
+            if (xhr.status === 200) {
+              try {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.token) {
+                  try { localStorage.setItem('sl_api_token', resp.token); } catch (e) {}
+                  location.reload();
+                  return;
+                }
+              } catch (e) {}
+            }
+            errDiv.textContent = 'Mot de passe incorrect';
+            errDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Connexion';
+          };
+          xhr.onerror = function () {
+            errDiv.textContent = 'Erreur réseau';
+            errDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Connexion';
+          };
+          xhr.send(JSON.stringify({ password: pw }));
+        }
+
+        btn.addEventListener('click', doLogin);
+        pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+        pwInput.focus();
+      });
+    })();
+    // Stop SCALE_DATA initialization — page will reload after login
+    window.SCALE_DATA = { _live: false, _loaded: false, _error: 'not authenticated' };
+    return;
+  }
 
   // ─── HTTP Helpers ────────────────────────────────────────────────────
 
@@ -927,6 +1003,12 @@
     collection: function (id) { return collections.find(function (c) { return c.id === id; }) || null; },
     campaign: function (id) { return campaigns.find(function (c) { return c.id === id; }) || null; },
     pickDevice: pickDevice,
+
+    // ── Auth ──
+    logout: function () {
+      try { localStorage.removeItem('sl_api_token'); } catch (e) {}
+      location.reload();
+    },
 
     // ── API helpers (write) ──
     apiPost: apiPostSync,

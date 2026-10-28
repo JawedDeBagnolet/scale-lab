@@ -122,7 +122,7 @@ class TunnelProvisionRequest(BaseModel):
     ios_version: str
     udid: str                              # device UDID (for tracking)
     mcp_port: int = 8190                   # MCP server port on localhost
-    ssh_port: int = 2222                   # SSH port on localhost (for scalectl)
+    ssh_port: int = 2223                   # SSH port on localhost (for scalectl)
     rack: str | None = None
     market: str | None = None
     jailbreak: bool = True

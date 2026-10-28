@@ -1,6 +1,6 @@
 # Scale Lab
 
-Application multi-tenant de gestion de comptes sociaux (Instagram, Threads, X) pour l'industrie OFM (OnlyFans Management).
+Application mono-tenant de gestion de comptes sociaux (Instagram, Threads, X) pour l'industrie OFM (OnlyFans Management).
 
 ## Architecture
 
@@ -110,7 +110,7 @@ Min width:        1280px (desktop only)
 - Les identifiants de comptes (mots de passe, 2FA, tokens) sont chiffres en base
 - Auth : token unique `Authorization: Bearer <API_SECRET>` sur toutes les requetes
 - Le VPS n'expose aucun port — tout passe par le tunnel Cloudflare
-- Multi-tenant : isolation par tenant_id en base (pas de prefix KV)
+- Mono-tenant : un seul workspace par instance (pas d'isolation tenant_id)
 
 ## Credentials
 

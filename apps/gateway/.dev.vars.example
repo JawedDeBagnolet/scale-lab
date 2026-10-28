@@ -1,1 +1,2 @@
 API_SECRET=<api-token>
+LOGIN_PASSWORD=<mot-de-passe-pour-se-connecter-au-frontend>
