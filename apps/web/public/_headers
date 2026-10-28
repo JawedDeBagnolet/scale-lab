@@ -1,0 +1,5 @@
+/api-data.js
+  Cache-Control: no-cache, must-revalidate
+
+/support.js
+  Cache-Control: no-cache, must-revalidate
