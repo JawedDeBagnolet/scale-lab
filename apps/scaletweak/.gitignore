@@ -1,0 +1,6 @@
+.theos/
+packages/
+*.deb
+obj/
+Tweak.x.bak
+systemhook*.dylib

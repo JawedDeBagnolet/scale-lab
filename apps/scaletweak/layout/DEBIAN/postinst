@@ -1,0 +1,5 @@
+#!/bin/sh
+chmod 644 /var/jb/Library/PreferenceLoader/Preferences/ScaleTweak.plist 2>/dev/null
+chmod -R 755 /var/jb/Library/PreferenceBundles/ScalePrefs.bundle 2>/dev/null
+chmod 755 /var/jb/usr/local/bin/scalectl 2>/dev/null
+exit 0
