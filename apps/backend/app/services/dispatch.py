@@ -41,6 +41,15 @@ import httpx
 
 logger = logging.getLogger("dispatch")
 
+
+async def _dispatch_log(event_type, level, target, message, **kw):
+    """Emit a log event from dispatch (fire-and-forget)."""
+    try:
+        from app.services.logs import emit_event
+        await emit_event(module="infra", event_type=event_type, level=level, target=target, message=message, **kw)
+    except Exception:
+        logger.warning("dispatch: failed to emit log: %s", message)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -357,6 +366,7 @@ async def _ssh_exec(
 
     except asyncio.TimeoutError:
         return False, f"SSH timeout ({timeout}s)"
+    # Note: caller should emit log event
     except FileNotFoundError:
         return False, "ssh binary not found on VPS"
     except Exception as e:
@@ -399,6 +409,7 @@ async def scalectl_list_containers(
     if not ok:
         err = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
         logger.warning("scalectl list: cannot read plist: %s", err)
+        await _dispatch_log("device", "warning", host, f"Impossible de lire le plist ScaleTweak: {err}", code="PLIST_READ_FAILED")
         return []
 
     try:
@@ -406,6 +417,7 @@ async def scalectl_list_containers(
         config = plistlib.loads(raw_bytes)
     except Exception as e:
         logger.warning("scalectl list: plist parse error: %s", e)
+        await _dispatch_log("device", "warning", host, f"Erreur parsing plist ScaleTweak: {e}", code="PLIST_PARSE_FAILED")
         return []
 
     app_config = config.get(bundle, {})
@@ -461,12 +473,14 @@ async def scalectl_switch_container(
     )
     if not ok:
         logger.warning("scalectl switch failed: %s", output)
+        await _dispatch_log("device", "error", host, f"scalectl switch échoué: {output}", code="SCALECTL_SWITCH_FAILED")
         return False
 
     if "Not found" in str(output):
         logger.warning("scalectl switch: container %s not found", container_uuid)
         return False
 
+    await _dispatch_log("device", "info", bundle, f"Container switché: {bundle} → {container_uuid[:8]}")
     logger.info("scalectl: switched %s → %s", bundle, container_uuid)
 
     if not relaunch:
@@ -533,6 +547,7 @@ async def scalectl_create_container(
     ok, output = await _ssh_exec(ssh_port, cmd, host=host)
     if not ok:
         logger.warning("scalectl create failed: %s", output)
+        await _dispatch_log("device", "error", host, f"scalectl create échoué: {output}", code="SCALECTL_CREATE_FAILED")
         return None
 
     # Parse output: "Created: <name> -> <uuid_8chars>"
@@ -543,6 +558,7 @@ async def scalectl_create_container(
             return c["uuid"]
 
     logger.warning("scalectl create: container '%s' not found after creation", name)
+    await _dispatch_log("device", "error", host, f"Container '{name}' introuvable après création", code="CONTAINER_NOT_FOUND")
     return None
 
 
@@ -561,6 +577,7 @@ async def scalectl_delete_container(
     )
     if not ok:
         logger.warning("scalectl delete failed: %s", output)
+        await _dispatch_log("device", "error", host, f"scalectl delete échoué: {output}", code="SCALECTL_DELETE_FAILED")
         return False
     return True
 
@@ -598,6 +615,7 @@ async def scalectl_inject_session(
     )
     if not ok:
         logger.warning("scalectl inject: failed to write temp JSON")
+        await _dispatch_log("device", "error", host, "Impossible d'écrire le JSON temporaire sur l'iPhone", code="INJECT_WRITE_FAILED")
         return False
 
     # Run scalectl --inject
@@ -613,8 +631,10 @@ async def scalectl_inject_session(
 
     if not ok:
         logger.warning("scalectl inject failed: %s", output)
+        await _dispatch_log("device", "error", host, f"scalectl inject échoué: {output}", code="SCALECTL_INJECT_FAILED")
         return False
 
+    await _dispatch_log("device", "info", bundle, f"Session injectée: {bundle}/{container_uuid[:8]}")
     logger.info("scalectl: injected session into %s/%s", bundle, container_uuid[:8])
     return True
 

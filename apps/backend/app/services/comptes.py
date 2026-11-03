@@ -45,15 +45,18 @@ async def _auto_assign_container(
     bundle = _PLATEFORME_TO_BUNDLE.get(compte.plateforme)
     if not bundle:
         logger.warning("auto_assign_container: plateforme '%s' sans bundle connu", compte.plateforme)
+        await _log("comptes", "container", "error", compte.handle, f"Plateforme {compte.plateforme} sans bundle connu — impossible de créer le container")
         return None
 
     if (iphone.connection_type or "usb") != "tunnel":
         logger.info("auto_assign_container: iPhone %s en mode USB, skip auto-create", iphone.name)
+        await _log("infra", "device", "warning", iphone.name, f"{iphone.name} en mode USB — création container ignorée pour @{compte.handle}")
         return None
 
     ssh_port = iphone.ssh_port
     if not ssh_port:
         logger.warning("auto_assign_container: iPhone %s sans ssh_port", iphone.name)
+        await _log("infra", "device", "error", iphone.name, f"{iphone.name} sans port SSH configuré — impossible de créer le container pour @{compte.handle}")
         return None
 
     # Import here to avoid circular imports
@@ -73,6 +76,7 @@ async def _auto_assign_container(
 
     if not container_uuid:
         logger.error("auto_assign_container: scalectl_create_container a échoué")
+        await _log("infra", "device", "error", iphone.name, f"Création du container échouée sur {iphone.name} pour @{compte.handle}", code="CONTAINER_CREATE_FAILED")
         return None
 
     logger.info("auto_assign_container: container créé → %s", container_uuid[:8])
@@ -98,11 +102,13 @@ async def _ensure_container_on_assign(
         iphone_uuid = UUID(new_device_id)
     except (ValueError, TypeError):
         logger.warning("_ensure_container: device_id invalide: %s", new_device_id)
+        await _log("comptes", "session", "error", compte.handle, f"Device ID invalide: {new_device_id}")
         return
 
     iphone = await db.get(IPhone, iphone_uuid)
     if not iphone:
         logger.warning("_ensure_container: iPhone %s introuvable", new_device_id)
+        await _log("infra", "device", "error", str(new_device_id), f"iPhone {new_device_id} introuvable en base")
         return
 
     container_uuid = await _auto_assign_container(db, compte, iphone)
@@ -141,14 +147,19 @@ async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
             ok, msg = await run_th_task(compte_id, "th_login")
         else:
             logger.info("auto_login: pas de script login pour plateforme '%s'", plateforme)
+            await _log("comptes", "login", "warning", str(compte_id), f"Pas de script de login pour la plateforme {plateforme}")
             return
 
         if ok:
             logger.info("auto_login: compte %s connecté — %s", compte_id, msg)
+            await _log("comptes", "login", "success", str(compte_id), f"Compte connecté — {msg}")
         else:
             logger.error("auto_login: échec compte %s — %s", compte_id, msg)
+            await _log("comptes", "login", "error", str(compte_id), f"Échec connexion — {msg}", code="LOGIN_FAILED")
     except Exception:
         logger.exception("auto_login: erreur inattendue pour compte %s", compte_id)
+        import traceback
+        await _log("comptes", "login", "error", str(compte_id), f"Erreur inattendue lors du login: {traceback.format_exc()[-200:]}", code="LOGIN_EXCEPTION")
 
 
 async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
@@ -176,6 +187,7 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
             "create_compte: login auto lancé pour %s sur device %s (container %s)",
             compte.handle, compte.device_id, compte.env["container_uuid"][:8],
         )
+        await _log("comptes", "login", "info", compte.handle, f"Login auto lancé sur container {compte.env['container_uuid'][:8]}")
 
     return compte
 
