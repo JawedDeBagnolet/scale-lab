@@ -158,8 +158,8 @@ async def _probe_ui(mcp_port: int) -> list[dict] | None:
     """Quick MCP probe — returns UI elements or None if unreachable."""
     result = await mcp_call(
         mcp_port,
-        "tools/call",
-        params={"name": "get_ui_elements", "arguments": {"clickable_only": False, "max_elements": 25}},
+        "get_ui_elements",
+        params={"clickable_only": False, "max_elements": 25},
         timeout=8,
     )
     if result is None:
