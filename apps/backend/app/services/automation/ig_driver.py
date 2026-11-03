@@ -36,17 +36,11 @@ _NAV_PROFILE = "Profil"
 
 # Screen detection markers
 _SCREEN_MARKERS = {
-    # Main app screens
-    "feed":        ["Accueil", "Instagram"],
-    "reels":       ["Reels", "Reel de", "Progression de la vid"],
-    "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
-    "post_view":   ["Ajouter un commentaire"],
-    "explore":     ["Rechercher"],
-    "story":       ["Votre story", "story"],
-    # Auth screens
-    "login":       ["Connexion", "Se connecter", "Log In",
-                    "Nom de profil, e-mail ou numéro de mobile"],
-    "onboarding":  ["Rejoignez Instagram", "J'ai déjà un profil", "Démarrer"],
+    # ── Auth screens (checked FIRST to avoid false positives) ──
+    "login":       ["Se connecter", "Log In",
+                    "Nom de profil, e-mail ou numéro de mobile",
+                    "nom d'utilisateur"],
+    "onboarding":  ["Rejoignez Instagram", "J'ai déjà un profil"],
     # Post-login popups
     "save_login":  ["Enregistrer vos informations", "Save your login info",
                     "Enregistrer les informations"],
@@ -60,10 +54,16 @@ _SCREEN_MARKERS = {
     # Error screens
     "checkpoint":  ["challenge", "suspect", "confirmer votre identité",
                     "Confirm your identity", "unusual activity"],
-    "login_error": ["Incorrect", "Réessayer", "Introuvable",
+    "login_error": ["mot de passe incorrect", "Introuvable",
                     "Sorry, your password was incorrect"],
-    # Welcome (new device, not logged in)
     "welcome":     ["Choisissez comment vous inscrire", "Join Instagram"],
+    # ── Main app screens (checked AFTER auth — "Instagram" est trop générique) ──
+    "feed":        ["Accueil", "Fil principal", "Barre des stories"],
+    "reels":       ["Reels", "Reel de", "Progression de la vid"],
+    "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
+    "post_view":   ["Ajouter un commentaire"],
+    "explore":     ["Rechercher et explorer"],
+    "story":       ["Votre story"],
 }
 
 # Post markers in accessibility tree
