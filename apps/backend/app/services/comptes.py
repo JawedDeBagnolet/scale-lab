@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 from collections.abc import Sequence
 from uuid import UUID
 
@@ -25,6 +26,16 @@ _PLATEFORME_TO_BUNDLE = {
     "ig": "com.burbn.instagram",
     "th": "com.burbn.barcelona",
 }
+
+
+async def _log(module, event_type, level, target, message, **kw):
+    """Emit a log event (fire-and-forget)."""
+    try:
+        from app.services.logs import emit_event
+        await emit_event(module=module, event_type=event_type, level=level, target=target, message=message, **kw)
+    except Exception:
+        import logging
+        logging.getLogger("comptes").warning("Failed to emit log event: %s", message)
 
 
 async def _check_persona(db: AsyncSession, persona_id: UUID | None) -> None:
