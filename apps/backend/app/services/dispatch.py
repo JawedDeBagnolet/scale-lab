@@ -264,15 +264,34 @@ async def mcp_call(
     Returns the result dict on success, None on failure.
     """
     url = f"http://{host}:{mcp_port}/mcp"
-    # MCP tools use tools/call with name + arguments
-    payload = {
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "params": {"name": method, "arguments": params or {}},
-        "id": 1,
-    }
     try:
         client = _get_http_client()
+
+        # MCP handshake: initialize session if not done for this port
+        if not getattr(mcp_call, '_initialized', {}).get(mcp_port):
+            init_payload = {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "scale-lab", "version": "1.0"},
+                },
+                "id": 0,
+            }
+            await asyncio.wait_for(client.post(url, json=init_payload), timeout=10)
+            if not hasattr(mcp_call, '_initialized'):
+                mcp_call._initialized = {}
+            mcp_call._initialized[mcp_port] = True
+            logger.info("MCP initialized on port %d", mcp_port)
+
+        # Call the tool
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": method, "arguments": params or {}},
+            "id": 1,
+        }
         resp = await asyncio.wait_for(
             client.post(url, json=payload),
             timeout=timeout,
