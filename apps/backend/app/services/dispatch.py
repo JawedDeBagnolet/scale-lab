@@ -59,6 +59,7 @@ SSH_TIMEOUT = 15        # scalectl commands are fast
 
 # ScaleTweak plist path on the iPhone
 SCALE_PLIST_PATH = "/var/jb/var/mobile/Library/Preferences/com.scale.tweak.plist"
+SCALECTL_BIN = "/var/jb/usr/local/bin/scalectl"
 
 # Bundle → process name mapping (for killall)
 BUNDLE_TO_PROCESS = {
@@ -455,7 +456,7 @@ async def scalectl_switch_container(
     # Step 1: scalectl --switch
     ok, output = await _ssh_exec(
         ssh_port,
-        f"scalectl --switch {bundle} {container_uuid}",
+        f"{SCALECTL_BIN} --switch {bundle} {container_uuid}",
         host=host,
     )
     if not ok:
@@ -525,7 +526,7 @@ async def scalectl_create_container(
 
     Returns the container UUID on success, None on failure.
     """
-    cmd = f"scalectl --create {bundle} '{name}' {country}"
+    cmd = f"{SCALECTL_BIN} --create {bundle} '{name}' {country}"
     if persona:
         cmd += f" '{persona}'"
 
@@ -555,7 +556,7 @@ async def scalectl_delete_container(
     """Delete a container via scalectl."""
     ok, output = await _ssh_exec(
         ssh_port,
-        f"scalectl --delete {bundle} {container_uuid}",
+        f"{SCALECTL_BIN} --delete {bundle} {container_uuid}",
         host=host,
     )
     if not ok:
@@ -602,7 +603,7 @@ async def scalectl_inject_session(
     # Run scalectl --inject
     ok, output = await _ssh_exec(
         ssh_port,
-        f"scalectl --inject {bundle} {container_uuid} {tmp_path}",
+        f"{SCALECTL_BIN} --inject {bundle} {container_uuid} {tmp_path}",
         host=host,
         timeout=10,
     )
@@ -624,7 +625,7 @@ async def scalectl_status(
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Get scalectl global status."""
-    ok, output = await _ssh_exec(ssh_port, "scalectl --status", host=host)
+    ok, output = await _ssh_exec(ssh_port, f"{SCALECTL_BIN} --status", host=host)
     if not ok:
         return None
     # Parse text output into a dict
