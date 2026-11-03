@@ -403,6 +403,16 @@ class DeviceSession:
             tapped = await drv.tap_element("J'ai déjà un profil")
             if not tapped:
                 tapped = await drv.tap_element("Log In")
+            if not tapped:
+                # Fallback: use MCP tap_element which searches accessibility + OCR
+                from app.services.dispatch import mcp_call
+                mcp_port = self.ctx.get("mcp_port", DEFAULT_MCP_PORT)
+                r = await mcp_call(mcp_port, "tap_element", {"text": "profil", "match": "contains"}, timeout=10)
+                if not r or not (r.get("structuredContent", {}) or {}).get("tapped"):
+                    # Last resort: tap at known coordinates for "J'ai déjà un profil" button
+                    self.log("   [login] tap_element échoué, tap coordonnées directes (185, 706)")
+                    await mcp_call(mcp_port, "tap_screen", {"x": 185, "y": 706}, timeout=5)
+                    tapped = True
             await asyncio.sleep(2.0)
             screen = await drv.detect_current_screen()
             self.log(f"   [login] écran après onboarding: {screen}")
