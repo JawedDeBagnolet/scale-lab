@@ -642,10 +642,27 @@ class DeviceSession:
 
             # ── 2FA notification check ──
             if screen == "2fa_notif":
-                self.log("   [post-login] 2FA notification check")
-                await self._mcp_tap_first(mcp_port, [
-                    "Essayer d'une autre façon", "Try Another Way"
+                self.log("   [post-login] 2FA notification check — tap 'Essayer d'une autre façon'")
+                tapped = await self._mcp_tap_first(mcp_port, [
+                    "Essayer d'une autre",      # sans "façon" (cédille peut poser problème)
+                    "Essayer d’une autre",  # apostrophe typographique
+                    "Try Another Way",
                 ])
+                if not tapped:
+                    # Fallback: tap par texte exact via MCP
+                    self.log("   [post-login] tap_element échoué, essai avec texte partiel...")
+                    r = await mcp_call(mcp_port, "tap_element", {"text": "autre", "match": "contains"}, timeout=8)
+                    tapped2 = False
+                    if r and r.get("content"):
+                        try:
+                            tap_data = json.loads(r["content"][0].get("text", "{}"))
+                            tapped2 = tap_data.get("tapped", False)
+                        except Exception:
+                            pass
+                    if not tapped2:
+                        # Dernier recours: coordonnées connues du bouton
+                        self.log("   [post-login] fallback coordonnées directes")
+                        await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 706}, timeout=5)
                 await asyncio.sleep(2.0)
                 continue
 
