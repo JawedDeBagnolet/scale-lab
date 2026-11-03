@@ -387,12 +387,16 @@
   }
 
   function xProxy(p) {
+    var parts = (p.ip || '').split(':');
     return {
       id: p.id,
       pool: p.pool || '',
       type: p.type || '',
       iphone: p.iphone_id || null,
       ip: p.ip || '',
+      host: parts.length >= 2 ? parts[0] + ':' + parts[1] : p.ip || '',
+      user: parts[2] || '',
+      pass: parts[3] || '',
       country: p.country || '',
       latency: p.latency_ms || 0,
       status: p.status || 'online',

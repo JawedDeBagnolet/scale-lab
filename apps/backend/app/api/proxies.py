@@ -72,7 +72,8 @@ async def test_proxy_endpoint(proxy_id: UUID, db: AsyncSession = Depends(get_db)
     if not p:
         raise HTTPException(404, "proxy not found")
 
-    result = await test_proxy(ip=p.ip, proxy_type="socks5" if "5" in p.type else "http")
+    proto = "socks5" if p.type and "socks" in p.type.lower() else "http"
+    result = await test_proxy(ip=p.ip, proxy_type=proto)
 
     # Update proxy in DB with real test results
     update_data = {"updated_at": datetime.now(UTC)}
@@ -140,7 +141,8 @@ async def test_all_proxies(db: AsyncSession = Depends(get_db)):
     proxies = await service.list_proxies(db)
     results = []
     for p in proxies:
-        result = await test_proxy(ip=p.ip, proxy_type="socks5" if "5" in p.type else "http")
+        proto = "socks5" if p.type and "socks" in p.type.lower() else "http"
+        result = await test_proxy(ip=p.ip, proxy_type=proto)
         update_data = {"updated_at": datetime.now(UTC)}
         if result.success:
             update_data["latency_ms"] = result.latency_ms
