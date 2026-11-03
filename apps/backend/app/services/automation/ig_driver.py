@@ -50,10 +50,10 @@ _SCREEN_MARKERS = {
     # Post-login popups
     "save_login":  ["Enregistrer vos informations", "Save your login info",
                     "Enregistrer les informations"],
-    "notif_popup": ["Veuillez activer les notifications", "Turn on Notifications",
-                    "Activer les notifications"],
-    # 2FA screens
-    "2fa_notif":   ["Vérifiez vos notifications", "Check your notifications"],
+    # 2FA screens (AVANT notif_popup — "notifications" apparaît dans les deux)
+    "2fa_notif":   ["Vérifiez vos notifications", "Check your notifications",
+                    "un autre appareil", "approuver cette connexion"],
+    "notif_popup": ["Veuillez activer les notifications", "Turn on Notifications"],
     "2fa_choice":  ["Choisissez un moyen de confirmer", "Choose a way to confirm"],
     "2fa_code":    ["Accédez à votre application", "Code à 6 chiffres",
                     "Enter the 6-digit code"],
@@ -251,10 +251,12 @@ class IGDriver:
             if t:
                 texts_lower.add(t.lower())
 
-        # Check each screen type's markers
+        # Check each screen type's markers (substring match — markers
+        # can be prefixes of the actual text on screen)
         for screen, markers in _SCREEN_MARKERS.items():
             hits = sum(
-                1 for m in markers if m.lower() in texts_lower
+                1 for m in markers
+                if any(m.lower() in t for t in texts_lower)
             )
             if hits >= 1:
                 # For own_profile, require "Modifier" marker
