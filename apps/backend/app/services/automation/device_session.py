@@ -808,7 +808,12 @@ class DeviceSession:
         """Handle 2FA code entry.
 
         Supports static backup codes and TOTP (if pyotp available).
+        After 2FA validation, continues through post-login loop
+        to handle save_login / notification popups.
         """
+        from app.services.dispatch import mcp_call
+        mcp_port = self.ctx.get("mcp_port", DEFAULT_MCP_PORT)
+
         self.log("   [login] saisie du code 2FA...")
 
         # If it looks like a TOTP secret (base32, 16+ chars), generate code
@@ -824,51 +829,46 @@ class DeviceSession:
             except Exception:
                 self.log("   [login] erreur TOTP, utilisation du code brut")
 
-        # Find the code input field
-        await drv.refresh_elements()
-        code_field = (
-            drv.find_element("code", contains=True)
-            or drv.find_element("sécurité", contains=True)
-            or drv.find_element("security", contains=True)
-        )
-
-        if code_field:
-            x = code_field.get("x", 0)
-            y = code_field.get("y", 0)
-            await drv.ht.tap(x, y)
-            await asyncio.sleep(0.3)
-        else:
-            # Fallback: tap center of screen
-            await drv.ht.tap_pos(0.5, 0.4)
-            await asyncio.sleep(0.3)
-
-        await drv.ht.type_text(code, interval=random.randint(50, 100))
+        # Tap the code input field via MCP tap_element
+        tapped = await self._mcp_tap_first(mcp_port, [
+            "Code",                    # label exact du champ sur l'écran 2FA IG
+            "code de sécurité",
+            "security code",
+        ])
+        if not tapped:
+            # Fallback: tap au centre du champ (position typique)
+            self.log("   [login] champ 2FA non trouvé, tap position par défaut")
+            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 360}, timeout=5)
         await asyncio.sleep(0.5)
 
-        # Submit
-        tapped = (
-            await drv.tap_element("Confirmer")
-            or await drv.tap_element("Confirm")
-            or await drv.tap_element("Suivant")
-            or await drv.tap_element("Next")
-            or await drv.tap_element("Envoyer")
-            or await drv.tap_element("Submit")
-        )
+        # Type the code
+        await drv.ht.type_text(code, interval=random.randint(60, 120))
+        await asyncio.sleep(0.5)
 
+        # Optionally tap "Faire confiance" checkbox if present
+        await self._mcp_tap_first(mcp_port, [
+            "Faire confiance",         # checkbox "trust this device"
+        ])
+        await asyncio.sleep(0.3)
+
+        # Submit — le bouton sur IG est "Continuer", pas "Confirmer"
+        self.log("   [login] validation du code 2FA...")
+        tapped = await self._mcp_tap_first(mcp_port, [
+            "Continuer", "Continue",   # IG 2FA
+            "Confirmer", "Confirm",    # variante
+            "Suivant", "Next",         # variante
+            "Envoyer", "Submit",       # variante
+        ])
         if not tapped:
-            await drv.ht.tap_pos(0.5, 0.6)
+            self.log("   [login] bouton validation non trouvé, tap position par défaut")
+            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 734}, timeout=5)
 
-        # Wait and check
+        # Continue through post-login loop to handle remaining popups
+        self.log("   [login] attente validation 2FA...")
         await asyncio.sleep(4.0)
-        screen = await drv.detect_current_screen()
 
-        if screen in ("feed", "reels", "own_profile", "explore"):
-            self.log(f"   [login] ✓ 2FA validé, connecté")
-            return True
-
-        raise LoginRequired(
-            f"2FA échoué pour {self.username} — écran post-2FA: {screen}"
-        )
+        # Re-enter post-login loop for save_login, notifications, etc.
+        return await self._post_login_loop(drv, self.username, None, max_steps=10)
 
     async def _load_credentials(self) -> dict | None:
         """Load account credentials from the database.
