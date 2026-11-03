@@ -791,8 +791,8 @@
       var R = d.rules; var why = null;
       if (d.status !== 'online') why = 'indisponible';
       else if (d.jb === false) why = 'jailbreak perdu';
-      else if (!d.proxy) why = 'sans proxy';
-      else if (d.pxStatus === 'down') why = 'proxy hors ligne';
+      // TEMP BYPASS: else if (!d.proxy) why = 'sans proxy';
+      // TEMP BYPASS: else if (d.pxStatus === 'down') why = 'proxy hors ligne';
       else if (R.plats.indexOf(plat) < 0) why = (PLN[plat] || plat) + ' non autorise';
       else if (R.personas.length && R.personas.indexOf(persona) < 0) why = 'persona non autorisee';
       else if (n >= R.max) why = 'plein · ' + n + '/' + R.max;
