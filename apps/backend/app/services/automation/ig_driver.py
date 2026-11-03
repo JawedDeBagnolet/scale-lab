@@ -44,11 +44,12 @@ _SCREEN_MARKERS = {
     # Post-login popups
     "save_login":  ["Enregistrer vos informations", "Save your login info",
                     "Enregistrer les informations"],
-    # 2FA screens (AVANT notif_popup — "notifications" apparaît dans les deux)
+    # 2FA screens — ordre critique : choice AVANT notif (les deux ont "appareil")
+    "2fa_choice":  ["Choisissez un moyen de confirmer", "Choose a way to confirm",
+                    "méthodes de confirmation disponibles"],
     "2fa_notif":   ["Vérifiez vos notifications", "Check your notifications",
-                    "un autre appareil", "approuver cette connexion"],
+                    "approuver cette connexion", "En attente d'approbation"],
     "notif_popup": ["Veuillez activer les notifications", "Turn on Notifications"],
-    "2fa_choice":  ["Choisissez un moyen de confirmer", "Choose a way to confirm"],
     "2fa_code":    ["Accédez à votre application", "Code à 6 chiffres",
                     "Enter the 6-digit code"],
     # Error screens
