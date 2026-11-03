@@ -40,11 +40,20 @@ logger = logging.getLogger("automation.device")
 BUNDLE_THREADS = "com.burbn.barcelona"
 BUNDLE_INSTAGRAM = "com.burbn.instagram"
 
-DEFAULT_MCP_PORT = 8190
+DEFAULT_MCP_PORT = 18090
 DEFAULT_SSH_PORT = 2223
 
 # Lock screen markers (iOS FR locale)
 _LOCK_MARKERS = ("lampe torche", "appareil photo", "afficher les notifications")
+
+# Labels de boutons popup a dismiss apres login / dans les ecrans inconnus
+# Ne taper que si y > 400 pour eviter de taper dans un champ de formulaire
+POPUP_DISMISS_LABELS = [
+    "OK", "Plus tard", "Pas maintenant", "Ne pas autoriser",
+    "Fermer", "Ignorer", "Enregistrer", "Continuer",
+    "Passer", "Non merci",
+    "Continuer avec Instagram", "Essayer d'une autre façon",
+]
 
 # ── Per-device locks ─────────────────────────────────────────────────────────
 # One asyncio.Lock per device_id, shared across all runners in the process.
@@ -512,7 +521,11 @@ class DeviceSession:
 
         # Try MCP tap_element with various labels
         username_tapped = False
-        for label in ["Nom de profil", "e-mail", "numéro de mobile", "username", "nom d'utilisateur"]:
+        for label in [
+            "Nom de profil", "e-mail", "numéro de mobile",  # page login v2
+            "nom d'utilisateur", "username", "téléphone",    # page login v1
+            "numéro de téléphone",                           # page login v1 alt
+        ]:
             self.log(f"   [login] recherche champ username: '{label}'")
             r = await mcp_call(mcp_port, "tap_element", {"text": label, "match": "contains"}, timeout=8)
             if r and r.get("content"):
@@ -580,62 +593,179 @@ class DeviceSession:
             self.log("   [login] bouton login non trouvé, tap position par défaut (187, 440)")
             await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 440}, timeout=5)
 
-        # Wait for response (network round-trip)
+        # Step 4: post-login loop — handle popups, 2FA, etc.
+        # Instagram shows 2-3 intermediate screens before reaching feed
         self.log("   [login] attente réponse serveur...")
         await asyncio.sleep(4.0)
 
-        # Step 4: check what happened
-        screen = await drv.detect_current_screen()
-        self.log(f"   [login] écran post-login: {screen}")
+        return await self._post_login_loop(drv, username, two_fa_code)
 
-        if screen in ("feed", "reels", "own_profile", "explore"):
-            self.log(f"   [login] ✓ connecté en tant que {username}")
-            return True
+    async def _post_login_loop(
+        self, drv, username: str, two_fa_code: str | None = None, max_steps: int = 15
+    ) -> bool:
+        """Boucle post-login : gère les popups, 2FA, écrans inconnus.
 
-        # Check for 2FA
-        await drv.refresh_elements()
-        all_text = " ".join((e.get("text") or "").lower() for e in drv.elements)
+        Itère jusqu'à 15 fois pour traverser les écrans intermédiaires
+        (save login, notifications, 2FA, etc.) jusqu'au feed.
+        """
+        from app.services.dispatch import mcp_call
+        mcp_port = self.ctx.get("mcp_port", DEFAULT_MCP_PORT)
 
-        if any(kw in all_text for kw in (
-            "code de sécurité", "security code", "authentification",
-            "code de vérification", "verification code", "deux facteurs",
-            "two-factor", "confirmer votre identité", "confirm your identity",
-            "code à 6 chiffres", "6-digit code",
-        )):
-            self.log("   [login] 2FA détecté")
-            if two_fa_code:
-                return await self._handle_2fa(drv, two_fa_code)
-            else:
-                raise LoginRequired(
-                    f"2FA requis pour {self.username} mais pas de code 2FA configuré"
-                )
-
-        # Check for checkpoint / suspicious activity
-        if any(kw in all_text for kw in ("vérifier", "suspect", "checkpoint", "confirm")):
-            raise LoginRequired(
-                f"Checkpoint IG après login de {self.username} — intervention manuelle requise"
-            )
-
-        # Check for wrong password
-        if any(kw in all_text for kw in (
-            "mot de passe incorrect", "incorrect password",
-            "réessayer", "try again", "identifiants",
-        )):
-            raise LoginRequired(
-                f"Mot de passe incorrect pour {self.username}"
-            )
-
-        # Still on login? Try one more wait
-        if screen == "login":
-            await asyncio.sleep(3.0)
+        for step in range(max_steps):
             screen = await drv.detect_current_screen()
-            if screen in ("feed", "reels", "own_profile"):
-                self.log(f"   [login] ✓ connecté (retardé) en tant que {username}")
+            self.log(f"   [post-login] step {step+1}/{max_steps} — écran: {screen}")
+
+            # ── Succès : on est sur le feed ──
+            if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
+                self.log(f"   [login] ✓ connecté en tant que {username}")
                 return True
 
+            # ── Save login popup ──
+            if screen == "save_login":
+                self.log("   [post-login] popup 'Enregistrer les infos'")
+                tapped = await self._mcp_tap_first(mcp_port, [
+                    "Enregistrer", "Plus tard", "Save", "Not Now"
+                ])
+                if not tapped:
+                    await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 680}, timeout=5)
+                await asyncio.sleep(2.0)
+                continue
+
+            # ── Notifications popup ──
+            if screen == "notif_popup":
+                self.log("   [post-login] popup 'Notifications'")
+                await self._mcp_tap_first(mcp_port, [
+                    "Plus tard", "Pas maintenant", "Not Now", "Skip"
+                ])
+                await asyncio.sleep(2.0)
+                continue
+
+            # ── 2FA notification check ──
+            if screen == "2fa_notif":
+                self.log("   [post-login] 2FA notification check")
+                await self._mcp_tap_first(mcp_port, [
+                    "Essayer d'une autre façon", "Try Another Way"
+                ])
+                await asyncio.sleep(2.0)
+                continue
+
+            # ── 2FA method choice ──
+            if screen == "2fa_choice":
+                self.log("   [post-login] 2FA choix de méthode")
+                await self._mcp_tap_first(mcp_port, [
+                    "Application d'authentification", "Authentication App"
+                ])
+                await asyncio.sleep(1.0)
+                await self._mcp_tap_first(mcp_port, ["Continuer", "Continue"])
+                await asyncio.sleep(2.0)
+                continue
+
+            # ── 2FA code entry ──
+            if screen == "2fa_code":
+                self.log("   [post-login] 2FA code entry")
+                if not two_fa_code:
+                    raise LoginRequired(
+                        f"2FA requis pour {self.username} mais pas de code 2FA configuré"
+                    )
+                return await self._handle_2fa(drv, two_fa_code)
+
+            # ── Checkpoint / suspicious ──
+            if screen == "checkpoint":
+                raise LoginRequired(
+                    f"Checkpoint IG après login de {self.username} — intervention manuelle requise"
+                )
+
+            # ── Login error (wrong password) ──
+            if screen == "login_error":
+                raise LoginRequired(
+                    f"Mot de passe incorrect pour {self.username}"
+                )
+
+            # ── Still on login screen ──
+            if screen == "login":
+                self.log("   [post-login] encore sur login, attente 3s...")
+                await asyncio.sleep(3.0)
+                continue
+
+            # ── Onboarding (new container) ──
+            if screen == "onboarding":
+                self.log("   [post-login] onboarding, tap 'J'ai déjà un profil'")
+                await self._mcp_tap_first(mcp_port, [
+                    "J'ai déjà un profil", "Log In", "profil"
+                ])
+                await asyncio.sleep(2.0)
+                continue
+
+            # ── Unknown screen → recovery ──
+            if screen == "other":
+                self.log("   [post-login] écran inconnu, tentative de recovery...")
+                recovered = await self._handle_unknown_screen(drv, mcp_port)
+                if recovered and recovered not in ("other", "unknown"):
+                    continue  # re-enter the loop with the new screen
+                # Dump l'arbre pour debug
+                elements = await drv.ht.get_elements()
+                self.log("   [post-login] dump arbre d'accessibilité:")
+                for el in elements[:15]:
+                    t = (el.get("text") or "")[:60]
+                    if t:
+                        self.log(f"     {el.get('type','?')} | {t}")
+                # One more chance
+                if step < max_steps - 1:
+                    await asyncio.sleep(3.0)
+                    continue
+
         raise LoginRequired(
-            f"Login échoué pour {self.username} — écran: {screen}"
+            f"Login échoué pour {self.username} — écran: {screen} après {max_steps} étapes"
         )
+
+    async def _mcp_tap_first(self, mcp_port: int, labels: list[str]) -> bool:
+        """Tap le premier label trouvé via MCP tap_element."""
+        from app.services.dispatch import mcp_call
+        import json
+        for label in labels:
+            r = await mcp_call(mcp_port, "tap_element", {"text": label, "match": "contains"}, timeout=8)
+            if r and r.get("content"):
+                try:
+                    tap_data = json.loads(r["content"][0].get("text", "{}"))
+                    if tap_data.get("tapped"):
+                        self.log(f"   [tap] ✓ '{label}' trouvé et tappé")
+                        return True
+                except Exception:
+                    pass
+        return False
+
+    async def _handle_unknown_screen(self, drv, mcp_port: int, max_retries: int = 3) -> str | None:
+        """Tente de récupérer d'un écran inconnu en cherchant des boutons popup."""
+        from app.services.dispatch import mcp_call
+
+        for attempt in range(max_retries):
+            await asyncio.sleep(3.0)
+            screen = await drv.detect_current_screen()
+            if screen != "other":
+                self.log(f"   [recovery] écran résolu après attente: {screen}")
+                return screen
+
+            # Chercher un bouton popup via MCP tap_element
+            for dismiss_label in POPUP_DISMISS_LABELS:
+                r = await mcp_call(
+                    mcp_port, "tap_element",
+                    {"text": dismiss_label, "match": "contains"},
+                    timeout=5,
+                )
+                if r and r.get("content"):
+                    try:
+                        import json
+                        tap_data = json.loads(r["content"][0].get("text", "{}"))
+                        if tap_data.get("tapped"):
+                            self.log(f"   [recovery] popup dismissé: '{dismiss_label}'")
+                            await asyncio.sleep(2.0)
+                            break
+                    except Exception:
+                        pass
+
+        # Dernier check
+        screen = await drv.detect_current_screen()
+        return screen
 
     async def _handle_2fa(self, drv, two_fa_code: str) -> bool:
         """Handle 2FA code entry.

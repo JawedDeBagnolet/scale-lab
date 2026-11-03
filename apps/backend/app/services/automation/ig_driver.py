@@ -36,14 +36,34 @@ _NAV_PROFILE = "Profil"
 
 # Screen detection markers
 _SCREEN_MARKERS = {
+    # Main app screens
     "feed":        ["Accueil", "Instagram"],
-    "reels":       ["Reels"],
-    "own_profile": ["Modifier le profil", "Modifier profil"],
+    "reels":       ["Reels", "Reel de", "Progression de la vid"],
+    "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
     "post_view":   ["Ajouter un commentaire"],
     "explore":     ["Rechercher"],
     "story":       ["Votre story", "story"],
-    "login":       ["Connexion", "Se connecter", "Log In"],
+    # Auth screens
+    "login":       ["Connexion", "Se connecter", "Log In",
+                    "Nom de profil, e-mail ou numéro de mobile"],
     "onboarding":  ["Rejoignez Instagram", "J'ai déjà un profil", "Démarrer"],
+    # Post-login popups
+    "save_login":  ["Enregistrer vos informations", "Save your login info",
+                    "Enregistrer les informations"],
+    "notif_popup": ["Veuillez activer les notifications", "Turn on Notifications",
+                    "Activer les notifications"],
+    # 2FA screens
+    "2fa_notif":   ["Vérifiez vos notifications", "Check your notifications"],
+    "2fa_choice":  ["Choisissez un moyen de confirmer", "Choose a way to confirm"],
+    "2fa_code":    ["Accédez à votre application", "Code à 6 chiffres",
+                    "Enter the 6-digit code"],
+    # Error screens
+    "checkpoint":  ["challenge", "suspect", "confirmer votre identité",
+                    "Confirm your identity", "unusual activity"],
+    "login_error": ["Incorrect", "Réessayer", "Introuvable",
+                    "Sorry, your password was incorrect"],
+    # Welcome (new device, not logged in)
+    "welcome":     ["Choisissez comment vous inscrire", "Join Instagram"],
 }
 
 # Post markers in accessibility tree

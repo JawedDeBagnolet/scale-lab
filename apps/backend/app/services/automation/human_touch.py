@@ -260,14 +260,40 @@ class HumanTouch:
 
     # ── Type ─────────────────────────────────────────────────────────────
 
-    async def type_text(self, text: str, *, interval: int | None = None):
-        """Type text via the keyboard with realistic inter-key timing."""
-        if interval is None:
-            interval = random.randint(30, 80)
-        await self._call("type_text", {
-            "text": text,
-            "interval": interval,
-        })
+    async def type_text(self, text: str, *, interval: int | None = None, realistic: bool = True):
+        """Type text via the keyboard with realistic inter-key timing.
+
+        If realistic=True (default), types character by character with
+        variable speed: fast on letters, slower on digits/symbols,
+        with occasional hesitations.
+        If realistic=False, sends the whole text at once (faster).
+        """
+        if not realistic:
+            if interval is None:
+                interval = random.randint(30, 80)
+            await self._call("type_text", {"text": text, "interval": interval})
+            return
+
+        # Realistic mode: character by character with variable timing
+        for i, char in enumerate(text):
+            # Base interval depends on character type
+            if char.isalpha():
+                base = random.randint(35, 75)
+            elif char.isdigit():
+                base = random.randint(70, 130)
+            else:  # symbols, dots, underscores
+                base = random.randint(90, 160)
+
+            # Occasional hesitation (5% chance, not on first char)
+            if random.random() < 0.05 and i > 0:
+                await asyncio.sleep(random.uniform(0.2, 0.8))
+
+            # Occasional speed burst (10% chance for 2-4 chars)
+            if random.random() < 0.10:
+                base = max(20, base - random.randint(15, 30))
+
+            await self._call("type_text", {"text": char, "interval": base})
+            await asyncio.sleep(base / 1000)
 
     # ── App lifecycle ────────────────────────────────────────────────────
 
