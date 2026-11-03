@@ -380,6 +380,19 @@ class DeviceSession:
             self.log("   [login] IG: déjà connecté")
             return True
 
+        if screen == "onboarding":
+            self.log("   [login] IG: écran d'onboarding, tap sur J'ai déjà un profil...")
+            tapped = await drv.tap_element("J'ai déjà un profil")
+            if not tapped:
+                tapped = await drv.tap_element("Log In")
+            await asyncio.sleep(2.0)
+            screen = await drv.detect_current_screen()
+            self.log(f"   [login] écran après onboarding: {screen}")
+            if screen == "login":
+                return await self._do_ig_login(drv)
+            elif screen in ("feed", "reels", "own_profile"):
+                return True
+
         if screen == "login":
             self.log("   [login] IG: écran de login, tentative de connexion...")
             return await self._do_ig_login(drv)
@@ -393,6 +406,14 @@ class DeviceSession:
 
         if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
             return True
+
+        if screen == "onboarding":
+            self.log("   [login] IG: onboarding (retry), tap J'ai déjà un profil...")
+            await drv.tap_element("J'ai déjà un profil")
+            await asyncio.sleep(2.0)
+            screen = await drv.detect_current_screen()
+            if screen == "login":
+                return await self._do_ig_login(drv)
 
         if screen == "login":
             return await self._do_ig_login(drv)

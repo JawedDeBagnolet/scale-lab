@@ -43,6 +43,7 @@ _SCREEN_MARKERS = {
     "explore":     ["Rechercher"],
     "story":       ["Votre story", "story"],
     "login":       ["Connexion", "Se connecter", "Log In"],
+    "onboarding":  ["Rejoignez Instagram", "J'ai déjà un profil", "Démarrer"],
 }
 
 # Post markers in accessibility tree
