@@ -505,10 +505,14 @@ async def scalectl_switch_container(
         await _ssh_exec(ssh_port, f"killall -9 {process_name}", host=host, timeout=5)
         await asyncio.sleep(0.5)
 
-    # Step 3: Relaunch via uiopen
-    url_scheme = BUNDLE_TO_URL_SCHEME.get(bundle)
-    if url_scheme:
-        await _ssh_exec(ssh_port, f"uiopen '{url_scheme}'", host=host, timeout=5)
+    # Step 3: Relaunch via MCP launch_app (avoids system popup)
+    mcp_port_val = DEFAULT_MCP_PORT
+    launch_result = await mcp_call(mcp_port_val, 'launch_app', {'bundle_id': bundle}, host=host, timeout=10)
+    if launch_result is None:
+        # Fallback to uiopen via SSH if MCP fails
+        url_scheme = BUNDLE_TO_URL_SCHEME.get(bundle)
+        if url_scheme:
+            await _ssh_exec(ssh_port, f"uiopen '{url_scheme}'", host=host, timeout=5)
 
     # Step 4: Wait for app startup + Tweak.x constructor
     await asyncio.sleep(relaunch_delay)

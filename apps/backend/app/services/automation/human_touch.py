@@ -85,8 +85,8 @@ class HumanTouch:
         """
         result = await mcp_call(
             self.mcp_port,
-            "tools/call",
-            params={"name": method, "arguments": arguments or {}},
+            method,
+            params=arguments or {},
             timeout=timeout,
             host=self.host,
         )
