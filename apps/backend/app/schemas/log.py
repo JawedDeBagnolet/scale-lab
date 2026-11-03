@@ -31,13 +31,17 @@ class EventOut(BaseModel):
 
 class IncidentOut(BaseModel):
     id: UUID
+    key: str
     module: str
     event_type: str
+    level: str
     target: str | None
+    title: str
     status: str
     event_count: int
     first_seen: datetime
     last_seen: datetime
+    causes: dict | None
     solutions: list | None
     related_events: list | None
     meta: dict | None

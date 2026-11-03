@@ -444,25 +444,25 @@
       code: e.code || '',
       msg: e.message,
       meta: e.meta || null,
-      key: e.module + ':' + e.event_type + ':' + (e.target || '')
+      key: e.level === 'error' || e.level === 'warning' ? e.module + '|' + e.event_type + '|' + (e.target || '') : null
     };
   }
 
   function xIncident(inc) {
     return {
-      key: inc.id,
+      key: inc.key || (inc.module + '|' + inc.event_type + '|' + (inc.target || '')),
       id: inc.id,
       mod: inc.module,
       type: inc.event_type,
-      lvl: 'error',
-      title: inc.event_type,
+      lvl: inc.level || 'error',
+      title: inc.title || inc.event_type,
       target: inc.target || '',
       count: inc.event_count || 0,
       first: inc.first_seen ? new Date(inc.first_seen).getTime() : 0,
       last: inc.last_seen ? new Date(inc.last_seen).getTime() : 0,
       status: inc.status || 'open',
       solutions: inc.solutions || [],
-      causes: [],
+      causes: inc.causes || {},
       events: inc.related_events || [],
       meta: inc.meta || null
     };

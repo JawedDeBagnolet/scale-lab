@@ -35,9 +35,12 @@ class Incident(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    key: Mapped[str] = mapped_column(String(300), unique=True, index=True)  # module|type|target
     module: Mapped[str] = mapped_column(String(50), index=True)
     event_type: Mapped[str] = mapped_column(String(100))
+    level: Mapped[str] = mapped_column(String(10), default="error")
     target: Mapped[str | None] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[str] = mapped_column(String(20), default="open")  # open, ack, resolved
     event_count: Mapped[int] = mapped_column(Integer, default=1)
     first_seen: Mapped[datetime] = mapped_column(
@@ -46,6 +49,7 @@ class Incident(Base):
     last_seen: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+    causes: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     solutions: Mapped[dict | None] = mapped_column(JSONB, default=list)
     related_events: Mapped[list | None] = mapped_column(JSONB, default=list)
     meta: Mapped[dict | None] = mapped_column(JSONB, default=dict)

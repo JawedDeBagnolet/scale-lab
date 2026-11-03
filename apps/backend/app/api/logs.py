@@ -66,6 +66,17 @@ async def update_incident(
     return await service.update_incident(db, inc, data.model_dump(exclude_unset=True))
 
 
+@router.patch("/incidents/key/{key:path}", response_model=IncidentOut)
+async def update_incident_by_key(
+    key: str, data: IncidentUpdate, db: AsyncSession = Depends(get_db)
+):
+    """Update incident by composite key (module|type|target)."""
+    inc = await service.get_incident_by_key(db, key)
+    if not inc:
+        raise HTTPException(404, "incident not found")
+    return await service.update_incident(db, inc, data.model_dump(exclude_unset=True))
+
+
 # --- Alert rules --------------------------------------------------------------
 
 @router.get("/rules", response_model=list[AlertRuleOut])

@@ -57,10 +57,52 @@ async def create_event(db: AsyncSession, data: EventCreate) -> Event:
     await db.commit()
     await db.refresh(e)
     await _broadcast_event(e)
-    # Check alert rules
+    # Auto-create or update incident for warnings/errors
     if e.level in ("warning", "error", "critical"):
+        await _upsert_incident(db, e)
         await _evaluate_alert_rules(db, e)
     return e
+
+
+async def _upsert_incident(db: AsyncSession, event: Event) -> None:
+    """Create or update an incident matching this event's module|type|target key."""
+    key = f"{event.module}|{event.event_type}|{event.target or ''}"
+    stmt = select(Incident).where(Incident.key == key)
+    result = await db.execute(stmt)
+    inc = result.scalar_one_or_none()
+
+    now = datetime.now(UTC)
+    if inc:
+        inc.event_count += 1
+        inc.last_seen = now
+        if inc.status == "resolved":
+            inc.status = "open"
+        # Track cause
+        causes = dict(inc.causes or {})
+        if event.cause:
+            causes[event.cause] = causes.get(event.cause, 0) + 1
+            inc.causes = causes
+        # Append event id
+        related = list(inc.related_events or [])
+        related.insert(0, str(event.id))
+        inc.related_events = related[:30]
+    else:
+        inc = Incident(
+            key=key,
+            module=event.module,
+            event_type=event.event_type,
+            level=event.level,
+            target=event.target,
+            title=event.message,
+            status="open",
+            event_count=1,
+            first_seen=now,
+            last_seen=now,
+            causes={event.cause: 1} if event.cause else {},
+            related_events=[str(event.id)],
+        )
+        db.add(inc)
+    await db.commit()
 
 
 async def _evaluate_alert_rules(db: AsyncSession, event: Event) -> None:
@@ -154,8 +196,9 @@ async def emit_event(
             await db.commit()
             await db.refresh(e)
             await _broadcast_event(e)
-            # Check alert rules for warnings/errors
+            # Auto-create incident + check alert rules for warnings/errors
             if level in ("warning", "error", "critical"):
+                await _upsert_incident(db, e)
                 await _evaluate_alert_rules(db, e)
     except Exception:
         # Never crash a background service because of a log write failure
@@ -211,6 +254,11 @@ async def list_incidents(
 
 async def get_incident(db: AsyncSession, incident_id: UUID) -> Incident | None:
     return await db.get(Incident, incident_id)
+
+
+async def get_incident_by_key(db: AsyncSession, key: str) -> Incident | None:
+    result = await db.execute(select(Incident).where(Incident.key == key))
+    return result.scalar_one_or_none()
 
 
 async def update_incident(db: AsyncSession, incident: Incident, data: dict) -> Incident:

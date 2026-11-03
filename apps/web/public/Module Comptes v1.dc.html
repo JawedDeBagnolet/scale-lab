@@ -243,7 +243,7 @@ select option { background: #151827; color: #e8eaf3; }
 <span>{{ d.market }}</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="{{ ed.pDot }}"></span>{{ ed.pName }}</span>
 <sc-if value="{{ ed.exists }}"><span style="display:flex;align-items:center;gap:6px"><span style="{{ ed.stDot }}"></span>{{ ed.stLabel }}</span></sc-if>
-<sc-if value="{{ ed.hasLog }}"><a href="{{ ed.logHref }}" style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:7px;font-size:11.5px;font-weight:600;color:#fda4af;background:rgba(244,114,140,.1);border:1px solid rgba(244,114,140,.35)"><i class="ph ph-warning-circle" style="font-size:12px"></i>Voir l’incident dans Logs</a></sc-if>
+<sc-if value="{{ ed.hasLog }}"><a href="{{ ed.logHref }}" style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:7px;font-size:11.5px;font-weight:600;color:#fda4af;background:rgba(244,114,140,.1);border:1px solid rgba(244,114,140,.35)"><i class="ph ph-warning-circle" style="font-size:12px"></i>Voir l'incident dans Logs</a></sc-if>
 </div>
 </sc-if>
 </div>
@@ -387,7 +387,7 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="{{ ev.radioStyle }}"><sc-if value="{{ ev.isActive }}"><span style="width:8px;height:8px;border-radius:99px;background:#ffffff"></span></sc-if></div>
 </div>
 <div style="font-size:11.5px;line-height:1.45;color:#8a91a8;margin-top:12px;text-wrap:pretty">{{ ev.assign }}</div>
-<sc-if value="{{ ev.hasLink }}"><a href="{{ ev.href }}" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11.5px;font-weight:500">Voir dans Parc d’iPhone<i class="ph ph-arrow-up-right" style="font-size:11px"></i></a></sc-if>
+<sc-if value="{{ ev.hasLink }}"><a href="{{ ev.href }}" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11.5px;font-weight:500">Voir dans Parc d'iPhone<i class="ph ph-arrow-up-right" style="font-size:11px"></i></a></sc-if>
 </div>
 </sc-for>
 </div>
@@ -875,7 +875,7 @@ class Component extends DCLogic {
       { id: 'maya', niche: 'Girl Next Door', nicheId: 'gnd', bios: ['Slow life · café · petites routines\nParis', 'Lifestyle & déco, un jour à la fois', 'Carnet de vie entre Paris et Bordeaux'] },
       { id: 'sofia', niche: 'Lifestyle', nicheId: 'lifestyle', bios: ['Wellness coach · Austin TX\nBreathwork & morning rituals', 'Calm mind, strong body', 'Daily rituals for a softer life'] },
       { id: 'clara', niche: 'Cosplay / Gameuse', nicheId: 'cosplay', bios: ['Skincare & makeup · Madrid\nRutinas honestas', 'Belleza sin filtro', 'Maquillaje, piel y buen rollo'] },
-      { id: 'nina', niche: 'Alt / Gothic', nicheId: 'alt', bios: ['Prof de yoga · Lyon\nCours en ligne chaque matin', 'Respirer, s’étirer, recommencer', 'Yoga doux & méditation guidée'] },
+      { id: 'nina', niche: 'Alt / Gothic', nicheId: 'alt', bios: ['Prof de yoga · Lyon\nCours en ligne chaque matin', 'Respirer, s\'étirer, recommencer', 'Yoga doux & méditation guidée'] },
       { id: 'alba', niche: 'Latina / Ebony / Asian', nicheId: 'latina', bios: ['Viajes lentos · Europa\nGuías y rincones secretos', 'Mochila, cámara y café', 'De Madrid al mundo'] }
     ];
     return this._p || (this._p = (window.SCALE_DATA ? window.SCALE_DATA.personas : []).map(sp => { const e = EXTRA.find(x => x.id === sp.id) || {}; return { bios: [''], niche: (sp.niches && sp.niches[0]) || '', nicheId: (sp.niches && sp.niches[0]) || 'gnd', ...e, id: sp.id, name: sp.first, color: sp.color, market: sp.market, nicheId: (sp.niches && sp.niches[0]) || e.nicheId || 'gnd' }; }));
@@ -1114,11 +1114,11 @@ class Component extends DCLogic {
   iphDevice(a) { const D = window.SCALE_DATA; if (!D || !a) return null; const id = a.device || (D.account(a.username) || {}).device; return id ? D.device(id) : null; }
   iphAssign(d) {
     const D = window.SCALE_DATA; const PARC = 'Module%20Parc%20iPhone%20v1.dc.html';
-    if (!D || !D.pickDevice) return { assign: 'Attribué depuis ton parc d’iPhone.' };
+    if (!D || !D.pickDevice) return { assign: 'Attribué depuis ton parc d\'iPhone.' };
     const cur = d.id ? this.iphDevice((this.state.accounts || []).find(a => a.id === d.id)) : null;
     if (cur) return { assign: 'Sur ' + cur.name + ' · rack ' + cur.rack.replace('Rack ', '') + ' · proxy ' + (cur.proxy || 'aucun') + '.', href: PARC + '#dev=' + cur.id };
     const r = D.pickDevice(d.market, d.persona, d.platform, this.iphLoads());
-    if (r.off) return { assign: 'Attribution automatique désactivée : à attribuer depuis le Parc d’iPhone.', href: PARC };
+    if (r.off) return { assign: 'Attribution automatique désactivée : à attribuer depuis le Parc d\'iPhone.', href: PARC };
     if (!r.device) return { assign: r.why + ' (marché, persona ou plateforme non couverts, ou iPhone pleins). Le compte attendra une attribution manuelle.', href: PARC };
     return { assign: 'Attribué automatiquement à ' + r.device.name + ' · ' + r.n + ' → ' + (r.n + 1) + '/' + r.max + ' comptes, ' + r.why + '.', href: PARC + '#dev=' + r.device.id };
   }
@@ -1145,7 +1145,7 @@ class Component extends DCLogic {
     const SD = window.SCALE_DATA;
     if (SD && SD._live) { list.forEach(a => { const creds = a._pw ? { password: a._pw, ...(a._2fa ? { two_fa: a._2fa.replace(/\s/g, '') } : {}) } : null; const res = SD.apiPost('/comptes', { handle: a.username, plateforme: a.platform, persona_id: a.persona || null, workflow: a.workflow || 'Onboarding', status: 'ok', device_id: a.device || null, env: a.env || null, ...(creds ? { creds_encrypted: creds } : {}) }); if (res && res.id) { a.id = res.id; const mapped = SD.x.compte(res); SD.accounts.unshift(mapped); } }); }
     this.setState(x => ({ accounts: list.concat(x.accounts), view: 'list', draft: null, modal: false, fmenu: null }));
-    const onI = iphs.filter(Boolean); const noI = iphs.length - onI.length; const where = d.activeEnv !== 'iphone' ? '' : onI.length ? ' · ' + (new Set(onI).size === 1 ? 'attribué' + (onI.length > 1 ? 's' : '') + ' à ' + onI[0] : 'répartis sur ' + new Set(onI).size + ' iPhone') + (noI ? ' · ' + noI + ' en attente d’iPhone' : '') : ' · en attente d’un iPhone';
+    const onI = iphs.filter(Boolean); const noI = iphs.length - onI.length; const where = d.activeEnv !== 'iphone' ? '' : onI.length ? ' · ' + (new Set(onI).size === 1 ? 'attribué' + (onI.length > 1 ? 's' : '') + ' à ' + onI[0] : 'répartis sur ' + new Set(onI).size + ' iPhone') + (noI ? ' · ' + noI + ' en attente d\'iPhone' : '') : ' · en attente d\'un iPhone';
     this.toastMsg((list.length > 1 ? list.length + ' comptes ajoutés' : '@' + list[0].username + ' ajouté') + where);
   }
   seg(items, cur, go) { return items.map(it => ({ ...it, active: it.v === cur, idle: it.v !== cur, hasIcon: !!it.icon, go: () => go(it.v) })); }
@@ -1179,7 +1179,7 @@ class Component extends DCLogic {
     const cnt = st => accs.filter(a => a.status === st).length;
     const cardDefs = [
       { k: 'all', label: 'Tous les comptes', value: accs.length, sub: 'sur ' + this.pers().length + ' personas', g: '124,108,246', lc: '#a5a0f5' },
-      { k: 'session', label: 'En session', value: cnt('session'), sub: 'en cours d’exécution', g: '45,212,168', lc: '#74dfc0' },
+      { k: 'session', label: 'En session', value: cnt('session'), sub: 'en cours d\'exécution', g: '45,212,168', lc: '#74dfc0' },
       { k: 'error', label: 'Checkpoint', value: cnt('error'), sub: 'à débloquer', g: '244,114,140', lc: '#fda4af' },
       { k: 'idle', label: 'Idle', value: cnt('idle'), sub: 'prêts pour une session', g: '80,130,250', lc: '#8db4fd' }
     ];
@@ -1239,7 +1239,7 @@ class Component extends DCLogic {
     const confirmNames = cfNames.slice(0, 6).map(t => ({ t })).concat(cfNames.length > 6 ? [{ t: '+ ' + (cfNames.length - 6) + ' autres' }] : []);
 
     const nav = [['squares-four', 'Dashboard', 0, 'Module%20Dashboard%20v1.dc.html'], ['device-mobile', 'Comptes', 1], ['user-circle', 'Personas', 0, 'Module%20Personas%20v1.dc.html'], ['target', 'Targets', 0, 'Module%20Targets%20v1.dc.html'], ['chart-line-up', 'Statistiques', 0, 'Module%20Statistiques%20v1.dc.html'], ['address-book', 'CRM', 0, 'Module%20CRM%20v1.dc.html'], ['link-simple', 'Liens', 0, 'Module%20Liens%20v1.dc.html'], ['paper-plane-tilt', 'Posting'], ['warning-circle', 'Logs', 0, 'Module%20Logs%20v1.dc.html'], ['magnifying-glass', 'Veille', 0, 'Module%20Veille%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], active: !!n[2], idle: !n[2], href: n[3] }));
-    const navBottom = [['flow-arrow', 'Scénarios'], ['sliders-horizontal', 'Comportements'], ['globe-simple', 'Proxies'], ['devices', 'Parc d’iPhone'], ['gear', 'Paramètres', 'Module%20Parametres%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], href: ({ 'Scénarios': 'Module%20Scenarios%20v1.dc.html', Comportements: 'Module%20Comportements%20v1.dc.html', Proxies: 'Module%20Proxies%20v1.dc.html', 'Parc d’iPhone': 'Module%20Parc%20iPhone%20v1.dc.html', 'Paramètres': 'Module%20Parametres%20v1.dc.html' })[n[1]] || '#' }));
+    const navBottom = [['flow-arrow', 'Scénarios'], ['sliders-horizontal', 'Comportements'], ['globe-simple', 'Proxies'], ['devices', 'Parc d\'iPhone'], ['gear', 'Paramètres', 'Module%20Parametres%20v1.dc.html']].map(n => ({ icon: 'ph ph-' + n[0], label: n[1], href: ({ 'Scénarios': 'Module%20Scenarios%20v1.dc.html', Comportements: 'Module%20Comportements%20v1.dc.html', Proxies: 'Module%20Proxies%20v1.dc.html', 'Parc d\'iPhone': 'Module%20Parc%20iPhone%20v1.dc.html', 'Paramètres': 'Module%20Parametres%20v1.dc.html' })[n[1]] || '#' }));
 
     const base = {
       navMain: nav, navBottom, backToList: () => this.setState({ view: 'list', draft: null, menu: null, modal: false }),
@@ -1369,7 +1369,7 @@ class Component extends DCLogic {
       vProviders, vOffers,
       vOfferTitle: vChan === 'email' ? 'Domaines disponibles · ' + this.platLabel(d.platform) : 'Numéros disponibles · ' + this.platLabel(d.platform) + ' · ' + d.market,
       vColLabel: vChan === 'email' ? 'Domaine' : 'Opérateur',
-      vUpdated: 'Offres mises à jour ' + (s.vRefreshed ? 'à l’instant' : 'il y a 2 min'), vRefresh: () => { this.setState({ vRefreshed: true }); this.toastMsg('Offres actualisées'); },
+      vUpdated: 'Offres mises à jour ' + (s.vRefreshed ? 'à l\'instant' : 'il y a 2 min'), vRefresh: () => { this.setState({ vRefreshed: true }); this.toastMsg('Offres actualisées'); },
       vCalc: nAcc + ' compte' + (nAcc > 1 ? 's' : '') + ' × ' + money(selOffer.price) + ' =',
       vTotal: money(total),
       vBalanceAfter: lowBal ? 'Solde insuffisant · il manque ' + money(-after) : 'Solde après achat : ' + money(after),
@@ -1377,8 +1377,8 @@ class Component extends DCLogic {
       vSummaryStyle: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 14, padding: '12px 16px', borderRadius: 12, border: '1px solid ' + (lowBal ? 'rgba(244,114,140,.4)' : 'rgba(124,108,246,.25)'), background: lowBal ? 'rgba(244,114,140,.07)' : 'linear-gradient(135deg,rgba(124,108,246,.12),rgba(75,123,245,.04))' }
     };
     const envDefs = [
-      { k: 'web', name: 'Web', sub: 'GoLogin', icon: 'ph ph-globe', assign: 'Profil GoLogin créé et assigné automatiquement via l’API.' },
-      { k: 'phone', name: 'Phone', sub: 'GeeLark', icon: 'ph ph-device-mobile', assign: 'Téléphone cloud GeeLark provisionné automatiquement via l’API.' },
+      { k: 'web', name: 'Web', sub: 'GoLogin', icon: 'ph ph-globe', assign: 'Profil GoLogin créé et assigné automatiquement via l\'API.' },
+      { k: 'phone', name: 'Phone', sub: 'GeeLark', icon: 'ph ph-device-mobile', assign: 'Téléphone cloud GeeLark provisionné automatiquement via l\'API.' },
       { k: 'iphone', name: 'iPhone', sub: 'Appareil physique', icon: 'ph ph-apple-logo', ...this.iphAssign(d) }
     ];
     const envCards = envDefs.map(e => {
@@ -1506,7 +1506,7 @@ class Component extends DCLogic {
       editTabs: this.seg([{ v: 'single', label: 'Connecter un compte', icon: 'ph ph-sign-in' }, { v: 'bulkConnect', label: 'Connexion en masse', icon: 'ph ph-stack' }, { v: 'bulkCreate', label: 'Création en masse', icon: 'ph ph-users-three' }], ct, v => this.setState({ ctab: v, fmenu: null })),
       isProfile: !!s.modal, isModal: !!s.modal,
       isSingle: ct === 'single', isBulkConnect: ct === 'bulkConnect', isBulkCreate: ct === 'bulkCreate',
-      createSub: ct === 'single' ? 'Connecte un compte existant avec ses identifiants' : ct === 'bulkConnect' ? 'Colle une liste de comptes existants, les paramètres ci-dessous s’appliquent à tous' : 'Génère de nouveaux comptes à partir d’un modèle de username',
+      createSub: ct === 'single' ? 'Connecte un compte existant avec ses identifiants' : ct === 'bulkConnect' ? 'Colle une liste de comptes existants, les paramètres ci-dessous s\'appliquent à tous' : 'Génère de nouveaux comptes à partir d\'un modèle de username',
       classDesc: ct === 'single' ? 'La langue découle du marché, la niche de la persona' : 'Appliquée à tous les comptes · la langue découle du marché, la niche de la persona',
       fmenuOpen: !!s.fmenu, closeFmenu: () => this.setState({ fmenu: null }),
       classSelects, optSelects,

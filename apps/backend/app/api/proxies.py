@@ -85,6 +85,43 @@ async def test_proxy_endpoint(proxy_id: UUID, db: AsyncSession = Depends(get_db)
 
     await service.update_proxy(db, p, update_data)
 
+    # Emit log event
+    from app.services.logs import emit_event
+
+    if result.success:
+        is_slow = (result.latency_ms or 0) > 1500
+        await emit_event(
+            module="infra",
+            event_type="slow" if is_slow else "rotate",
+            level="warning" if is_slow else "info",
+            target=p.label or p.ip,
+            message=(
+                f"{p.label or p.ip} · latence élevée ({result.latency_ms}ms)"
+                if is_slow
+                else f"{p.label or p.ip} · test OK · {result.exit_ip} · {result.latency_ms}ms"
+            ),
+            code="LATENCY_HIGH" if is_slow else None,
+            meta={
+                "proxy_id": str(p.id),
+                "exit_ip": result.exit_ip,
+                "exit_country": result.exit_country,
+                "latency_ms": result.latency_ms,
+                "blacklists": result.blacklists,
+                "is_datacenter": result.is_datacenter,
+            },
+        )
+    else:
+        await emit_event(
+            module="infra",
+            event_type="down",
+            level="error",
+            target=p.label or p.ip,
+            cause="out",
+            code="PROXY_UNREACHABLE",
+            message=f"{p.label or p.ip} hors ligne · {result.error}",
+            meta={"proxy_id": str(p.id), "error": result.error},
+        )
+
     return ProxyTestOut(
         success=result.success,
         exit_ip=result.exit_ip,
