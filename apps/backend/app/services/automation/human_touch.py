@@ -3,17 +3,25 @@
 Ported from VPS human_touch.py. Wraps the on-device MCP accessibility
 server with realistic touch, swipe, type and scroll actions.
 
-The MCP server on the iPhone exposes:
-    POST /mcp — JSON-RPC with methods:
-        - get_ui_elements: read the accessibility tree
-        - perform_action (tap): single touch
-        - perform_action (swipe): multi-point gesture
-        - type_text: keyboard input
-        - drag_and_drop: precise multi-point drag
-        - launch_app / terminate_app: app lifecycle
+The MCP server on the iPhone (ios-mcp fork, port 8090) exposes:
+    POST /mcp — JSON-RPC with tools/call method:
+        - tap_screen {x, y}: single touch at coordinates
+        - tap_element {text, match?}: tap element by accessibility text
+        - swipe_screen {fromX, fromY, toX, toY, duration, steps}: swipe
+        - drag_and_drop {points, hold_duration, move_duration, steps}: multi-point gesture
+        - long_press {x, y, duration}: long press
+        - get_ui_elements {clickable_only?, max_elements?}: accessibility tree
+        - get_screen_info: screen dimensions
+        - type_text {text, interval?}: keyboard input (character by character)
+        - input_text {text}: replace focused field text
+        - launch_app {bundle_id}: open app
+        - kill_app {bundle_id}: terminate app
+        - screenshot: PNG base64 capture
+        - ocr_screen: text recognition
+        - run_command {command}: shell command on iPhone
 
 All methods are called via dispatch.mcp_call() which handles the
-HTTP transport (httpx.AsyncClient) and timeout management.
+HTTP transport and timeout management.
 """
 
 import asyncio
@@ -165,11 +173,9 @@ class HumanTouch:
         if duration is None:
             duration = random.randint(50, 120)
 
-        await self._call("perform_action", {
-            "action": "tap",
+        await self._call("tap_screen", {
             "x": round(x, 1),
             "y": round(y, 1),
-            "duration": duration,
         })
 
     async def tap_pos(self, x_frac: float, y_frac: float):
@@ -271,7 +277,7 @@ class HumanTouch:
 
     async def terminate_app(self, bundle: str):
         """Terminate an app by bundle ID."""
-        await self._call("terminate_app", {"bundle_id": bundle})
+        await self._call("kill_app", {"bundle_id": bundle})
 
     # ── Internal helpers ─────────────────────────────────────────────────
 

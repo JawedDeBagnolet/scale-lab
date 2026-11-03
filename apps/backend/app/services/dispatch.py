@@ -13,7 +13,7 @@ Two connection modes:
     No pymobiledevice3 needed — the ports are already forwarded.
 
 The on-device MCP agent (iOS accessibility driver) exposes:
-  POST /mcp          — JSON-RPC (get_ui_elements, perform_action, etc.)
+  POST /mcp          — JSON-RPC (tap_screen, get_ui_elements, kill_app, etc.)
 The on-device scale-agent (USB mode) exposes:
   POST /execute      — run a command
   GET  /status       — health check
