@@ -264,25 +264,32 @@ async def mcp_call(
     Returns the result dict on success, None on failure.
     """
     url = f"http://{host}:{mcp_port}/mcp"
+    import subprocess, json as _json
+    payload = _json.dumps({
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {"name": method, "arguments": params or {}},
+        "id": 1,
+    })
     try:
-        client = _get_http_client()
-
-        # Send initialize + tools/call in sequence using sync httpx (async loses headers through tunnel)
-        import httpx as _hx
-        init_resp = _hx.post(url, json={
-            "jsonrpc": "2.0", "method": "initialize",
-            "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "scale-lab", "version": "1.0"}},
-            "id": 0,
-        }, headers={"MCP-Protocol-Version": "2025-06-18"}, timeout=10)
-
-        resp = _hx.post(url, json={
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {"name": method, "arguments": params or {}},
-            "id": 1,
-        }, headers={"MCP-Protocol-Version": "2025-06-18"}, timeout=timeout)
-
-        data = resp.json()
+        # Use curl which correctly sends headers through the tunnel
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_exec(
+                "curl", "-s", "--connect-timeout", "5", "--max-time", str(int(timeout)),
+                "-X", "POST", url,
+                "-H", "Content-Type: application/json",
+                "-H", "MCP-Protocol-Version: 2025-06-18",
+                "-d", payload,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            ),
+            timeout=timeout + 5,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.warning("MCP curl failed (rc=%d): %s", proc.returncode, stderr.decode()[:200])
+            return None
+        data = _json.loads(stdout.decode())
         if "error" in data:
             logger.warning("MCP error on %s: %s", method, data["error"])
             return None
