@@ -57,7 +57,7 @@ async def _dispatch_log(event_type, level, target, message, **kw):
 # USB agent port on the iPhone
 AGENT_PORT = 8765
 # Default MCP / SSH ports for tunnel mode (overridden per device)
-DEFAULT_MCP_PORT = 8090
+DEFAULT_MCP_PORT = 18090
 DEFAULT_SSH_PORT = 2223
 
 # Timeouts (seconds)
