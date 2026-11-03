@@ -668,11 +668,31 @@ class DeviceSession:
 
             # ── 2FA method choice ──
             if screen == "2fa_choice":
-                self.log("   [post-login] 2FA choix de méthode")
-                await self._mcp_tap_first(mcp_port, [
-                    "Application d'authentification", "Authentication App"
+                self.log("   [post-login] 2FA choix de méthode — sélection 'Application d'authentification'")
+                tapped = await self._mcp_tap_first(mcp_port, [
+                    "Application d'authentification",  # apostrophe standard
+                    "Application d’authentification",  # apostrophe typographique
+                    "Authentication App",
                 ])
-                await asyncio.sleep(1.0)
+                if not tapped:
+                    # Fallback: recherche partielle sans apostrophe
+                    self.log("   [post-login] tap_element échoué, essai texte partiel 'authentification'")
+                    r = await mcp_call(mcp_port, "tap_element", {"text": "authentification", "match": "contains"}, timeout=8)
+                    tapped2 = False
+                    if r and r.get("content"):
+                        try:
+                            tap_data = json.loads(r["content"][0].get("text", "{}"))
+                            tapped2 = tap_data.get("tapped", False)
+                            if tapped2:
+                                self.log("   [tap] ✓ 'authentification' trouvé et tappé")
+                        except Exception:
+                            pass
+                    if not tapped2:
+                        # Coordonnées connues du bouton (index 4, y:292 dans le dump)
+                        self.log("   [post-login] fallback coordonnées (187, 333)")
+                        await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 333}, timeout=5)
+                await asyncio.sleep(1.5)
+                # Maintenant taper "Continuer"
                 await self._mcp_tap_first(mcp_port, ["Continuer", "Continue"])
                 await asyncio.sleep(2.0)
                 continue
