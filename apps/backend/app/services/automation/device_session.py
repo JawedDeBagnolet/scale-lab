@@ -845,10 +845,8 @@ class DeviceSession:
             await drv.ht.type_text(code, interval=random.randint(60, 120), realistic=False)
         await asyncio.sleep(0.5)
 
-        # Optionally tap "Faire confiance" checkbox if present
-        await self._mcp_tap_first(mcp_port, [
-            "Faire confiance",         # checkbox "trust this device"
-        ])
+        # NE PAS taper "Faire confiance" — la checkbox est cochée par défaut,
+        # taper dessus la décoche et IG redemandera le 2FA à chaque connexion
         await asyncio.sleep(0.3)
 
         # Submit — le bouton sur IG est "Continuer", pas "Confirmer"
