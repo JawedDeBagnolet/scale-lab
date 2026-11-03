@@ -506,68 +506,79 @@ class DeviceSession:
 
         self.log(f"   [login] connexion {username}...")
 
-        # Step 1: tap username field
-        await drv.refresh_elements()
+        # Step 1: tap username field via MCP tap_element (coords are 0,0 in tree)
+        from app.services.dispatch import mcp_call
+        mcp_port = self.ctx.get("mcp_port", DEFAULT_MCP_PORT)
 
-        # Look for username input field
-        username_field = (
-            drv.find_element("nom d'utilisateur", contains=True)
-            or drv.find_element("username", contains=True)
-            or drv.find_element("téléphone", contains=True)
-            or drv.find_element("e-mail", contains=True)
-            or drv.find_element("numéro de téléphone", contains=True)
-        )
+        # Try MCP tap_element with various labels
+        username_tapped = False
+        for label in ["Nom de profil", "e-mail", "numéro de mobile", "username", "nom d'utilisateur"]:
+            self.log(f"   [login] recherche champ username: '{label}'")
+            r = await mcp_call(mcp_port, "tap_element", {"text": label, "match": "contains"}, timeout=8)
+            if r and r.get("content"):
+                try:
+                    import json
+                    tap_data = json.loads(r["content"][0].get("text", "{}"))
+                    if tap_data.get("tapped"):
+                        self.log(f"   [login] ✓ champ username trouvé via '{label}'")
+                        username_tapped = True
+                        break
+                except Exception:
+                    pass
 
-        if username_field:
-            x = username_field.get("x", 0)
-            y = username_field.get("y", 0)
-            w = username_field.get("width", 0)
-            h = username_field.get("height", 0)
-            await drv.ht.tap(x, y, bounds=(w, h) if w > 0 else None)
-            await asyncio.sleep(0.5)
-        else:
-            # Fallback: tap at typical username field position (top area)
-            self.log("   [login] champ username non trouvé, tap position par défaut")
-            await drv.ht.tap_pos(0.5, 0.35)
-            await asyncio.sleep(0.5)
+        if not username_tapped:
+            self.log("   [login] champ username non trouvé par MCP, tap position par défaut (187, 295)")
+            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 295}, timeout=5)
+
+        await asyncio.sleep(0.5)
 
         # Clear any existing text and type username
+        self.log(f"   [login] saisie username: {username}")
         await drv.ht.type_text(username, interval=random.randint(40, 90))
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.5)
 
-        # Step 2: tap password field
-        await drv.refresh_elements()
-        password_field = (
-            drv.find_element("mot de passe", contains=True)
-            or drv.find_element("password", contains=True)
-        )
+        # Step 2: tap password field via MCP tap_element
+        password_tapped = False
+        for label in ["Mot de passe", "password", "Password"]:
+            self.log(f"   [login] recherche champ password: '{label}'")
+            r = await mcp_call(mcp_port, "tap_element", {"text": label, "match": "contains"}, timeout=8)
+            if r and r.get("content"):
+                try:
+                    tap_data = json.loads(r["content"][0].get("text", "{}"))
+                    if tap_data.get("tapped"):
+                        self.log(f"   [login] ✓ champ password trouvé via '{label}'")
+                        password_tapped = True
+                        break
+                except Exception:
+                    pass
 
-        if password_field:
-            x = password_field.get("x", 0)
-            y = password_field.get("y", 0)
-            w = password_field.get("width", 0)
-            h = password_field.get("height", 0)
-            await drv.ht.tap(x, y, bounds=(w, h) if w > 0 else None)
-            await asyncio.sleep(0.5)
-        else:
-            self.log("   [login] champ password non trouvé, tap position par défaut")
-            await drv.ht.tap_pos(0.5, 0.45)
-            await asyncio.sleep(0.5)
+        if not password_tapped:
+            self.log("   [login] champ password non trouvé par MCP, tap position par défaut (187, 365)")
+            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 365}, timeout=5)
 
+        await asyncio.sleep(0.5)
+
+        self.log("   [login] saisie password...")
         await drv.ht.type_text(password, interval=random.randint(30, 70))
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.5)
 
-        # Step 3: tap login button
-        tapped = (
-            await drv.tap_element("Se connecter")
-            or await drv.tap_element("Connexion")
-            or await drv.tap_element("Log In")
-            or await drv.tap_element("Log in")
-        )
+        # Step 3: tap login button via MCP tap_element
+        login_tapped = False
+        for label in ["Se connecter", "Connexion", "Log In", "Log in"]:
+            r = await mcp_call(mcp_port, "tap_element", {"text": label}, timeout=8)
+            if r and r.get("content"):
+                try:
+                    tap_data = json.loads(r["content"][0].get("text", "{}"))
+                    if tap_data.get("tapped"):
+                        self.log(f"   [login] ✓ bouton login trouvé: '{label}'")
+                        login_tapped = True
+                        break
+                except Exception:
+                    pass
 
-        if not tapped:
-            self.log("   [login] bouton login non trouvé, tap position par défaut")
-            await drv.ht.tap_pos(0.5, 0.60)
+        if not login_tapped:
+            self.log("   [login] bouton login non trouvé, tap position par défaut (187, 440)")
+            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 440}, timeout=5)
 
         # Wait for response (network round-trip)
         self.log("   [login] attente réponse serveur...")
