@@ -264,19 +264,24 @@ async def mcp_call(
     Returns the result dict on success, None on failure.
     """
     url = f"http://{host}:{mcp_port}/mcp"
-    headers = {"MCP-Protocol-Version": "2025-06-18"}
-    payload = {
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "params": {"name": method, "arguments": params or {}},
-        "id": 1,
-    }
     try:
         client = _get_http_client()
-        resp = await asyncio.wait_for(
-            client.post(url, json=payload, headers=headers),
-            timeout=timeout,
-        )
+
+        # Send initialize + tools/call in sequence using sync httpx (async loses headers through tunnel)
+        import httpx as _hx
+        init_resp = _hx.post(url, json={
+            "jsonrpc": "2.0", "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "scale-lab", "version": "1.0"}},
+            "id": 0,
+        }, headers={"MCP-Protocol-Version": "2025-06-18"}, timeout=10)
+
+        resp = _hx.post(url, json={
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": method, "arguments": params or {}},
+            "id": 1,
+        }, headers={"MCP-Protocol-Version": "2025-06-18"}, timeout=timeout)
+
         data = resp.json()
         if "error" in data:
             logger.warning("MCP error on %s: %s", method, data["error"])
