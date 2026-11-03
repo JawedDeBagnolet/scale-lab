@@ -306,8 +306,24 @@ async def _ssh_exec(
         (success: bool, output: str | bytes)
     """
     try:
-        proc = await asyncio.wait_for(
-            asyncio.create_subprocess_exec(
+        # Use sshpass if IPHONE_SSH_PASS is set (password auth), else key-based
+        import os
+        ssh_pass = os.environ.get("IPHONE_SSH_PASS", "")
+        if ssh_pass:
+            cmd = [
+                "sshpass", "-p", ssh_pass,
+                "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "ConnectTimeout=5",
+                "-o", "PreferredAuthentications=password",
+                "-o", "LogLevel=ERROR",
+                "-p", str(ssh_port),
+                f"{user}@{host}",
+                command,
+            ]
+        else:
+            cmd = [
                 "ssh",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "UserKnownHostsFile=/dev/null",
@@ -317,6 +333,10 @@ async def _ssh_exec(
                 "-p", str(ssh_port),
                 f"{user}@{host}",
                 command,
+            ]
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_exec(
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             ),
