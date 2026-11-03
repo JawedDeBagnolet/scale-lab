@@ -363,12 +363,30 @@ class DeviceSession:
         """Check and login Instagram if needed.
 
         Flow:
-          1. Detect current screen via MCP accessibility tree
-          2. If on login screen → perform full login (username, password, 2FA)
-          3. If on feed/profile/etc → already logged in
-          4. If on checkpoint/error → raise LoginRequired
+          1. Ensure Instagram is in foreground
+          2. Detect current screen via MCP accessibility tree
+          3. If on login screen → perform full login (username, password, 2FA)
+          4. If on feed/profile/etc → already logged in
+          5. If on checkpoint/error → raise LoginRequired
         """
         self.log("   [login] Instagram login check")
+
+        # Ensure Instagram is actually in foreground
+        from app.services.dispatch import mcp_call, DEFAULT_MCP_PORT
+        mcp_port = self.ctx.get("mcp_port", DEFAULT_MCP_PORT)
+        frontmost = await mcp_call(mcp_port, "get_frontmost_app")
+        if frontmost:
+            try:
+                import json
+                content = frontmost.get("content", [{}])
+                app_data = json.loads(content[0].get("text", "{}")) if content else {}
+                current_bundle = app_data.get("bundleId", "")
+            except Exception:
+                current_bundle = ""
+            if current_bundle != "com.burbn.instagram":
+                self.log("   [login] IG pas au premier plan, lancement...")
+                await mcp_call(mcp_port, "launch_app", {"bundle_id": "com.burbn.instagram"}, timeout=15)
+                await asyncio.sleep(2.0)
 
         # Wait for the app to settle after container switch + relaunch
         await asyncio.sleep(2.0)
