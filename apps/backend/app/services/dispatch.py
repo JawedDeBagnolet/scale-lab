@@ -107,7 +107,7 @@ def _get_http_client() -> httpx.AsyncClient:
     """Lazy singleton — avoids creating the client at import time."""
     global _http_client
     if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(MCP_TIMEOUT))
+        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(MCP_TIMEOUT), headers={"MCP-Protocol-Version": "2025-06-18"})
     return _http_client
 
 
