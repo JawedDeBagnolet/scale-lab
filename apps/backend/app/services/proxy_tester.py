@@ -135,10 +135,13 @@ async def test_proxy(
 
     except httpx.ProxyError as e:
         return ProxyTestResult(success=False, error=f"Connexion proxy impossible: {e}")
+    except httpx.ConnectError as e:
+        detail = str(e) or "connexion refusée ou proxy injoignable"
+        return ProxyTestResult(success=False, error=f"Erreur de connexion: {detail}")
     except httpx.ConnectTimeout:
-        return ProxyTestResult(success=False, error="Timeout connexion au proxy")
+        return ProxyTestResult(success=False, error="Timeout connexion au proxy (15s)")
     except httpx.ReadTimeout:
-        return ProxyTestResult(success=False, error="Timeout lecture via proxy")
+        return ProxyTestResult(success=False, error="Timeout lecture via proxy (15s)")
     except Exception as e:
         logger.exception("proxy test failed")
-        return ProxyTestResult(success=False, error=str(e))
+        return ProxyTestResult(success=False, error=str(e) or type(e).__name__)
