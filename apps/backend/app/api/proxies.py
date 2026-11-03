@@ -135,27 +135,6 @@ async def test_proxy_endpoint(proxy_id: UUID, db: AsyncSession = Depends(get_db)
     )
 
 
-class DirectTestInput(BaseModel):
-    ip: str
-    proxy_type: str = "http"
-
-
-@router.post("/test-direct", response_model=ProxyTestOut)
-async def test_proxy_direct(data: DirectTestInput):
-    """Test a proxy without storing it — used by the add modal."""
-    result = await test_proxy(ip=data.ip, proxy_type=data.proxy_type)
-    return ProxyTestOut(
-        success=result.success,
-        exit_ip=result.exit_ip,
-        exit_country=result.exit_country,
-        exit_org=result.exit_org,
-        latency_ms=result.latency_ms,
-        blacklists=result.blacklists,
-        is_datacenter=result.is_datacenter,
-        error=result.error,
-    )
-
-
 @router.post("/test-all")
 async def test_all_proxies(db: AsyncSession = Depends(get_db)):
     """Test all online proxies."""
