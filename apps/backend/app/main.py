@@ -1,6 +1,17 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+
+# ── Logging ─────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(name)s | %(levelname)s | %(message)s",
+)
+# Silence noisy libs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
