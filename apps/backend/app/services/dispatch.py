@@ -57,7 +57,7 @@ async def _dispatch_log(event_type, level, target, message, **kw):
 # USB agent port on the iPhone
 AGENT_PORT = 8765
 # Default MCP / SSH ports for tunnel mode (overridden per device)
-DEFAULT_MCP_PORT = 8190
+DEFAULT_MCP_PORT = 8090
 DEFAULT_SSH_PORT = 2223
 
 # Timeouts (seconds)
@@ -264,10 +264,11 @@ async def mcp_call(
     Returns the result dict on success, None on failure.
     """
     url = f"http://{host}:{mcp_port}/mcp"
+    # MCP tools use tools/call with name + arguments
     payload = {
         "jsonrpc": "2.0",
-        "method": method,
-        "params": params or {},
+        "method": "tools/call",
+        "params": {"name": method, "arguments": params or {}},
         "id": 1,
     }
     try:
