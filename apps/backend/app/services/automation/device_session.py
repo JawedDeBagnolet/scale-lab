@@ -829,20 +829,20 @@ class DeviceSession:
             except Exception:
                 self.log("   [login] erreur TOTP, utilisation du code brut")
 
-        # Tap the code input field via MCP tap_element
-        tapped = await self._mcp_tap_first(mcp_port, [
-            "Code",                    # label exact du champ sur l'écran 2FA IG
-            "code de sécurité",
-            "security code",
-        ])
-        if not tapped:
-            # Fallback: tap au centre du champ (position typique)
-            self.log("   [login] champ 2FA non trouvé, tap position par défaut")
-            await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 360}, timeout=5)
-        await asyncio.sleep(0.5)
+        # Tap the code input field — tap_screen direct au centre du champ
+        # (tap_element sur "Code" tape sur le label, pas le champ input)
+        # Coordonnées connues: (32, 501) 275x20 → centre = (169, 511)
+        self.log("   [login] tap champ code 2FA (169, 511)")
+        await mcp_call(mcp_port, "tap_screen", {"x": 169, "y": 511}, timeout=5)
+        await asyncio.sleep(1.0)  # attendre que le clavier s'ouvre
 
-        # Type the code
-        await drv.ht.type_text(code, interval=random.randint(60, 120))
+        # Type the code — d'abord essayer input_text (injection directe),
+        # puis fallback type_text (clavier) si le champ n'est pas focus
+        self.log(f"   [login] saisie code 2FA: {code[:2]}****")
+        input_result = await mcp_call(mcp_port, "input_text", {"text": code}, timeout=8)
+        if not input_result:
+            self.log("   [login] input_text échoué, fallback type_text")
+            await drv.ht.type_text(code, interval=random.randint(60, 120), realistic=False)
         await asyncio.sleep(0.5)
 
         # Optionally tap "Faire confiance" checkbox if present
