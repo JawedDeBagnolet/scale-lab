@@ -8,8 +8,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "010_incident_key_level"
-down_revision = "009_crane_to_ssh_port"
+revision = "010"
+down_revision = "009"
 branch_labels = None
 depends_on = None
 
