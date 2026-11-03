@@ -94,11 +94,11 @@ async def test_proxy_endpoint(proxy_id: UUID, db: AsyncSession = Depends(get_db)
             module="infra",
             event_type="slow" if is_slow else "rotate",
             level="warning" if is_slow else "info",
-            target=p.label or p.ip,
+            target=p.ip,
             message=(
-                f"{p.label or p.ip} · latence élevée ({result.latency_ms}ms)"
+                f"{p.ip} · latence élevée ({result.latency_ms}ms)"
                 if is_slow
-                else f"{p.label or p.ip} · test OK · {result.exit_ip} · {result.latency_ms}ms"
+                else f"{p.ip} · test OK · {result.exit_ip} · {result.latency_ms}ms"
             ),
             code="LATENCY_HIGH" if is_slow else None,
             meta={
@@ -115,10 +115,10 @@ async def test_proxy_endpoint(proxy_id: UUID, db: AsyncSession = Depends(get_db)
             module="infra",
             event_type="down",
             level="error",
-            target=p.label or p.ip,
+            target=p.ip,
             cause="out",
             code="PROXY_UNREACHABLE",
-            message=f"{p.label or p.ip} hors ligne · {result.error}",
+            message=f"{p.ip} hors ligne · {result.error}",
             meta={"proxy_id": str(p.id), "error": result.error},
         )
 
