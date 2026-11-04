@@ -9,6 +9,7 @@ class ProxyBase(BaseModel):
     type: str
     iphone_id: UUID | None = None
     ip: str
+    rotation_url: str | None = None
     country: str
     latency_ms: int | None = None
     status: str | None = "online"
@@ -25,6 +26,7 @@ class ProxyUpdate(BaseModel):
     type: str | None = None
     iphone_id: UUID | None = None
     ip: str | None = None
+    rotation_url: str | None = None
     country: str | None = None
     latency_ms: int | None = None
     status: str | None = None

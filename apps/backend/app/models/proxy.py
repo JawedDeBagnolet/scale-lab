@@ -21,6 +21,7 @@ class Proxy(Base):
         UUID(as_uuid=True), nullable=True
     )
     ip: Mapped[str] = mapped_column(String(45))
+    rotation_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # API URL to rotate IP
     country: Mapped[str] = mapped_column(String(5))
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(

@@ -55,21 +55,69 @@ POPUP_DISMISS_LABELS = [
     "Continuer avec Instagram", "Essayer d'une autre façon",
 ]
 
-# ── Per-device locks ─────────────────────────────────────────────────────────
-# One asyncio.Lock per device_id, shared across all runners in the process.
-# Two tasks on the same iPhone wait for each other, even if one is IG and
-# the other is Threads.
+# ── Per-device FIFO queue ────────────────────────────────────────────────────
+# Each iPhone gets a FIFO queue. Orders wait their turn indefinitely.
+# Between sessions, the proxy IP is rotated via the provider's API.
+#
+# The queue is backed by an asyncio.Lock (simple FIFO — asyncio.Lock is fair,
+# awaiters are served in order). No timeout rejection: orders wait until
+# their turn comes. The lock is held for the entire session duration.
 
 _locks: dict[str, asyncio.Lock] = {}
 _locks_guard = asyncio.Lock()
+_queue_positions: dict[str, int] = {}  # device_id → number of waiting orders
 
 
 async def _device_lock(device_id: str) -> asyncio.Lock:
-    """Get or create the per-device asyncio lock."""
+    """Get or create the per-device FIFO lock."""
     async with _locks_guard:
         if device_id not in _locks:
             _locks[device_id] = asyncio.Lock()
+            _queue_positions[device_id] = 0
         return _locks[device_id]
+
+
+def get_queue_position(device_id: str) -> int:
+    """Return the number of orders waiting for this device."""
+    return _queue_positions.get(device_id, 0)
+
+
+async def _rotate_proxy_ip(device_id: str, log: Callable = logger.info) -> bool:
+    """Call the proxy rotation API to get a new IP before the next session.
+
+    Looks up the proxy assigned to this iPhone and calls its rotation_url.
+    Returns True if rotation succeeded (or no rotation needed).
+    """
+    from app.db import AsyncSessionLocal
+    from app.models.iphone import Iphone
+    from app.models.proxy import Proxy
+
+    async with AsyncSessionLocal() as db:
+        iphone = await db.get(Iphone, device_id)
+        if not iphone or not iphone.proxy_id:
+            log(f"   [proxy] pas de proxy assigné au device {device_id}")
+            return True  # no proxy = nothing to rotate
+
+        proxy = await db.get(Proxy, iphone.proxy_id)
+        if not proxy or not proxy.rotation_url:
+            log(f"   [proxy] proxy {proxy.ip if proxy else '?'} sans rotation_url")
+            return True  # no rotation URL = skip
+
+    # Call the rotation API
+    import httpx
+    log(f"   [proxy] rotation IP via {proxy.rotation_url[:60]}...")
+    try:
+        async with httpx.AsyncClient(timeout=15, verify=False) as client:
+            resp = await client.get(proxy.rotation_url)
+            if resp.status_code == 200:
+                log(f"   [proxy] ✓ IP rotée — {resp.text[:100]}")
+                return True
+            else:
+                log(f"   [proxy] ⚠ rotation HTTP {resp.status_code}: {resp.text[:100]}")
+                return False
+    except Exception as e:
+        log(f"   [proxy] ⚠ rotation échouée: {str(e)[:100]}")
+        return False
 
 
 # ── Exceptions ───────────────────────────────────────────────────────────────
@@ -282,21 +330,22 @@ class DeviceSession:
     async def __aenter__(self) -> "DeviceSession":
         # Resolve account → device
         self.ctx = await resolve_account_device(self.compte_id, log=self.log)
+        device_id = self.ctx["device_id"]
 
-        # Acquire per-device lock
-        self._lock = await _device_lock(self.ctx["device_id"])
-        try:
-            self._lock_acquired = await asyncio.wait_for(
-                self._lock.acquire(),
-                timeout=self.lock_timeout,
-            )
-        except asyncio.TimeoutError:
-            raise RuntimeError(
-                f"iPhone {self.ctx['device_label']} occupé depuis plus de "
-                f"{self.lock_timeout}s — une autre tâche est en cours"
-            )
+        # FIFO queue: acquire per-device lock (no timeout — orders wait their turn)
+        self._lock = await _device_lock(device_id)
+        _queue_positions[device_id] = _queue_positions.get(device_id, 0) + 1
+        pos = _queue_positions[device_id]
+        if self._lock.locked():
+            self.log(f"   [queue] file d'attente position #{pos} pour {self.ctx['device_label']}")
+        await self._lock.acquire()
+        self._lock_acquired = True
+        _queue_positions[device_id] = max(0, _queue_positions.get(device_id, 1) - 1)
 
         try:
+            # Rotate proxy IP before this session
+            await _rotate_proxy_ip(device_id, self.log)
+
             # Check lock screen before switching (avoids 45s hang on uiopen)
             if await is_device_locked(self.ctx["mcp_port"], self.log):
                 raise DeviceLocked(
