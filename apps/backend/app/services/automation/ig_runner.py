@@ -28,6 +28,8 @@ import random
 from typing import Any, Callable
 from uuid import UUID
 
+from app.services.automation.behavior import maybe_pattern
+from app.services.automation.behavior.patterns import hesitate_before_action
 from app.services.automation.device_session import (
     BUNDLE_INSTAGRAM,
     DeviceSession,
@@ -129,6 +131,9 @@ async def _feed_session(
         await drv.scroll_down()
         await drv.wait(0.8, 2.5)
 
+        # Random behavior pattern (~15% chance after each scroll)
+        await maybe_pattern(drv, log, probability=0.15)
+
         # Detect posts
         posts = await drv.detect_visible_posts()
         posts_seen += len(posts)
@@ -136,6 +141,7 @@ async def _feed_session(
         for post in posts:
             # Random like
             if random.random() < like_prob:
+                await hesitate_before_action(drv, log)
                 centered = await drv.center_post(post)
                 if centered:
                     await drv.like_post()
@@ -146,6 +152,7 @@ async def _feed_session(
             if random.random() < comment_prob:
                 comment_text = values.get("comment_text")
                 if comment_text:
+                    await hesitate_before_action(drv, log)
                     centered = await drv.center_post(post)
                     if centered:
                         await drv.type_comment(comment_text)

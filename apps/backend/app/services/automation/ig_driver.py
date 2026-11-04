@@ -279,6 +279,70 @@ class IGDriver:
 
         return "other"
 
+    # ── Popup dismiss & screen navigation ────────────────────────────────
+
+    async def _dismiss_popup(self) -> bool:
+        """Try to dismiss a popup by tapping common dismiss buttons."""
+        dismiss_labels = [
+            "Ne pas autoriser", "Plus tard", "Pas maintenant",
+            "Fermer", "Ignorer", "OK", "Non merci", "Passer",
+        ]
+        from app.services.dispatch import mcp_call
+        import json as _json
+        for label in dismiss_labels:
+            r = await mcp_call(
+                self.ht.mcp_port, "tap_element",
+                {"text": label, "match": "contains"},
+                timeout=5, host=self.ht.host,
+            )
+            if r and r.get("content"):
+                try:
+                    tap_data = _json.loads(r["content"][0].get("text", "{}"))
+                    if tap_data.get("tapped"):
+                        self.log(f"   [ig] popup dismissé: '{label}'")
+                        return True
+                except Exception:
+                    pass
+        return False
+
+    async def ensure_screen(self, target: str, max_retries: int = 3) -> bool:
+        """Navigate to target screen with popup dismissal and retry."""
+        import asyncio
+        for attempt in range(max_retries):
+            screen = await self.detect_current_screen()
+            if screen == target:
+                return True
+
+            # Try dismissing a popup first
+            dismissed = await self._dismiss_popup()
+            if dismissed:
+                await asyncio.sleep(1.0)
+                continue
+
+            # Navigation by tab bar (bottom of screen, y=780)
+            tab_positions = {
+                "feed": 0.1, "explore": 0.3,
+                "reels": 0.5, "own_profile": 0.9,
+            }
+            if target in tab_positions:
+                await self.ht.tap(
+                    self.ht.screen_w * tab_positions[target], 780
+                )
+                await asyncio.sleep(1.5)
+                continue
+
+            # Try going back
+            if screen in ("post_view", "profile", "story"):
+                from app.services.dispatch import mcp_call
+                await mcp_call(
+                    self.ht.mcp_port, "tap_element",
+                    {"text": "Retour"},
+                    timeout=5, host=self.ht.host,
+                )
+                await asyncio.sleep(1.0)
+
+        return False
+
     # ── Post detection ───────────────────────────────────────────────────
 
     async def detect_visible_posts(
