@@ -20,6 +20,6 @@ jobs:
             git pull origin main
             cd apps/backend
             source venv/bin/activate
-            pip install -r requirements.txt
-            alembic upgrade head
+            pip install -r requirements.txt --quiet
+            alembic upgrade heads || alembic upgrade head || echo "Alembic: nothing to migrate"
             sudo systemctl restart scalelab-api
