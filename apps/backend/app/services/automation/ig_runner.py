@@ -307,7 +307,34 @@ async def _profile_visit(
 
 # ── Media transfer ───────────────────────────────────────────────────────────
 
-async def _transfer_media_to_iphone(
+
+async def _push_media(
+    media_url: str,
+    sess: "DeviceSession",
+    *,
+    market: str = "FR",
+    device_model: str = "iPhone10,6",
+    log: Callable = logger.info,
+) -> str | None:
+    """Push media through the pipeline: spoof EXIF → SCP → import to gallery.
+
+    Returns the iPhone gallery path on success, None on failure.
+    """
+    from app.services.media_pipeline import push_media
+    return await push_media(
+        media_url=media_url,
+        ssh_port=sess.ssh_port,
+        mcp_port=sess.mcp_port,
+        market=market,
+        device_model=device_model,
+        phone_id=sess.ctx.get("container_uuid", "default"),
+        host=sess.ctx.get("host", "127.0.0.1"),
+    )
+
+
+# ── Legacy media transfer (kept for reference) ──────────────────────────────
+
+async def _legacy_transfer_media_to_iphone(
     ssh_port: int,
     local_path: str,
     *,
@@ -362,7 +389,7 @@ async def _transfer_media_to_iphone(
     return remote_path
 
 
-async def _download_r2_media(
+async def _legacy_download_r2_media(
     media_url: str,
     *,
     log: Callable = logger.info,
@@ -430,29 +457,21 @@ async def _publish_post(
     if not media_urls and not media_paths:
         return False, "ig_post: media_urls ou media_paths requis"
 
-    # Step 1: Download from R2 if needed, then transfer to iPhone
-    local_files = list(media_paths)
-    for url in media_urls:
-        local = await _download_r2_media(url, log=log)
-        if not local:
-            return False, f"ig_post: échec téléchargement {url}"
-        local_files.append(local)
+    # Step 1: Push media through pipeline (spoof EXIF → SCP → import gallery)
+    all_urls = list(media_urls)
+    # If local paths provided, they're already on VPS — skip spoof, just transfer
+    for url in all_urls:
+        iphone_path = await _push_media(url, sess, log=log)
+        if not iphone_path:
+            return False, f"ig_post: échec pipeline média {url}"
 
-    # Step 2: Transfer each file to iPhone
-    for f in local_files:
-        remote = await _transfer_media_to_iphone(sess.ssh_port, f, log=log)
+    # For local VPS paths, use legacy transfer as fallback
+    for f in media_paths:
+        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, f, log=log)
         if not remote:
             return False, f"ig_post: échec transfert {os.path.basename(f)} vers iPhone"
 
-    # Cleanup R2 downloads (not user-provided paths)
-    for url in media_urls:
-        for f in local_files[len(media_paths):]:
-            try:
-                os.unlink(f)
-            except OSError:
-                pass
-
-    # Step 3: Wait for media to appear in gallery
+    # Step 2: Wait for media to appear in gallery
     await asyncio.sleep(2.0)
 
     # Step 4: UI automation — create new post
@@ -628,22 +647,15 @@ async def _publish_story(
     if not media_url and not media_path:
         return False, "ig_story_post: media_url ou media_path requis"
 
-    # Download + transfer
-    if media_url and not media_path:
-        media_path = await _download_r2_media(media_url, log=log)
-        if not media_path:
-            return False, f"ig_story_post: échec téléchargement {media_url}"
-
-    remote = await _transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
-    if not remote:
-        return False, "ig_story_post: échec transfert média vers iPhone"
-
-    # Cleanup temp download
+    # Push media through pipeline (spoof EXIF → SCP → import gallery)
     if media_url:
-        try:
-            os.unlink(media_path)
-        except OSError:
-            pass
+        iphone_path = await _push_media(media_url, sess, log=log)
+        if not iphone_path:
+            return False, f"ig_story_post: échec pipeline média {media_url}"
+    elif media_path:
+        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
+        if not remote:
+            return False, "ig_story_post: échec transfert média vers iPhone"
 
     await asyncio.sleep(2.0)
 
@@ -737,21 +749,15 @@ async def _publish_reel(
     if not media_url and not media_path:
         return False, "ig_reel_post: media_url ou media_path requis"
 
-    # Download + transfer
-    if media_url and not media_path:
-        media_path = await _download_r2_media(media_url, log=log)
-        if not media_path:
-            return False, f"ig_reel_post: échec téléchargement {media_url}"
-
-    remote = await _transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
-    if not remote:
-        return False, "ig_reel_post: échec transfert vidéo vers iPhone"
-
+    # Push media through pipeline (spoof EXIF → SCP → import gallery)
     if media_url:
-        try:
-            os.unlink(media_path)
-        except OSError:
-            pass
+        iphone_path = await _push_media(media_url, sess, log=log)
+        if not iphone_path:
+            return False, f"ig_reel_post: échec pipeline média {media_url}"
+    elif media_path:
+        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
+        if not remote:
+            return False, "ig_reel_post: échec transfert vidéo vers iPhone"
 
     await asyncio.sleep(2.0)
 
@@ -1003,25 +1009,24 @@ async def _media_import(
     imported = 0
     errors = 0
 
-    # Download from R2 first
-    local_files = list(media_paths)
+    # Push URLs through pipeline (spoof EXIF → SCP → import gallery)
     for url in media_urls:
-        local = await _download_r2_media(url, log=log)
-        if local:
-            local_files.append(local)
+        iphone_path = await _push_media(url, sess, log=log)
+        if iphone_path:
+            imported += 1
         else:
             errors += 1
 
-    # Transfer each to iPhone
-    for f in local_files:
-        remote = await _transfer_media_to_iphone(sess.ssh_port, f, log=log)
+    # Transfer local VPS paths via legacy method
+    for f in media_paths:
+        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, f, log=log)
         if remote:
             imported += 1
         else:
             errors += 1
 
-    # Cleanup temp downloads
-    for f in local_files[len(media_paths):]:
+    # Cleanup temp downloads (legacy paths only)
+    for f in media_paths:
         try:
             os.unlink(f)
         except OSError:

@@ -219,9 +219,8 @@ async def _execute_action(
     For iPhone platforms: dispatches via USB if the device is connected.
     For web platforms: STUB (will be replaced by browser automation in Point 4).
     """
-    # Normalize platform aliases (frontend may send "ig"/"th" instead of "ig_iph"/"th_iph")
-    _platform_map = {"ig": "ig_iph", "th": "th_iph"}
-    platform = _platform_map.get(platform, platform)
+    # Normalize platform aliases (frontend sends "ig"/"th", engine expects "ig_iph"/"th_iph")
+    platform = {"ig": "ig_iph", "th": "th_iph"}.get(platform, platform)
 
     if platform in IPHONE_PLATFORMS:
         return await _execute_iphone_action(account_id, platform, action_type, values, preset_ids)
