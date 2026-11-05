@@ -118,8 +118,14 @@ async def _feed_session(
     duration = values.get("duration", 120)  # seconds
     like_prob = values.get("like_probability", 0.15)
     comment_prob = values.get("comment_probability", 0.03)
+    save_prob = values.get("save_probability", 0.0)
 
-    log(f"   [ig_feed] session {duration}s, like={like_prob}, comment={comment_prob}")
+    # Load pause config from behavior preset (if any)
+    pauses = await _load_pauses(sess)
+    # Load targets for this account's market (to scope pauses)
+    targets = await _load_market_targets(sess)
+
+    log(f"   [ig_feed] session {duration}s, like={like_prob}, comment={comment_prob}, pauses={len(pauses)}, targets={len(targets)}")
 
     # Navigate to feed
     await drv.go_home()
@@ -130,6 +136,7 @@ async def _feed_session(
     posts_seen = 0
     likes = 0
     comments = 0
+    saves = 0
     seen_usernames: set[str] = set()
     stale_count = 0  # how many consecutive loops with no new posts
 
@@ -138,17 +145,14 @@ async def _feed_session(
         screen = await drv.detect_current_screen()
         if screen and screen not in ("feed", "reels", "explore"):
             log(f"   [ig] hors du feed (écran: {screen}), retour...")
-            # Try back button / swipe back
             backed = await drv.tap_element("Retour", contains=True)
             if not backed:
                 backed = await drv.tap_element("Back", contains=True)
             if not backed:
-                # Swipe from left edge to go back
                 await drv.ht.swipe(5, drv.ht.screen_h * 0.5,
                                    drv.ht.screen_w * 0.6, drv.ht.screen_h * 0.5,
                                    duration=300, steps=20)
             await drv.wait(0.8, 1.5)
-            # Re-navigate to feed
             await drv.go_home()
             await drv.wait(1.0, 2.0)
             continue
@@ -162,18 +166,22 @@ async def _feed_session(
             for post in new_posts:
                 seen_usernames.add(post["username"])
                 posts_seen += 1
+                is_target = post["username"].lower() in targets
 
-                # Center this post on screen before anything else
+                # Center this post on screen
                 await _snap_to_post(drv, post)
                 await drv.wait(0.3, 0.6)
 
-                # Reading pause — we see the post, we read it
-                await asyncio.sleep(random.uniform(1.5, 4.0))
+                # Reading pause — weighted by scope (target/lambda)
+                pause_secs = _pick_pause(pauses, is_target)
+                if pause_secs > 0:
+                    log(f"   [ig] lecture {pause_secs:.1f}s sur {post['username']}" + (" (target)" if is_target else ""))
+                    await asyncio.sleep(pause_secs)
 
                 # Random behavior pattern
                 await maybe_pattern(drv, log, probability=0.12)
 
-                # Maybe like — use the heart button (now centered on screen)
+                # Maybe like
                 if random.random() < like_prob:
                     await hesitate_before_action(drv, log)
                     liked = await drv.tap_like_button()
@@ -181,6 +189,15 @@ async def _feed_session(
                         likes += 1
                         log(f"   [ig] like sur {post['username']}")
                         await drv.wait(0.5, 1.5)
+
+                # Maybe save/bookmark
+                if save_prob > 0 and random.random() < save_prob:
+                    await hesitate_before_action(drv, log)
+                    saved = await drv.tap_save_button()
+                    if saved:
+                        saves += 1
+                        log(f"   [ig] enregistré {post['username']}")
+                        await drv.wait(0.3, 0.8)
 
                 # Maybe comment
                 if random.random() < comment_prob:
@@ -211,9 +228,103 @@ async def _feed_session(
             stale_count = 0
             await drv.wait(1.0, 2.0)
 
-    msg = f"Feed : {posts_seen} posts, {likes} likes, {comments} comments en {duration}s"
+    msg = f"Feed : {posts_seen} posts, {likes} likes, {saves} saves, {comments} comments en {duration}s"
     log(f"   [ig_feed] {msg}")
     return True, msg
+
+
+async def _load_pauses(sess) -> list[dict]:
+    """Load pause config from the behavior preset attached to this session.
+
+    Returns list of { label, min, max, prob, scope } dicts.
+    Falls back to sensible defaults if no preset.
+    """
+    try:
+        from app.db import AsyncSessionLocal
+        from app.models.compte import Compte
+
+        async with AsyncSessionLocal() as db:
+            compte = await db.get(Compte, sess.compte_id)
+            if not compte:
+                return _DEFAULT_PAUSES
+
+            # The preset_ids come from the scenario step's action config
+            # For now, load the first behavior preset for this account's platform
+            from sqlalchemy import select
+            from app.models.comportement import Comportement
+            stmt = select(Comportement).where(
+                Comportement.plat == "ig"
+            ).limit(1)
+            result = await db.execute(stmt)
+            preset = result.scalar_one_or_none()
+            if preset and preset.pauses:
+                return preset.pauses
+    except Exception:
+        pass
+    return _DEFAULT_PAUSES
+
+
+_DEFAULT_PAUSES = [
+    {"label": "Pas intéressé", "min": 2, "max": 4, "prob": 50, "scope": "both"},
+    {"label": "Intéressant", "min": 6, "max": 10, "prob": 35, "scope": "both"},
+    {"label": "Très intéressé", "min": 15, "max": 25, "prob": 15, "scope": "target"},
+]
+
+
+async def _load_market_targets(sess) -> set[str]:
+    """Load target handles for the same market as this account.
+
+    Returns a set of lowercase handles.
+    """
+    try:
+        from app.db import AsyncSessionLocal
+        from app.models.compte import Compte
+        from app.models.target import Target
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            compte = await db.get(Compte, sess.compte_id)
+            if not compte or not compte.market:
+                return set()
+
+            stmt = select(Target.handle).where(Target.market == compte.market)
+            result = await db.execute(stmt)
+            return {row[0].lower() for row in result.all() if row[0]}
+    except Exception:
+        return set()
+
+
+def _pick_pause(pauses: list[dict], is_target: bool) -> float:
+    """Pick a reading pause duration based on weighted random selection.
+
+    Filters pauses by scope (target/lambda/both) then picks one
+    weighted by 'prob'. Returns duration in seconds.
+    """
+    if not pauses:
+        return random.uniform(1.5, 4.0)  # fallback
+
+    # Filter by scope
+    scope_key = "target" if is_target else "lambda"
+    applicable = [p for p in pauses if p.get("scope", "both") in (scope_key, "both")]
+
+    if not applicable:
+        # No matching pauses — use all as fallback
+        applicable = pauses
+
+    # Weighted random selection by prob
+    total_weight = sum(p.get("prob", 10) for p in applicable)
+    if total_weight <= 0:
+        return random.uniform(1.5, 4.0)
+
+    roll = random.uniform(0, total_weight)
+    for p in applicable:
+        roll -= p.get("prob", 10)
+        if roll <= 0:
+            return random.uniform(p.get("min", 2), p.get("max", 5))
+
+    # Fallback to last
+    last = applicable[-1]
+    return random.uniform(last.get("min", 2), last.get("max", 5))
 
 
 async def _snap_to_post(drv: IGDriver, post: dict):
