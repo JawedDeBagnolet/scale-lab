@@ -109,10 +109,11 @@ async def _feed_session(
     values: dict,
     log: Callable,
 ) -> tuple[bool, str]:
-    """Browse IG feed post-by-post with realistic timing and interactions.
+    """Browse IG feed like a human — scroll, read, sometimes interact.
 
-    Strategy: detect → center → interact → scroll to next post.
-    Never blind-scroll — always know where we are.
+    No centering. Just scroll down naturally, detect what's on screen,
+    interact with visible posts, repeat. Track seen posts to know when
+    we've actually moved to new content.
     """
     duration = values.get("duration", 120)  # seconds
     like_prob = values.get("like_probability", 0.15)
@@ -129,89 +130,89 @@ async def _feed_session(
     posts_seen = 0
     likes = 0
     comments = 0
-    seen_usernames: set[str] = set()  # avoid double-processing same post
+    seen_usernames: set[str] = set()
+    stale_count = 0  # how many consecutive loops with no new posts
 
     while (time.monotonic() - start) < duration:
-        # 1. Detect posts currently visible
+        # 1. Read what's on screen
         posts = await drv.detect_visible_posts()
-
-        # Filter out already-seen posts
         new_posts = [p for p in posts if p["username"] not in seen_usernames]
 
-        if not new_posts:
-            # No new posts visible — do a small scroll to reveal the next post
-            await _feed_small_scroll(drv)
-            await drv.wait(0.6, 1.2)
-            continue
+        if new_posts:
+            stale_count = 0
+            for post in new_posts:
+                seen_usernames.add(post["username"])
+                posts_seen += 1
 
-        # 2. Process each new post one at a time
-        for post in new_posts:
-            if (time.monotonic() - start) >= duration:
-                break
+                # Reading pause — we see the post, we read it
+                await asyncio.sleep(random.uniform(1.5, 4.0))
 
-            seen_usernames.add(post["username"])
-            posts_seen += 1
+                # Random behavior pattern
+                await maybe_pattern(drv, log, probability=0.12)
 
-            # Center on this post
-            centered = await drv.center_post(post)
-            if not centered:
-                log(f"   [ig] post de {post['username']} disparu après scroll")
-                continue
-
-            # Reading pause — simulate reading the post
-            read_time = random.uniform(1.5, 5.0)
-            await asyncio.sleep(read_time)
-
-            # Random behavior pattern (~15% chance)
-            await maybe_pattern(drv, log, probability=0.15)
-
-            # Random like
-            if random.random() < like_prob:
-                await hesitate_before_action(drv, log)
-                await drv.like_post()
-                likes += 1
-                log(f"   [ig] ❤ like sur {post['username']}")
-                await drv.wait(0.5, 1.5)
-
-            # Random comment
-            if random.random() < comment_prob:
-                comment_text = values.get("comment_text")
-                if comment_text:
+                # Maybe like (double-tap at screen center)
+                if random.random() < like_prob:
                     await hesitate_before_action(drv, log)
-                    await drv.type_comment(comment_text)
-                    await drv.submit_comment()
-                    comments += 1
-                    log(f"   [ig] 💬 comment sur {post['username']}")
-                    await drv.wait(1.0, 3.0)
+                    await drv.like_post()
+                    likes += 1
+                    log(f"   [ig] like sur {post['username']}")
+                    await drv.wait(0.5, 1.5)
 
-        # 3. After processing visible posts, scroll down to reveal the next one
-        await _feed_small_scroll(drv)
+                # Maybe comment
+                if random.random() < comment_prob:
+                    comment_text = values.get("comment_text")
+                    if comment_text:
+                        await hesitate_before_action(drv, log)
+                        await drv.type_comment(comment_text)
+                        await drv.submit_comment()
+                        comments += 1
+                        log(f"   [ig] comment sur {post['username']}")
+                        await drv.wait(1.0, 3.0)
+
+                if (time.monotonic() - start) >= duration:
+                    break
+        else:
+            stale_count += 1
+
+        # 2. Scroll down to see next content
+        # If we keep seeing the same posts, scroll a bit more
+        scroll_mult = min(1.0 + stale_count * 0.3, 2.0)
+        await _feed_scroll_down(drv, multiplier=scroll_mult)
         await drv.wait(0.8, 2.0)
+
+        # Safety: if stuck for too long, do a bigger scroll
+        if stale_count >= 4:
+            log(f"   [ig] stuck — grand scroll pour débloquer")
+            await drv.scroll_down()
+            stale_count = 0
+            await drv.wait(1.0, 2.0)
 
     msg = f"Feed : {posts_seen} posts, {likes} likes, {comments} comments en {duration}s"
     log(f"   [ig_feed] {msg}")
     return True, msg
 
 
-async def _feed_small_scroll(drv: IGDriver):
-    """Scroll down roughly one post height (~400-550px), not a full page.
+async def _feed_scroll_down(drv: IGDriver, *, multiplier: float = 1.0):
+    """Scroll down by roughly one post height.
 
-    Uses a shorter swipe than HumanTouch.scroll_down() to stay
-    post-by-post instead of jumping over content.
+    Finger moves UP (start_y > end_y) = content moves UP = we see posts below.
+    multiplier > 1 scrolls further (used when stuck on same posts).
     """
     await drv.ht._ensure_screen()
     w = drv.ht.screen_w
     h = drv.ht.screen_h
 
-    # One post height ≈ 450-600px on iPhone X (812px screen)
-    # Scroll 45-65% of screen height — roughly one post
-    dist = random.uniform(0.45, 0.65) * h
+    # Base scroll: ~35-50% of screen height (one post ≈ 400-500px on 812px screen)
+    base_dist = random.uniform(0.35, 0.50) * h * multiplier
+    # Clamp so we never scroll more than 80% of screen
+    dist = min(base_dist, h * 0.80)
+
     dur = random.randint(500, 900)
-    drift_x = random.uniform(-8, 8)  # slight lateral drift
+    drift_x = random.uniform(-6, 6)
 
     x = w * random.uniform(0.35, 0.65)
-    start_y = h * random.uniform(0.65, 0.75)
-    end_y = start_y - dist
+    start_y = h * random.uniform(0.70, 0.80)
+    end_y = start_y - dist  # finger goes UP = scroll DOWN
 
     points = drv.ht._build_swipe_points(
         x, start_y, x + drift_x, end_y,
