@@ -134,6 +134,25 @@ async def _feed_session(
     stale_count = 0  # how many consecutive loops with no new posts
 
     while (time.monotonic() - start) < duration:
+        # 0. Check we're still on the feed — if not, go back
+        screen = await drv.detect_current_screen()
+        if screen and screen not in ("feed", "reels", "explore"):
+            log(f"   [ig] hors du feed (écran: {screen}), retour...")
+            # Try back button / swipe back
+            backed = await drv.tap_element("Retour", contains=True)
+            if not backed:
+                backed = await drv.tap_element("Back", contains=True)
+            if not backed:
+                # Swipe from left edge to go back
+                await drv.ht.swipe(5, drv.ht.screen_h * 0.5,
+                                   drv.ht.screen_w * 0.6, drv.ht.screen_h * 0.5,
+                                   duration=300, steps=20)
+            await drv.wait(0.8, 1.5)
+            # Re-navigate to feed
+            await drv.go_home()
+            await drv.wait(1.0, 2.0)
+            continue
+
         # 1. Read what's on screen
         posts = await drv.detect_visible_posts()
         new_posts = [p for p in posts if p["username"] not in seen_usernames]
@@ -150,13 +169,15 @@ async def _feed_session(
                 # Random behavior pattern
                 await maybe_pattern(drv, log, probability=0.12)
 
-                # Maybe like (double-tap at screen center)
+                # Maybe like — use the heart button, NOT double-tap
+                # (double-tap at wrong position opens profiles)
                 if random.random() < like_prob:
                     await hesitate_before_action(drv, log)
-                    await drv.like_post()
-                    likes += 1
-                    log(f"   [ig] like sur {post['username']}")
-                    await drv.wait(0.5, 1.5)
+                    liked = await drv.tap_like_button()
+                    if liked:
+                        likes += 1
+                        log(f"   [ig] like sur {post['username']}")
+                        await drv.wait(0.5, 1.5)
 
                 # Maybe comment
                 if random.random() < comment_prob:
