@@ -436,19 +436,25 @@
     };
   }
 
+  // Normaliser les niveaux backend → frontend :
+  // critical → error, warning → warn (le frontend n'a que success/info/warn/error)
+  var _lvlMap = { critical: 'error', warning: 'warn', debug: 'info' };
+  function _normLvl(l) { return _lvlMap[l] || l || 'info'; }
+
   function xEvent(e) {
+    var lvl = _normLvl(e.level);
     return {
       id: e.id,
       t: new Date(e.timestamp).getTime(),
       mod: e.module,
       type: e.event_type,
-      lvl: e.level || 'info',
+      lvl: lvl,
       target: e.target || '',
       cause: e.cause || '',
       code: e.code || '',
       msg: e.message,
       meta: e.meta || null,
-      key: e.level === 'error' || e.level === 'warning' ? e.module + '|' + e.event_type + '|' + (e.target || '') : null
+      key: lvl === 'error' || lvl === 'warn' ? e.module + '|' + e.event_type + '|' + (e.target || '') : null
     };
   }
 
