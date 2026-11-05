@@ -325,12 +325,23 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
         await _broadcast_run(run)
         return
 
-    # Current step data: [platform, [[action_type, {values}, [preset_ids]], ...], {delay_config}, [slot_ids]]
+    # Current step data — dict from frontend:
+    # { "plat": "ig_iph", "actions": [{type, v, presets, ...}], "delay": {...}, "slots": [...], "loop": {...} }
     step = steps[current_step_idx]
-    platform = step[0] if len(step) > 0 else ""
-    actions = step[1] if len(step) > 1 else []
-    delay_cfg = step[2] if len(step) > 2 else {}
-    step_slots = step[3] if len(step) > 3 else (scenario.slots or [])
+    if isinstance(step, dict):
+        platform = step.get("plat", step.get("platform", ""))
+        actions = step.get("actions", [])
+        delay_cfg = step.get("delay", {})
+        step_slots = step.get("slots", scenario.slots or [])
+    else:
+        # Legacy list format: [platform, actions, delay_cfg, slot_ids]
+        platform = step[0] if len(step) > 0 else ""
+        actions = step[1] if len(step) > 1 else []
+        delay_cfg = step[2] if len(step) > 2 else {}
+        step_slots = step[3] if len(step) > 3 else (scenario.slots or [])
+
+    # Normalize platform alias (frontend sends "ig"/"th", engine expects "ig_iph"/"th_iph")
+    platform = {"ig": "ig_iph", "th": "th_iph"}.get(platform, platform)
 
     # Check plage horaire (unless ignore_slots)
     if not ignore_slots and step_slots:
@@ -431,10 +442,16 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
 
         # Execute each action in the step
         step_ok = True
-        for action_tuple in actions:
-            action_type = action_tuple[0] if len(action_tuple) > 0 else ""
-            values = action_tuple[1] if len(action_tuple) > 1 else {}
-            preset_ids = action_tuple[2] if len(action_tuple) > 2 else []
+        for action_data in actions:
+            if isinstance(action_data, dict):
+                action_type = action_data.get("type", "")
+                values = action_data.get("v", action_data.get("values", {}))
+                preset_ids = action_data.get("presets", action_data.get("preset_ids", []))
+            else:
+                # Legacy list format: [action_type, {values}, [preset_ids]]
+                action_type = action_data[0] if len(action_data) > 0 else ""
+                values = action_data[1] if len(action_data) > 1 else {}
+                preset_ids = action_data[2] if len(action_data) > 2 else []
 
             success, detail = await _execute_action(
                 acc_id, platform, action_type, values, preset_ids,
