@@ -163,14 +163,17 @@ async def _feed_session(
                 seen_usernames.add(post["username"])
                 posts_seen += 1
 
+                # Center this post on screen before anything else
+                await _snap_to_post(drv, post)
+                await drv.wait(0.3, 0.6)
+
                 # Reading pause — we see the post, we read it
                 await asyncio.sleep(random.uniform(1.5, 4.0))
 
                 # Random behavior pattern
                 await maybe_pattern(drv, log, probability=0.12)
 
-                # Maybe like — use the heart button, NOT double-tap
-                # (double-tap at wrong position opens profiles)
+                # Maybe like — use the heart button (now centered on screen)
                 if random.random() < like_prob:
                     await hesitate_before_action(drv, log)
                     liked = await drv.tap_like_button()
@@ -211,6 +214,46 @@ async def _feed_session(
     msg = f"Feed : {posts_seen} posts, {likes} likes, {comments} comments en {duration}s"
     log(f"   [ig_feed] {msg}")
     return True, msg
+
+
+async def _snap_to_post(drv: IGDriver, post: dict):
+    """Adjust scroll to center a post's media on screen.
+
+    Uses the post's Y coordinate from detect_visible_posts() to compute
+    a small drag. No re-detection — one precise gesture, done.
+    """
+    await drv.ht._ensure_screen()
+    h = drv.ht.screen_h
+    w = drv.ht.screen_w
+
+    # Target: media center at ~45% of screen height
+    target_y = h * 0.45
+    post_y = post.get("y", target_y)
+    delta = post_y - target_y  # positive = post below center
+
+    # If already close enough (within 40px), skip
+    if abs(delta) < 40:
+        return
+
+    # Drag to center: finger moves opposite to delta
+    x = w * random.uniform(0.35, 0.65)
+    start_y = h * 0.5
+    # delta > 0 → post below center → finger goes UP (end_y < start_y) → post moves up
+    # delta < 0 → post above center → finger goes DOWN (end_y > start_y) → post moves down
+    end_y = start_y - delta * 0.85  # slight undershoot for natural feel
+
+    # Clamp to screen bounds
+    end_y = max(h * 0.10, min(h * 0.90, end_y))
+
+    points = drv.ht._build_swipe_points(
+        x, start_y, x + random.uniform(-3, 3), end_y,
+        random.randint(20, 35),
+    )
+    await drv.ht.drag(
+        points,
+        hold_duration=70,
+        move_duration=random.randint(350, 600),
+    )
 
 
 async def _feed_scroll_down(drv: IGDriver, *, multiplier: float = 1.0):
