@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class ScenarioBase(BaseModel):
     name: str = Field(min_length=1, max_length=150)
+    icon: str | None = Field(default="lightning", max_length=50)
     origin: str = Field(max_length=20)  # spontane, login, creation
     couple: str | None = Field(default=None, max_length=100)
     plateforme: str | None = Field(default=None, max_length=10)
@@ -25,6 +26,7 @@ class ScenarioCreate(ScenarioBase):
 
 class ScenarioUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=150)
+    icon: str | None = Field(default=None, max_length=50)
     origin: str | None = Field(default=None, max_length=20)
     couple: str | None = Field(default=None, max_length=100)
     plateforme: str | None = Field(default=None, max_length=10)

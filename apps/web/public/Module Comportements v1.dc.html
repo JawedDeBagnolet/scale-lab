@@ -175,7 +175,7 @@ class Component extends DCLogic {
   segStyle(on) { return { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 8, fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#ffffff' : '#8a91a8', background: on ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'transparent' }; }
   toastMsg(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
   keys(plat) { const B = window.SCALE_DATA.behaviorParams; return B.lot1.concat(B.lot2[plat]); }
-  usage(id) { const D = window.SCALE_DATA; return D.scenarios.filter(sc => sc.steps.some(st => st[1].some(t => (t[2] || []).indexOf(id) >= 0))); }
+  usage(id) { const D = window.SCALE_DATA; return D.scenarios.filter(sc => sc.steps.some(st => { const acts = Array.isArray(st) ? (st[1] || []) : (st.actions || []); return acts.some(t => { const prs = Array.isArray(t) ? (t[2] || []) : (t.presets || []); return prs.indexOf(id) >= 0; }); })); }
   shares(list, plat, mode) { const L = list.filter(b => b.plat === plat); const tw = L.reduce((t, b) => t + b.weight, 0); const o = {}; L.forEach(b => { o[b.id] = L.length ? (mode === 'weighted' ? (tw ? b.weight / tw : 0) : 1 / L.length) : 0; }); return o; }
   componentDidMount() {
     const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box);
@@ -244,7 +244,7 @@ class Component extends DCLogic {
       cards, addLabel: 'Nouveau comportement ' + pfName, newB: () => this.openNew(),
       hasToast: !!s.toast, toast: s.toast || '', edOpen: false,
       cfOpen: !!s.cf, cfClose: () => this.setState({ cf: null }),
-      cf: s.cf ? { title: 'Supprimer « ' + s.cf.name + ' » ?', text: s.cf.n ? 'Il est retiré des étapes de ' + this.pl(s.cf.n, 'scénario') + '. Ces étapes utiliseront leurs propres réglages ou les autres presets sélectionnés.' : 'Aucun scénario ne l\'utilise.', go: () => { const id = s.cf.id; const nm = s.cf.name; const SD = window.SCALE_DATA; if (SD && SD._live) SD.apiDelete('/presets/' + id); if (D) { const i = D.behaviors.findIndex(x => x.id === id); if (i >= 0) D.behaviors.splice(i, 1); D.scenarios.forEach(sc => sc.steps.forEach(st => st[1].forEach(t => { if (t[2]) t[2] = t[2].filter(z => z !== id); }))); } this.setState(y => ({ list: y.list.filter(x => x.id !== id), cf: null })); this.toastMsg('« ' + nm + ' » supprimé'); } } : {}
+      cf: s.cf ? { title: 'Supprimer « ' + s.cf.name + ' » ?', text: s.cf.n ? 'Il est retiré des étapes de ' + this.pl(s.cf.n, 'scénario') + '. Ces étapes utiliseront leurs propres réglages ou les autres presets sélectionnés.' : 'Aucun scénario ne l\'utilise.', go: () => { const id = s.cf.id; const nm = s.cf.name; const SD = window.SCALE_DATA; if (SD && SD._live) SD.apiDelete('/presets/' + id); if (D) { const i = D.behaviors.findIndex(x => x.id === id); if (i >= 0) D.behaviors.splice(i, 1); D.scenarios.forEach(sc => sc.steps.forEach(st => { const acts = Array.isArray(st) ? (st[1] || []) : (st.actions || []); acts.forEach(t => { if (Array.isArray(t)) { if (t[2]) t[2] = t[2].filter(z => z !== id); } else { if (t.presets) t.presets = t.presets.filter(z => z !== id); } }); })); } this.setState(y => ({ list: y.list.filter(x => x.id !== id), cf: null })); this.toastMsg('« ' + nm + ' » supprimé'); } } : {}
     };
     if (s.ed && D) Object.assign(out, this.edVals(s));
     return out;
