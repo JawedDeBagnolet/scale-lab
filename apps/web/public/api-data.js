@@ -740,7 +740,7 @@
     lot1: ['like', 'comments', 'follow'],
     lot2: {
       x: ['cursor', 'target', 'lambda', 'scrollback', 'openPost', 'likeComment', 'commentAuthor'],
-      ig: ['target', 'lambda', 'scrollback', 'openPost', 'likeComment', 'commentAuthor', 'story', 'save'],
+      ig: ['target', 'lambda', 'scrollback', 'likeComment', 'commentAuthor', 'story', 'save'],
       th: ['target', 'lambda', 'scrollback', 'openPost', 'likeComment', 'commentAuthor']
     },
     types: {
