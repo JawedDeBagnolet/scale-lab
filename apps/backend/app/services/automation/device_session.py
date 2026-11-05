@@ -89,11 +89,11 @@ async def _rotate_proxy_ip(device_id: str, log: Callable = logger.info) -> bool:
     Returns True if rotation succeeded (or no rotation needed).
     """
     from app.db import AsyncSessionLocal
-    from app.models.iphone import Iphone
+    from app.models.iphone import IPhone
     from app.models.proxy import Proxy
 
     async with AsyncSessionLocal() as db:
-        iphone = await db.get(Iphone, device_id)
+        iphone = await db.get(IPhone, device_id)
         if not iphone or not iphone.proxy_id:
             log(f"   [proxy] pas de proxy assigné au device {device_id}")
             return True  # no proxy = nothing to rotate
