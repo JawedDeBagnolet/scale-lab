@@ -322,7 +322,7 @@ class Component extends DCLogic {
   ORIG = { spont: ['Spontané', 'ph ph-hand-tap', 'Lancé à la main sur les comptes de ton choix. Jamais proposé au login ni à la création.'], login: ['Login', 'ph ph-sign-in', 'Proposé quand tu connectes un ou plusieurs comptes, pour le leur assigner.'], creation: ['Création', 'ph ph-user-plus', 'Proposé quand tu crées un ou plusieurs comptes, pour le leur assigner.'] };
   PMAP = { like: 'like', comments: 'readComments', follow: 'follow', cursor: 'cursor', target: 'target', lambda: 'visit', story: 'story', save: 'save' };
   PZ0 = { sMin: 3, sMax: 12, lOn: true, lMin: 60, lMax: 240, lFreq: 10 };
-  RST = { running: ['En cours', '#4ade80'], paused: ['En pause', '#f5c77e'], done: ['Terminé', '#aab0c5'], aborted: ['Avorté', '#f4728c'] };
+  RST = { running: ['En cours', '#4ade80'], paused: ['En pause', '#f5c77e'], done: ['Terminé', '#aab0c5'], aborted: ['Avorté', '#f4728c'], error: ['Erreur', '#f4728c'], pending: ['En attente', '#8a91a8'], queued: ['File d\'attente', '#8a91a8'] };
   SST = { ok: ['ph ph-check', '#4ade80'], run: ['ph ph-circle-notch', '#a5a0f5'], err: ['ph ph-warning', '#f4728c'], skip: ['ph ph-skip-forward', '#8a91a8'], todo: ['ph ph-circle', '#5b6175'], delay: ['ph ph-clock', '#f5c77e'] };
   PLI = { ig: 'ph ph-instagram-logo', th: 'ph ph-threads-logo', x: 'ph ph-twitter-logo' };
   state = { scs: null, runs: [], slots: [], filter: 'all', ed: null, la: null, rd: null, sl: null, cf: null, toast: null, showTop: false, navCollapsed: false, refreshing: false };
@@ -514,7 +514,7 @@ class Component extends DCLogic {
     if (r.status === 'running' || r.status === 'paused') { if (cs && cs.s === 'delay') { sub = cs.note || lab.delay; tone = '#f5c77e'; } else if (cs) { sub = cs.done + '/' + n + ' comptes' + (cs.err ? ' · ' + this.pl(cs.err, 'erreur') : ''); if (wait.length) { sub += ' · ' + this.pl(wait.length, 'compte') + ' attend' + (wait.length > 1 ? 'ent' : '') + ' leur iPhone'; tone = '#f5c77e'; } const bl = this.blockedAccs(r); if (bl.length) { sub += ' · ' + bl.length + ' bloqué' + (bl.length > 1 ? 's' : ''); tone = '#fda4af'; } } }
     else if (r.status === 'done') sub = 'Fini ' + this.when(r.endAt || r.startAt); else sub = 'Avorté ' + this.when(r.endAt || r.startAt);
     const pers = D ? D.personas.filter(p => r.accs.some(h => (D.account(h) || {}).persona === p.id)) : [];
-    const c = this.RST[r.status][1];
+    const c = (this.RST[r.status] || ['Inconnu', '#8a91a8'])[1];
     return { total, n, cs, wait, pct, stepText, sub, tone, pers, bar: { height: '100%', width: pct + '%', borderRadius: 99, background: r.status === 'running' ? 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' : c, opacity: r.status === 'aborted' ? .6 : 1, transition: 'width .6s ease' } };
   }
   rdVals(s) {
@@ -535,7 +535,7 @@ class Component extends DCLogic {
       else det = unrun ? 'Non exécutée' : L.delay;
       return { n: String(i + 1).padStart(2, '0'), label: L.label, plat: P[1], platIcon: P[2], icon: S[0], ic: { width: 26, height: 26, flex: 'none', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', color: S[1], background: S[1] + '1a', border: '1px solid ' + S[1] + '40' }, iconStyle: { fontSize: 13, ...(x.s === 'run' && r.status === 'running' ? { animation: 'spin 1.4s linear infinite' } : {}) }, detail: det, detailStyle: { fontSize: 11.5, color: tone, marginTop: 3, lineHeight: 1.45 }, hasLog: x.err > 0 }; });
     const pers = I.pers.map(p => p.first).join(', ');
-    return { rdOpen: true, closeRd: () => this.setState({ rd: null }), rd: { name: r.name, icon: 'ph ph-' + r.icon, sub: 'Lancé ' + this.when(r.startAt) + (r.endAt ? ' · ' + (r.status === 'done' ? 'fini ' : 'avorté ') + this.when(r.endAt) : '') + ' · ' + this.pl(n, 'compte') + (pers ? ' · ' + pers : ''), st: this.RST[r.status][0], stStyle: this.badge(this.RST[r.status][1]),
+    return { rdOpen: true, closeRd: () => this.setState({ rd: null }), rd: { name: r.name, icon: 'ph ph-' + r.icon, sub: 'Lancé ' + this.when(r.startAt) + (r.endAt ? ' · ' + (r.status === 'done' ? 'fini ' : 'avorté ') + this.when(r.endAt) : '') + ' · ' + this.pl(n, 'compte') + (pers ? ' · ' + pers : ''), st: (this.RST[r.status] || ['Inconnu', '#8a91a8'])[0], stStyle: this.badge((this.RST[r.status] || ['Inconnu', '#8a91a8'])[1]),
       stepText: I.stepText, pct: I.pct + ' %', bar: I.bar, acts, steps,
       blk: (() => { const bl = this.blockedAccs(r); return { has: bl.length > 0, title: this.pl(bl.length, 'compte') + ' en pause · indisponible' + (bl.length > 1 ? 's' : ''), rows: bl.map(b => ({ u: b.u, icon: b.icon, why: b.why, href: 'Module%20Comptes%20v1.dc.html' })) }; })(),
       accs: (() => { const q = (s.rdQ || '').trim().toLowerCase(); const wait = I.wait.map(a => a.handle); const bl = this.blockedAccs(r); const blk = {}; bl.forEach(b => { blk[b.u] = b; });
@@ -590,7 +590,7 @@ class Component extends DCLogic {
       const acts = r.status === 'running' ? [act('ph ph-pause', 'Pause', () => this.pauseRun(r.id)), act('ph ph-stop', 'Abort', () => this.setState({ cf: { icon: 'ph ph-stop', title: 'Avorter ce run ?', text: 'Les étapes restantes ne seront pas exécutées. Le template n\'est pas modifié.', ok: 'Avorter', ids: [r.id] } }))] : r.status === 'paused' ? [act('ph ph-play', 'Reprendre', () => this.resumeRun(r.id)), act('ph ph-stop', 'Abort', () => this.setState({ cf: { icon: 'ph ph-stop', title: 'Avorter ce run ?', text: 'Les étapes restantes ne seront pas exécutées. Le template n\'est pas modifié.', ok: 'Avorter', ids: [r.id] } }))] : [act('ph ph-arrow-counter-clockwise', 'Relancer sur les mêmes comptes', () => { const sc = scs.find(x => x.id === r.sc); if (!sc) { this.toastMsg('Le template de ce run a été supprimé'); return; } const sel = {}; r.accs.forEach(h => { sel[h] = true; }); const o = {}; I.pers.forEach(p => { o[p.id] = true; }); this.setState({ la: { sc: sc.id, sel, open: o } }); })];
       return { name: r.name, icon: 'ph ph-' + r.icon, pers: I.pers.slice(0, 3).map((p, i) => ({ name: p.name, ini: p.first.charAt(0), av: this.av(p, i, 18) })), accLine: this.pl(I.n, 'compte') + ' · ' + I.pers.map(p => p.first).join(', '),
         stepText: I.stepText, pct: I.pct + ' %', bar: I.bar, sub: I.sub, subStyle: { fontSize: 11, color: I.tone, marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-        st: this.RST[r.status][0], stStyle: this.badge(this.RST[r.status][1]), when: this.when(r.startAt), acts,
+        st: (this.RST[r.status] || ['Inconnu', '#8a91a8'])[0], stStyle: this.badge((this.RST[r.status] || ['Inconnu', '#8a91a8'])[1]), when: this.when(r.startAt), acts,
         click: () => this.setState({ rd: r.id }),
         row: { display: 'grid', gridTemplateColumns: 'minmax(0,1.25fr) minmax(0,1.3fr) 100px 110px 76px', gap: 18, alignItems: 'center', padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', background: 'transparent' } }; });
     const out = {
