@@ -212,10 +212,13 @@ class IGDriver:
             self.log(f"   [ig] élément '{text}' introuvable")
             return False
 
-        x = el.get("x", 0)
-        y = el.get("y", 0)
-        w = el.get("width", 0)
-        h = el.get("height", 0)
+        # MCP elements have tap coordinates in el["tap"] and size in el["visible_rect"]
+        tap_info = el.get("tap", {})
+        rect = el.get("visible_rect", el.get("rect", {}))
+        x = tap_info.get("x", rect.get("x", 0))
+        y = tap_info.get("y", rect.get("y", 0))
+        w = rect.get("width", 0)
+        h = rect.get("height", 0)
 
         bounds = (w, h) if w > 0 and h > 0 else None
         await self.ht.tap(x, y, bounds=bounds)
