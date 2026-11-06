@@ -413,8 +413,18 @@ async def _reels_session(
     duration = values.get("duration", 60)
     like_prob = values.get("like_probability", 0.10)
 
-    await drv.go_reels()
-    await drv.wait(1.0, 2.0)
+    # Navigate to Reels tab and verify we're actually there
+    for nav_attempt in range(3):
+        await drv.go_reels()
+        await drv.wait(1.5, 2.5)
+        screen = await drv.detect_current_screen()
+        if screen == "reels":
+            log(f"   [ig_reels] sur l'onglet Reels")
+            break
+        log(f"   [ig_reels] après tap Reels → écran: {screen}, retry {nav_attempt + 1}/3")
+    else:
+        log(f"   [ig_reels] impossible de naviguer vers Reels, abandon")
+        return False, "Impossible de naviguer vers l'onglet Reels"
 
     import time
     start = time.monotonic()
