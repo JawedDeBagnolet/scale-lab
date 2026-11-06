@@ -281,6 +281,11 @@ class IGDriver:
             if re.search(r"\d+\s*(publications?|posts?)", t, re.IGNORECASE):
                 return "profile"
 
+        # Debug: log visible texts when we can't identify the screen
+        import logging
+        _log = logging.getLogger("automation.ig_driver")
+        visible = [el.get("text", "")[:60] for el in self._elements_cache if el.get("text")]
+        _log.info(f"   [screen] 'other' — textes visibles: {visible[:15]}")
         return "other"
 
     # ── Popup dismiss & screen navigation ────────────────────────────────
