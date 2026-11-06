@@ -447,9 +447,15 @@ class DeviceSession:
                 await asyncio.sleep(2.0)
 
         # Wait for the app to settle after container switch + relaunch
-        await asyncio.sleep(2.0)
-
-        screen = await drv.detect_current_screen()
+        # Instagram can take 5-15s to fully load, especially after container switch
+        screen = None
+        for attempt in range(5):
+            await asyncio.sleep(3.0)
+            screen = await drv.detect_current_screen()
+            if screen and screen != "other":
+                break
+            if attempt < 4:
+                self.log(f"   [login] chargement IG... ({attempt + 1}/5)")
         self.log(f"   [login] écran détecté: {screen}")
 
         if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
