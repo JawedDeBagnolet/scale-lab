@@ -270,7 +270,8 @@ class IGDriver:
                 # For feed, also check we're NOT in a sub-screen
                 if screen == "feed":
                     # If "Ajouter un commentaire" is present, it's post_view
-                    if any("commentaire" in t for t in texts_lower):
+                    # (not "716 commentaires" which is just a count on a feed post)
+                    if any("ajouter un commentaire" in t for t in texts_lower):
                         continue
                     return screen
                 return screen
