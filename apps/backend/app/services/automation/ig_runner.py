@@ -57,6 +57,17 @@ def _handler(name: str):
 
 # ── Main entry point ─────────────────────────────────────────────────────────
 
+class AbortedError(Exception):
+    """Raised when a run is aborted mid-session."""
+    pass
+
+
+def _check_abort(abort_event: asyncio.Event | None):
+    """Raise AbortedError if the run was aborted."""
+    if abort_event and abort_event.is_set():
+        raise AbortedError("Run avorté")
+
+
 async def run_ig_task(
     compte_id: UUID,
     action_type: str,
@@ -64,6 +75,7 @@ async def run_ig_task(
     preset_ids: list | None = None,
     *,
     log: Callable = logger.info,
+    abort_event: asyncio.Event | None = None,
 ) -> tuple[bool, str]:
     """Run an Instagram task for the given account.
 
@@ -80,15 +92,23 @@ async def run_ig_task(
 
     try:
         async with DeviceSession(compte_id, BUNDLE_INSTAGRAM, log=log) as sess:
+            # Store abort_event on session so handlers can access it
+            sess._abort_event = abort_event
+
             drv = IGDriver(mcp_port=sess.mcp_port, log=log)
 
             # Ensure login
             await sess.ensure_login(drv, None)
 
+            _check_abort(abort_event)
+
             # Run the handler
             result = await handler(drv, sess, values, log)
             return result
 
+    except AbortedError:
+        log(f"[ig_runner] ⛔ run avorté pour compte={compte_id}")
+        return False, "Run avorté par l'utilisateur"
     except DeviceLocked as e:
         return False, f"iPhone verrouillé : {e}"
     except DeviceUnavailable as e:
@@ -146,7 +166,11 @@ async def _feed_session(
     seen_usernames: set[str] = set()
     stale_count = 0  # how many consecutive loops with no new posts
 
+    abort_event = getattr(sess, '_abort_event', None)
+
     while (time.monotonic() - start) < duration:
+        _check_abort(abort_event)
+
         # 0. Check we're still on the feed — if not, go back
         screen = await drv.detect_current_screen()
         if screen and screen not in ("feed", "reels", "explore"):
@@ -215,6 +239,8 @@ async def _feed_session(
                         comments += 1
                         log(f"   [ig] comment sur {post['username']}")
                         await drv.wait(1.0, 3.0)
+
+                _check_abort(abort_event)
 
                 if (time.monotonic() - start) >= duration:
                     break
@@ -509,8 +535,11 @@ async def _reels_session(
     likes = 0
     saves = 0
     follows = 0
+    abort_event = getattr(sess, '_abort_event', None)
 
     while (time.monotonic() - start) < duration:
+        _check_abort(abort_event)
+
         # Detect current reel info
         reel_info = await _detect_current_reel(drv)
         username = reel_info.get("username", "inconnu")
@@ -559,6 +588,8 @@ async def _reels_session(
                 follows += 1
                 log(f"   [ig_reels] ➕ follow {username}")
                 await drv.wait(0.5, 1.0)
+
+        _check_abort(abort_event)
 
         # Swipe to next reel
         await _swipe_next_reel(drv)

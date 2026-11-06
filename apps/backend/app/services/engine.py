@@ -37,6 +37,23 @@ TICK_INTERVAL = 5          # seconds between engine ticks
 BLOCKED_STATUSES = {"error", "suspendu", "session"}  # compte.status values that block execution
 JOURNAL_BROADCAST_TAIL = 5  # how many recent journal entries to broadcast
 
+# Abort signals — one asyncio.Event per running run_id.
+# When abort_run() is called, the event is set and the runner checks it.
+_ABORT_EVENTS: dict[str, asyncio.Event] = {}
+
+
+def get_abort_event(run_id: str | UUID) -> asyncio.Event:
+    """Get or create the abort event for a run."""
+    key = str(run_id)
+    if key not in _ABORT_EVENTS:
+        _ABORT_EVENTS[key] = asyncio.Event()
+    return _ABORT_EVENTS[key]
+
+
+def cleanup_abort_event(run_id: str | UUID) -> None:
+    """Remove the abort event when a run finishes."""
+    _ABORT_EVENTS.pop(str(run_id), None)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -211,6 +228,8 @@ async def _execute_action(
     action_type: str,
     values: dict,
     preset_ids: list,
+    *,
+    run_id: UUID | None = None,
 ) -> tuple[bool, str]:
     """Execute a single action on an account.
 
@@ -223,7 +242,7 @@ async def _execute_action(
     platform = {"ig": "ig_iph", "th": "th_iph"}.get(platform, platform)
 
     if platform in IPHONE_PLATFORMS:
-        return await _execute_iphone_action(account_id, platform, action_type, values, preset_ids)
+        return await _execute_iphone_action(account_id, platform, action_type, values, preset_ids, run_id=run_id)
 
     # Web platforms (th_web, x_web, stories) — still a stub
     logger.info(
@@ -240,6 +259,8 @@ async def _execute_iphone_action(
     action_type: str,
     values: dict,
     preset_ids: list,
+    *,
+    run_id: UUID | None = None,
 ) -> tuple[bool, str]:
     """Execute an action on an iPhone via the automation stack.
 
@@ -249,11 +270,13 @@ async def _execute_iphone_action(
     """
     if platform == "ig_iph":
         from app.services.automation.ig_runner import run_ig_task
+        abort_evt = get_abort_event(run_id) if run_id else None
         return await run_ig_task(
             account_id,
             action_type,
             values=values,
             preset_ids=preset_ids,
+            abort_event=abort_evt,
         )
 
     elif platform == "th_iph":
@@ -455,6 +478,7 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
 
             success, detail = await _execute_action(
                 acc_id, platform, action_type, values, preset_ids,
+                run_id=run.id,
             )
             journal.append(_journal_entry(
                 run.id,
@@ -523,6 +547,10 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
 
     await db.commit()
     await _broadcast_run(run)
+
+    # Cleanup abort event when run finishes
+    if run.status in ("done", "error", "aborted"):
+        cleanup_abort_event(run.id)
 
     if run.status == "done":
         await emit_event(
@@ -790,9 +818,11 @@ async def skip_step(db: AsyncSession, run: Run) -> Run:
 
 
 async def abort_run(db: AsyncSession, run: Run) -> Run:
-    """Abort a run entirely."""
+    """Abort a run entirely. Signals the runner to stop in real-time."""
     if run.status in ("done", "aborted"):
         raise ValueError(f"Run already in terminal status '{run.status}'")
+    # Signal the runner to stop immediately
+    get_abort_event(run.id).set()
     run.status = "aborted"
     run.finished_at = _now()
     run.journal = (run.journal or []) + [
