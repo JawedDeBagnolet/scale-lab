@@ -28,7 +28,7 @@ logger = logging.getLogger("automation.ig_driver")
 IG_BUNDLE = "com.burbn.instagram"
 
 # Bottom navigation bar labels (FR locale)
-_NAV_HOME = "Accueil"
+_NAV_HOME = "Fil principal"
 _NAV_SEARCH = "Rechercher"
 _NAV_REELS = "Reels"
 _NAV_SHOP = "Boutique"
@@ -584,7 +584,11 @@ class IGDriver:
 
     async def go_reels(self) -> bool:
         """Navigate to the reels tab."""
-        return await self.tap_element(_NAV_REELS)
+        import logging
+        _log = logging.getLogger("automation.ig_driver")
+        ok = await self.tap_element(_NAV_REELS)
+        _log.info(f"   [ig] go_reels tap '{_NAV_REELS}' → {'ok' if ok else 'introuvable'}")
+        return ok
 
     async def go_profile(self) -> bool:
         """Navigate to own profile tab."""
