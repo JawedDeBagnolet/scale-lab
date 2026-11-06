@@ -63,7 +63,8 @@ _SCREEN_MARKERS = {
     # les écrans → ne PAS les utiliser comme marqueurs. Utiliser des éléments de contenu.
     "reels":       ["Reel de", "Progression de la vid", "Ouvrez l'appareil photo"],
     "feed":        ["Fil principal d'Instagram", "Barre des stories",
-                    "Publication suggérée pour vous"],
+                    "Publication suggérée pour vous", "Publication de",
+                    "Photo de", "Vidéo de"],
     "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
     "post_view":   ["Ajouter un commentaire"],
     "explore":     ["Rechercher et explorer"],
