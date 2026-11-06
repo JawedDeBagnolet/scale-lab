@@ -115,10 +115,18 @@ async def _feed_session(
     interact with visible posts, repeat. Track seen posts to know when
     we've actually moved to new content.
     """
-    duration = values.get("duration", 120)  # seconds
-    like_prob = values.get("like_probability", 0.15)
-    comment_prob = values.get("comment_probability", 0.03)
-    save_prob = values.get("save_probability", 0.0)
+    # Duration: convert from minutes range [min, max] to seconds
+    dur_val = values.get("dur", values.get("duration", 120))
+    if isinstance(dur_val, list) and len(dur_val) >= 2:
+        duration = random.uniform(dur_val[0] * 60, dur_val[1] * 60)
+    elif isinstance(dur_val, (int, float)):
+        duration = dur_val if dur_val > 10 else dur_val * 60
+    else:
+        duration = 120
+
+    like_prob = values.get("like", values.get("like_probability", 15)) / 100
+    comment_prob = values.get("readComments", values.get("comment_probability", 3)) / 100
+    save_prob = values.get("save", values.get("save_probability", 0)) / 100
 
     # Load pause config from behavior preset (if any)
     pauses = await _load_pauses(sess)
@@ -409,11 +417,27 @@ async def _reels_session(
     values: dict,
     log: Callable,
 ) -> tuple[bool, str]:
-    """Browse IG reels."""
-    duration = values.get("duration", 60)
-    like_prob = values.get("like_probability", 0.10)
+    """Browse IG reels with realistic behavior and detailed logging."""
+    # Duration: convert from minutes range [min, max] to seconds
+    dur_val = values.get("dur", values.get("duration", 60))
+    if isinstance(dur_val, list) and len(dur_val) >= 2:
+        duration = random.uniform(dur_val[0] * 60, dur_val[1] * 60)
+    elif isinstance(dur_val, (int, float)):
+        duration = dur_val if dur_val > 10 else dur_val * 60  # assume minutes if < 10
+    else:
+        duration = 120
 
-    # Navigate to Reels tab and verify we're actually there
+    like_prob = values.get("like", values.get("like_probability", 10)) / 100
+    follow_prob = values.get("follow", values.get("follow_probability", 5)) / 100
+    save_prob = values.get("save", values.get("save_probability", 0)) / 100
+
+    # Load pauses from behavior preset
+    pauses = await _load_pauses(sess)
+    targets = await _load_market_targets(sess)
+
+    log(f"   [ig_reels] session {duration:.0f}s, like={like_prob:.0%}, follow={follow_prob:.0%}, save={save_prob:.0%}")
+
+    # Navigate to Reels tab and verify
     for nav_attempt in range(3):
         await drv.go_reels()
         await drv.wait(1.5, 2.5)
@@ -429,31 +453,101 @@ async def _reels_session(
     import time
     start = time.monotonic()
     reels_seen = 0
+    reels_skipped = 0
     likes = 0
+    saves = 0
+    follows = 0
 
     while (time.monotonic() - start) < duration:
-        reels_seen += 1
-        watch_time = random.uniform(3.0, 15.0)
-        await asyncio.sleep(watch_time)
+        # Detect current reel info
+        reel_info = await _detect_current_reel(drv)
+        username = reel_info.get("username", "inconnu")
+        is_ad = reel_info.get("is_ad", False)
+        is_target = username.lower() in targets
 
-        if random.random() < like_prob:
-            await drv.like_post()
-            likes += 1
+        if is_ad:
+            reels_skipped += 1
+            log(f"   [ig_reels] ⏭ pub de {username}, skip")
+            await _swipe_next_reel(drv)
             await drv.wait(0.3, 0.8)
+            continue
 
-        # Swipe up to next reel
-        await drv.ht.swipe(
-            drv.ht.screen_w / 2,
-            drv.ht.screen_h * 0.75,
-            drv.ht.screen_w / 2,
-            drv.ht.screen_h * 0.15,
-            duration=random.randint(400, 800),
-        )
+        reels_seen += 1
+
+        # Watch time based on pauses config (target/lambda scope)
+        pause_secs = _pick_pause(pauses, is_target)
+        tag = f" (target)" if is_target else ""
+        log(f"   [ig_reels] ▶ {username}{tag} — {pause_secs:.1f}s")
+        await asyncio.sleep(pause_secs)
+
+        # Random behavior pattern
+        await maybe_pattern(drv, log, probability=0.10)
+
+        # Maybe like
+        if random.random() < like_prob:
+            await hesitate_before_action(drv, log)
+            liked = await drv.tap_like_button()
+            if liked:
+                likes += 1
+                log(f"   [ig_reels] ❤ like {username}")
+                await drv.wait(0.3, 0.8)
+
+        # Maybe save
+        if save_prob > 0 and random.random() < save_prob:
+            saved = await drv.tap_save_button()
+            if saved:
+                saves += 1
+                log(f"   [ig_reels] 🔖 save {username}")
+                await drv.wait(0.3, 0.6)
+
+        # Maybe follow
+        if random.random() < follow_prob:
+            followed = await drv.tap_element("Suivre", contains=False)
+            if followed:
+                follows += 1
+                log(f"   [ig_reels] ➕ follow {username}")
+                await drv.wait(0.5, 1.0)
+
+        # Swipe to next reel
+        await _swipe_next_reel(drv)
         await drv.wait(0.5, 1.0)
 
-    msg = f"Reels : {reels_seen} vus, {likes} likes en {duration}s"
+    msg = f"Reels : {reels_seen} vus, {reels_skipped} pubs skippées, {likes} likes, {saves} saves, {follows} follows en {duration:.0f}s"
     log(f"   [ig_reels] {msg}")
     return True, msg
+
+
+async def _detect_current_reel(drv: IGDriver) -> dict:
+    """Detect the current reel's username and whether it's an ad."""
+    await drv.refresh_elements()
+    username = "inconnu"
+    is_ad = False
+
+    for el in drv.elements:
+        text = el.get("text", "")
+        # "Reel de username" or "Reel de username."
+        if text.startswith("Reel de "):
+            username = text[8:].rstrip(". ")
+        # Sponsored/ad detection
+        if "sponsoris" in text.lower() or "sponsored" in text.lower():
+            is_ad = True
+        if text == "Publicité" or text == "Ad":
+            is_ad = True
+
+    return {"username": username, "is_ad": is_ad}
+
+
+async def _swipe_next_reel(drv: IGDriver):
+    """Swipe up to go to the next reel."""
+    await drv.ht._ensure_screen()
+    w = drv.ht.screen_w
+    h = drv.ht.screen_h
+    x = w / 2 + random.uniform(-15, 15)
+    await drv.ht.swipe(
+        x, h * 0.75,
+        x + random.uniform(-5, 5), h * 0.15,
+        duration=random.randint(400, 800),
+    )
 
 
 # ── Story viewing ────────────────────────────────────────────────────────────
