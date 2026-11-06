@@ -58,9 +58,12 @@ _SCREEN_MARKERS = {
     "login_error": ["mot de passe incorrect", "Introuvable",
                     "Sorry, your password was incorrect"],
     "welcome":     ["Choisissez comment vous inscrire", "Join Instagram"],
-    # ── Main app screens (checked AFTER auth — "Instagram" est trop générique) ──
-    "feed":        ["Accueil", "Fil principal", "Barre des stories"],
-    "reels":       ["Reels", "Reel de", "Progression de la vid"],
+    # ── Main app screens (checked AFTER auth) ──
+    # ATTENTION : "Fil principal" et "Reels" sont dans la nav bar, visibles sur TOUS
+    # les écrans → ne PAS les utiliser comme marqueurs. Utiliser des éléments de contenu.
+    "reels":       ["Reel de", "Progression de la vid", "Ouvrez l'appareil photo"],
+    "feed":        ["Fil principal d'Instagram", "Barre des stories",
+                    "Publication suggérée pour vous"],
     "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
     "post_view":   ["Ajouter un commentaire"],
     "explore":     ["Rechercher et explorer"],
