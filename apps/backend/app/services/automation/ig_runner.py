@@ -115,23 +115,21 @@ async def _feed_session(
     interact with visible posts, repeat. Track seen posts to know when
     we've actually moved to new content.
     """
-    # Duration: convert from minutes range [min, max] to seconds
-    dur_val = values.get("dur", values.get("duration", 120))
-    if isinstance(dur_val, list) and len(dur_val) >= 2:
-        duration = random.uniform(dur_val[0] * 60, dur_val[1] * 60)
-    elif isinstance(dur_val, (int, float)):
-        duration = dur_val if dur_val > 10 else dur_val * 60
+    # Load behavior preset (pauses, durations, targets)
+    pauses = await _load_pauses(sess)
+    targets = await _load_market_targets(sess)
+    preset_dur = await _load_preset_duration(sess)
+
+    # Duration: preset durations override step values
+    if preset_dur:
+        duration = preset_dur
     else:
-        duration = 120
+        dur_val = values.get("dur", values.get("duration", 120))
+        duration = _parse_duration(dur_val)
 
     like_prob = values.get("like", values.get("like_probability", 15)) / 100
     comment_prob = values.get("readComments", values.get("comment_probability", 3)) / 100
     save_prob = values.get("save", values.get("save_probability", 0)) / 100
-
-    # Load pause config from behavior preset (if any)
-    pauses = await _load_pauses(sess)
-    # Load targets for this account's market (to scope pauses)
-    targets = await _load_market_targets(sess)
 
     log(f"   [ig_feed] session {duration}s, like={like_prob}, comment={comment_prob}, pauses={len(pauses)}, targets={len(targets)}")
 
@@ -335,6 +333,61 @@ def _pick_pause(pauses: list[dict], is_target: bool) -> float:
     return random.uniform(last.get("min", 2), last.get("max", 5))
 
 
+def _parse_duration(dur_val) -> float:
+    """Parse a duration value into seconds.
+
+    Handles:
+      [min_minutes, max_minutes] → random between min*60 and max*60
+      number > 10 → assume seconds
+      number <= 10 → assume minutes, convert to seconds
+    """
+    if isinstance(dur_val, list) and len(dur_val) >= 2:
+        return random.uniform(dur_val[0] * 60, dur_val[1] * 60)
+    elif isinstance(dur_val, (int, float)):
+        return dur_val if dur_val > 10 else dur_val * 60
+    return 120.0
+
+
+async def _load_preset_duration(sess) -> float | None:
+    """Load duration from the behavior preset's durations config.
+
+    The preset has durations: [{ min, max, weight }] (in minutes).
+    Picks one weighted by 'weight', then returns random(min*60, max*60).
+    Returns None if no preset or no durations configured.
+    """
+    try:
+        from app.db import AsyncSessionLocal
+        from app.models.comportement import Comportement
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            stmt = select(Comportement).where(
+                Comportement.plat == "ig"
+            ).limit(1)
+            result = await db.execute(stmt)
+            preset = result.scalar_one_or_none()
+            if not preset or not preset.durations:
+                return None
+
+            durs = preset.durations
+            if not durs:
+                return None
+
+            # Weighted random selection
+            total_w = sum(d.get("weight", 1) for d in durs)
+            if total_w <= 0:
+                return None
+            roll = random.uniform(0, total_w)
+            for d in durs:
+                roll -= d.get("weight", 1)
+                if roll <= 0:
+                    return random.uniform(d.get("min", 5) * 60, d.get("max", 15) * 60)
+            last = durs[-1]
+            return random.uniform(last.get("min", 5) * 60, last.get("max", 15) * 60)
+    except Exception:
+        return None
+
+
 async def _snap_to_post(drv: IGDriver, post: dict):
     """Adjust scroll to center a post's media on screen.
 
@@ -418,22 +471,21 @@ async def _reels_session(
     log: Callable,
 ) -> tuple[bool, str]:
     """Browse IG reels with realistic behavior and detailed logging."""
-    # Duration: convert from minutes range [min, max] to seconds
-    dur_val = values.get("dur", values.get("duration", 60))
-    if isinstance(dur_val, list) and len(dur_val) >= 2:
-        duration = random.uniform(dur_val[0] * 60, dur_val[1] * 60)
-    elif isinstance(dur_val, (int, float)):
-        duration = dur_val if dur_val > 10 else dur_val * 60  # assume minutes if < 10
+    # Load behavior preset (pauses, durations, targets)
+    pauses = await _load_pauses(sess)
+    targets = await _load_market_targets(sess)
+    preset_dur = await _load_preset_duration(sess)
+
+    # Duration: preset durations override step values
+    if preset_dur:
+        duration = preset_dur
     else:
-        duration = 120
+        dur_val = values.get("dur", values.get("duration", 60))
+        duration = _parse_duration(dur_val)
 
     like_prob = values.get("like", values.get("like_probability", 10)) / 100
     follow_prob = values.get("follow", values.get("follow_probability", 5)) / 100
     save_prob = values.get("save", values.get("save_probability", 0)) / 100
-
-    # Load pauses from behavior preset
-    pauses = await _load_pauses(sess)
-    targets = await _load_market_targets(sess)
 
     log(f"   [ig_reels] session {duration:.0f}s, like={like_prob:.0%}, follow={follow_prob:.0%}, save={save_prob:.0%}")
 

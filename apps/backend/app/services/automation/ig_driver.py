@@ -739,8 +739,19 @@ class IGDriver:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _normalize(text: str) -> str:
-    """Unicode NFKD normalization for accent-insensitive matching."""
-    return unicodedata.normalize("NFKD", text)
+    """Unicode NFKD normalization + typographic quote normalization.
+
+    iOS uses curly quotes (‘’“”) and non-breaking spaces
+    (\xa0) in accessibility text. Normalize them to ASCII equivalents.
+    """
+    t = unicodedata.normalize("NFKD", text)
+    # Curly single quotes → straight
+    t = t.replace("‘", "'").replace("’", "'")
+    # Curly double quotes → straight
+    t = t.replace("“", '"').replace("”", '"')
+    # Non-breaking space → regular space
+    t = t.replace("\xa0", " ")
+    return t
 
 
 def _parse_count(raw: str) -> int:
