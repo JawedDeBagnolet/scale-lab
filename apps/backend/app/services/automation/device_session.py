@@ -678,12 +678,13 @@ class DeviceSession:
 
             # ── Save login popup ──
             if screen == "save_login":
-                self.log("   [post-login] popup 'Enregistrer les infos'")
+                self.log("   [post-login] popup 'Enregistrer les infos' → tap 'Plus tard'")
                 tapped = await self._mcp_tap_first(mcp_port, [
-                    "Enregistrer", "Plus tard", "Save", "Not Now"
+                    "Plus tard", "Not Now", "Enregistrer", "Save"
                 ])
                 if not tapped:
-                    await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 680}, timeout=5)
+                    # Fallback: tap "Plus tard" par coordonnées (y=730)
+                    await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 730}, timeout=5)
                 await asyncio.sleep(2.0)
                 continue
 
