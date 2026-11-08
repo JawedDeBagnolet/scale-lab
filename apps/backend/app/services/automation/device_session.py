@@ -754,11 +754,12 @@ class DeviceSession:
 
             # ── 2FA code entry ──
             if screen == "2fa_code":
-                self.log("   [post-login] 2FA code entry")
                 if not two_fa_code:
-                    raise LoginRequired(
-                        f"2FA requis pour {self.username} mais pas de code 2FA configuré"
-                    )
+                    # Pas de code = on vient de le soumettre, IG charge encore
+                    self.log("   [post-login] 2FA en validation, attente 5s...")
+                    await asyncio.sleep(5.0)
+                    continue
+                self.log("   [post-login] 2FA code entry")
                 return await self._handle_2fa(drv, two_fa_code)
 
             # ── Checkpoint / suspicious ──
@@ -917,8 +918,9 @@ class DeviceSession:
             await mcp_call(mcp_port, "tap_screen", {"x": 187, "y": 734}, timeout=5)
 
         # Continue through post-login loop to handle remaining popups
+        # IG met 5-10s pour valider le code 2FA — attendre assez longtemps
         self.log("   [login] attente validation 2FA...")
-        await asyncio.sleep(4.0)
+        await asyncio.sleep(8.0)
 
         # Re-enter post-login loop for save_login, notifications, etc.
         return await self._post_login_loop(drv, self.username, None, max_steps=10)
