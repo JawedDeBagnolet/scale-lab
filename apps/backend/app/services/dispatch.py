@@ -571,6 +571,8 @@ async def scalectl_create_container(
     containers = await scalectl_list_containers(ssh_port, bundle, host=host)
     for c in containers:
         if c.get("name") == name:
+            # Activate the new container immediately
+            await scalectl_switch_container(ssh_port, c["uuid"], bundle, host=host)
             return c["uuid"]
 
     logger.warning("scalectl create: container '%s' not found after creation", name)
