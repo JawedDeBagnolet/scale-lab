@@ -72,7 +72,9 @@ async def verify_session(
 ) -> dict:
     """Verify a session is still valid via the IG/Threads private API.
 
-    Returns: {"valid": bool, "status": str, "username": str|None}
+    Also extracts csrftoken from the API response if not already present.
+
+    Returns: {"valid": bool, "status": str, "username": str|None, "csrftoken": str|None}
     """
     import httpx
 
@@ -82,11 +84,21 @@ async def verify_session(
     mid = session.get("mid", "")
     authorization = session.get("authorization", "")
 
-    if not sessionid:
-        return {"valid": False, "status": "no_session", "username": None}
+    if not sessionid and not authorization:
+        return {"valid": False, "status": "no_session", "username": None, "csrftoken": None}
+
+    cookie_parts = []
+    if sessionid:
+        cookie_parts.append(f"sessionid={sessionid}")
+    if csrftoken:
+        cookie_parts.append(f"csrftoken={csrftoken}")
+    if ds_user_id:
+        cookie_parts.append(f"ds_user_id={ds_user_id}")
+    if mid:
+        cookie_parts.append(f"mid={mid}")
 
     headers = {
-        "Cookie": f"sessionid={sessionid}; csrftoken={csrftoken}; ds_user_id={ds_user_id}; mid={mid}",
+        "Cookie": "; ".join(cookie_parts),
         "User-Agent": "Barcelona 341.0.0.36.109 Android" if platform == "th" else "Instagram 321.0.0.39.109 Android",
         "X-IG-App-ID": "238260118697367" if platform == "th" else "936619743392459",
     }
@@ -98,23 +110,32 @@ async def verify_session(
             url = "https://i.instagram.com/api/v1/feed/timeline/"
             resp = await client.get(url, headers=headers)
 
+            # Extract csrftoken from response cookies or headers
+            extracted_csrf = None
+            for cookie_header in resp.headers.get_list("set-cookie"):
+                if "csrftoken=" in cookie_header:
+                    extracted_csrf = cookie_header.split("csrftoken=")[1].split(";")[0]
+                    break
+            if not extracted_csrf:
+                extracted_csrf = resp.headers.get("x-csrftoken")
+
             if resp.status_code == 200:
                 data = resp.json()
                 username = data.get("user", {}).get("username")
-                return {"valid": True, "status": "active", "username": username}
+                return {"valid": True, "status": "active", "username": username, "csrftoken": extracted_csrf}
             elif resp.status_code == 401:
-                return {"valid": False, "status": "expired", "username": None}
+                return {"valid": False, "status": "expired", "username": None, "csrftoken": extracted_csrf}
             elif resp.status_code == 400:
                 body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
                 if "checkpoint" in str(body):
-                    return {"valid": False, "status": "checkpoint", "username": None}
-                return {"valid": False, "status": "error_400", "username": None}
+                    return {"valid": False, "status": "checkpoint", "username": None, "csrftoken": extracted_csrf}
+                return {"valid": False, "status": "error_400", "username": None, "csrftoken": extracted_csrf}
             else:
-                return {"valid": False, "status": f"http_{resp.status_code}", "username": None}
+                return {"valid": False, "status": f"http_{resp.status_code}", "username": None, "csrftoken": extracted_csrf}
 
     except Exception as e:
         logger.warning("Session verification failed: %s", e)
-        return {"valid": False, "status": f"error: {str(e)[:100]}", "username": None}
+        return {"valid": False, "status": f"error: {str(e)[:100]}", "username": None, "csrftoken": None}
 
 
 async def extract_and_store(
@@ -146,6 +167,11 @@ async def extract_and_store(
 
     if not check["valid"]:
         return None
+
+    # Merge csrftoken from API response into session data
+    if check.get("csrftoken") and not session.get("csrftoken"):
+        session["csrftoken"] = check["csrftoken"]
+        logger.info("csrftoken extracted from API response for %s", compte_id)
 
     # Store in DB (update the compte's session_data field if it exists)
     try:
