@@ -50,6 +50,7 @@ _LOCK_MARKERS = ("lampe torche", "appareil photo", "afficher les notifications")
 # Ne taper que si y > 400 pour eviter de taper dans un champ de formulaire
 POPUP_DISMISS_LABELS = [
     "OK", "Plus tard", "Pas maintenant", "Ne pas autoriser",
+    "Refuser",                          # iOS system notification popup
     "Fermer", "Ignorer", "Enregistrer", "Continuer",
     "Passer", "Non merci",
     "Continuer avec Instagram", "Essayer d'une autre façon",

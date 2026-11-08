@@ -42,8 +42,8 @@ _SCREEN_MARKERS = {
                     "nom d'utilisateur"],
     "onboarding":  ["Rejoignez Instagram", "J'ai déjà un profil"],
     # Post-login popups
-    "save_login":  ["Enregistrer vos informations", "Save your login info",
-                    "Enregistrer les informations"],
+    "save_login":  ["Enregistrer vos informations", "Enregistrer vos infos de connexion",
+                    "Save your login info", "Enregistrer les informations"],
     # 2FA screens — ordre critique : choice AVANT notif (les deux ont "appareil")
     "2fa_choice":  ["Choisissez un moyen de confirmer", "Choose a way to confirm",
                     "méthodes de confirmation disponibles"],
