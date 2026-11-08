@@ -679,10 +679,11 @@ class DeviceSession:
             # ── Save login popup ──
             if screen == "save_login":
                 self.log("   [post-login] popup 'Enregistrer les infos'")
-                # Match EXACT pour éviter de taper sur le titre au lieu du bouton
+                # Match EXACT obligatoire — "contains" tape sur le titre au lieu du bouton
                 tapped = False
                 for label in ["Enregistrer", "Save", "Plus tard", "Not Now"]:
-                    r = await mcp_call(mcp_port, "tap_element", {"text": label}, timeout=8)
+                    r = await mcp_call(mcp_port, "tap_element",
+                                       {"text": label, "match": "exact"}, timeout=8)
                     if r and r.get("content"):
                         try:
                             tap_data = json.loads(r["content"][0].get("text", "{}"))
@@ -693,7 +694,7 @@ class DeviceSession:
                         except Exception:
                             pass
                 if not tapped:
-                    self.log("   [post-login] aucun bouton trouvé, fallback 'Plus tard' contains")
+                    self.log("   [post-login] aucun bouton trouvé, fallback contains")
                     await self._mcp_tap_first(mcp_port, ["Plus tard", "Not Now"])
                 await asyncio.sleep(2.0)
                 continue
