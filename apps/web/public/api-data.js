@@ -120,14 +120,51 @@
   // ─── HTTP Helpers ────────────────────────────────────────────────────
 
   // GET synchrone — retourne le JSON parse ou [] en cas d'erreur
+  // ── API cache (sessionStorage, 30s TTL) ──
+  var CACHE_TTL = 30000; // 30 seconds
+  var CACHE_PREFIX = 'sl_api_';
+
+  function _cacheGet(path) {
+    try {
+      var raw = sessionStorage.getItem(CACHE_PREFIX + path);
+      if (!raw) return null;
+      var entry = JSON.parse(raw);
+      if (Date.now() - entry.t > CACHE_TTL) return null;
+      return entry.d;
+    } catch (e) { return null; }
+  }
+
+  function _cacheSet(path, data) {
+    try {
+      sessionStorage.setItem(CACHE_PREFIX + path, JSON.stringify({ t: Date.now(), d: data }));
+    } catch (e) {
+      // sessionStorage full — clear old entries
+      try {
+        var keys = [];
+        for (var i = 0; i < sessionStorage.length; i++) {
+          var k = sessionStorage.key(i);
+          if (k && k.indexOf(CACHE_PREFIX) === 0) keys.push(k);
+        }
+        keys.forEach(function (k) { sessionStorage.removeItem(k); });
+        sessionStorage.setItem(CACHE_PREFIX + path, JSON.stringify({ t: Date.now(), d: data }));
+      } catch (e2) {}
+    }
+  }
+
   function apiFetchSync(path) {
+    // Try cache first (instant, no network)
+    var cached = _cacheGet(path);
+    if (cached !== null) return cached;
+
     try {
       var x = new XMLHttpRequest();
       x.open('GET', API_BASE + path, false);
       x.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
       x.send();
       if (x.status >= 200 && x.status < 300) {
-        return JSON.parse(x.responseText);
+        var data = JSON.parse(x.responseText);
+        _cacheSet(path, data);
+        return data;
       }
       console.warn('[Scale Lab] API ' + path + ' → ' + x.status);
     } catch (e) {
@@ -138,6 +175,7 @@
 
   // POST synchrone — retourne l'objet cree ou null
   function apiPostSync(path, data) {
+    _cacheInvalidatePrefix(path);
     try {
       var x = new XMLHttpRequest();
       x.open('POST', API_BASE + path, false);
@@ -156,6 +194,7 @@
 
   // PATCH synchrone — retourne l'objet mis a jour ou null
   function apiPatchSync(path, data) {
+    _cacheInvalidatePrefix(path);
     try {
       var x = new XMLHttpRequest();
       x.open('PATCH', API_BASE + path, false);
@@ -174,6 +213,7 @@
 
   // DELETE synchrone — retourne true/false
   function apiDeleteSync(path) {
+    _cacheInvalidatePrefix(path); // invalidate related caches
     try {
       var x = new XMLHttpRequest();
       x.open('DELETE', API_BASE + path, false);
@@ -184,6 +224,19 @@
       console.warn('[Scale Lab] Erreur DELETE ' + path + ' :', e);
     }
     return false;
+  }
+
+  // Invalidate cache entries whose path starts with the same base
+  function _cacheInvalidatePrefix(path) {
+    try {
+      var base = '/' + path.split('/').filter(Boolean)[0]; // e.g. /comptes
+      var keys = [];
+      for (var i = 0; i < sessionStorage.length; i++) {
+        var k = sessionStorage.key(i);
+        if (k && k.indexOf(CACHE_PREFIX + base) === 0) keys.push(k);
+      }
+      keys.forEach(function (k) { sessionStorage.removeItem(k); });
+    } catch (e) {}
   }
 
   // PUT synchrone — retourne l'objet ou null
@@ -1426,4 +1479,26 @@
 
   // Charger immediatement (synchrone) — les core data sont pretes avant support.js
   loadData();
+
+  // ── Prefetch all module pages for instant navigation ──
+  (function prefetchModules() {
+    var modules = [
+      'Dashboard', 'Comptes', 'Personas', 'Posting', 'Veille',
+      'Statistiques', 'CRM', 'Liens', 'Logs', 'Targets',
+      'Scenarios', 'Comportements', 'Proxies', 'Parc%20iPhone', 'Parametres'
+    ];
+    // Delay prefetch to not compete with current page rendering
+    setTimeout(function () {
+      var current = location.pathname.split('/').pop() || '';
+      modules.forEach(function (m) {
+        var href = 'Module%20' + m + '%20v1.dc.html';
+        if (current.indexOf(m) >= 0) return; // skip current module
+        var link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = href;
+        link.as = 'document';
+        document.head.appendChild(link);
+      });
+    }, 1500); // prefetch after 1.5s (current page is rendered first)
+  })();
 })();
