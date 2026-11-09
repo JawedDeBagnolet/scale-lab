@@ -1,6 +1,12 @@
 // api-data.js — Charge les donnees reelles du backend Scale Lab.
 // SCALE_DATA existe immediatement (synchrone), les modules chargent
 // leurs donnees specifiques via D.loadModule('nom').
+
+// ── Service Worker registration ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(function () {});
+}
+
 (function () {
   'use strict';
 
