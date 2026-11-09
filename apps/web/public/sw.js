@@ -1,5 +1,5 @@
-// Scale Lab Service Worker — cache all static assets for instant navigation
-const CACHE_NAME = 'sl-v2';
+// Scale Lab Service Worker — cache JS/CSS/font assets only
+const CACHE_NAME = 'sl-v3';
 
 // Assets to precache on install
 const PRECACHE = [
@@ -10,24 +10,8 @@ const PRECACHE = [
   'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap',
 ];
 
-// DC module files — precached after install via message
-const DC_MODULES = [
-  'Module%20Dashboard%20v1.dc.html',
-  'Module%20Comptes%20v1.dc.html',
-  'Module%20Personas%20v1.dc.html',
-  'Module%20Posting%20v1.dc.html',
-  'Module%20Veille%20v1.dc.html',
-  'Module%20Statistiques%20v1.dc.html',
-  'Module%20CRM%20v1.dc.html',
-  'Module%20Liens%20v1.dc.html',
-  'Module%20Logs%20v1.dc.html',
-  'Module%20Targets%20v1.dc.html',
-  'Module%20Scenarios%20v1.dc.html',
-  'Module%20Comportements%20v1.dc.html',
-  'Module%20Proxies%20v1.dc.html',
-  'Module%20Parc%20iPhone%20v1.dc.html',
-  'Module%20Parametres%20v1.dc.html',
-];
+// Only cache these extensions — never HTML (Safari breaks on redirected SW responses)
+const CACHEABLE_EXT = /\.(js|css|woff2?|ttf|eot|png|svg|ico)(\?|$)/i;
 
 // Install — precache core assets
 self.addEventListener('install', (e) => {
@@ -44,36 +28,40 @@ self.addEventListener('activate', (e) => {
       Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
     ).then(() => self.clients.claim())
   );
-  // Background-cache all DC modules
-  caches.open(CACHE_NAME).then((cache) => {
-    DC_MODULES.forEach((m) => {
-      cache.match(m).then((r) => { if (!r) cache.add(m).catch(() => {}); });
-    });
-  });
 });
 
-// Fetch — stale-while-revalidate for static assets, network-first for API
+// Fetch — stale-while-revalidate for static assets only
 self.addEventListener('fetch', (e) => {
+  // Only GET requests
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
-  // API calls — always network (data freshness matters)
+  // Skip API, auth, websocket, media
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/') ||
       url.pathname.startsWith('/ws/') || url.pathname.startsWith('/media/')) {
-    return; // let browser handle normally
+    return;
   }
 
-  // Static assets — stale-while-revalidate
-  // Serve from cache immediately, update cache in background
+  // Skip HTML pages — let them go straight to network (fixes Safari redirect error)
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.dc')) {
+    return;
+  }
+
+  // Only cache known static asset types + CDN resources
+  const isCDN = url.hostname !== location.hostname;
+  if (!isCDN && !CACHEABLE_EXT.test(url.pathname)) return;
+
+  // Stale-while-revalidate for static assets
   e.respondWith(
     caches.open(CACHE_NAME).then((cache) =>
       cache.match(e.request).then((cached) => {
         const fetchPromise = fetch(e.request).then((response) => {
-          // Only cache successful responses
-          if (response && response.status === 200) {
+          if (response && response.status === 200 && response.type !== 'opaqueredirect') {
             cache.put(e.request, response.clone());
           }
           return response;
-        }).catch(() => cached); // offline fallback to cache
+        }).catch(() => cached);
 
         return cached || fetchPromise;
       })
