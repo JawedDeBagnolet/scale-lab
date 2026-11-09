@@ -1,5 +1,5 @@
 // Scale Lab Service Worker — cache all static assets for instant navigation
-const CACHE_NAME = 'sl-v1';
+const CACHE_NAME = 'sl-v2';
 
 // Assets to precache on install
 const PRECACHE = [
