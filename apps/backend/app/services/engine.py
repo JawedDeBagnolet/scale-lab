@@ -281,11 +281,13 @@ async def _execute_iphone_action(
 
     elif platform == "th_iph":
         from app.services.automation.th_runner import run_th_task
+        abort_evt = get_abort_event(run_id) if run_id else None
         return await run_th_task(
             account_id,
             action_type,
             values=values,
             preset_ids=preset_ids,
+            abort_event=abort_evt,
         )
 
     return False, f"Plateforme iPhone inconnue : {platform}"

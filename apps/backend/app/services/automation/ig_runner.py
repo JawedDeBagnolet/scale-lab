@@ -160,7 +160,8 @@ async def _feed_session(drv, nav, sess, values, log):
         return blocked
 
     from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-    stats = await run_feed_session(drv, nav, config=values, log=log)
+    abort_fn = lambda: _check_abort(getattr(sess, '_abort_event', None))
+    stats = await run_feed_session(drv, nav, config=values, log=log, abort_check=abort_fn)
     return _fmt(stats, "Feed", ["posts_seen", "likes", "saves", "comments_read"])
 
 
@@ -172,7 +173,8 @@ async def _reels_session(drv, nav, sess, values, log):
         return blocked
 
     from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
-    stats = await run_reels_session(drv, nav, config=values, log=log)
+    abort_fn = lambda: _check_abort(getattr(sess, '_abort_event', None))
+    stats = await run_reels_session(drv, nav, config=values, log=log, abort_check=abort_fn)
     return _fmt(stats, "Reels", [
         "reels_watched", "likes", "follows", "saves",
         "comments_read", "sponsored_skipped", "fast_skipped",

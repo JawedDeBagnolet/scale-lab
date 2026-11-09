@@ -105,7 +105,8 @@ def _pick_intensity():
     )[0]
 
 
-async def run_feed_session(driver, navigator, config=None, task=None, log=print):
+async def run_feed_session(driver, navigator, config=None, task=None, log=print,
+                           abort_check=None):
     """Execute une session feed IG complete.
 
     Args:
@@ -173,6 +174,10 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print)
         elapsed = time.time() - start
         if elapsed >= duration_s:
             break
+
+        # Check abort
+        if abort_check:
+            abort_check()
 
         log("\n[%s] %d/%ds — %d posts, %d likes" % (
             datetime.now().strftime("%H:%M:%S"),
