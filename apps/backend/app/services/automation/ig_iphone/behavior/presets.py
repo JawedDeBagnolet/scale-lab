@@ -84,17 +84,22 @@ def apply_behavior(cfg: dict, behavior: dict | None, log=print) -> dict:
 
     # Le champ config est un JSONB libre — on itere ses cles
     # Structure attendue: {probabilities: {like: 0.7, ...}, pauses: {...}, durations: {...}, ...}
-    for section_key in ("probabilities", "pauses", "durations", "intensity", "antipatterns"):
+    # "p" is the key used in the DB for probabilities (like, save, follow, etc.)
+    SECTION_KEYS = ("p", "probabilities", "pauses", "durations", "intensity", "antipatterns")
+    for section_key in SECTION_KEYS:
         section = config.get(section_key)
         if isinstance(section, dict):
             for k, v in section.items():
                 if v is not None:
+                    # Probabilities in DB are 0-100 integers, convert to 0-1 floats
+                    if section_key == "p" and isinstance(v, (int, float)) and v > 1:
+                        v = v / 100.0
                     cfg[k] = v
                     applied.append(k)
 
     # Aussi les params a la racine (flat keys)
     for k, v in config.items():
-        if k not in ("probabilities", "pauses", "durations", "intensity", "antipatterns") and v is not None:
+        if k not in SECTION_KEYS and v is not None:
             cfg[k] = v
             applied.append(k)
 

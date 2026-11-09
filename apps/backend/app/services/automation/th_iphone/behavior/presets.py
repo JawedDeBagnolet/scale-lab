@@ -49,15 +49,18 @@ def apply_behavior(cfg, behavior, log=print):
         return cfg
     config = behavior.get("config", {})
     applied = []
-    for section_key in ("probabilities", "pauses", "durations", "intensity", "antipatterns"):
+    SECTION_KEYS = ("p", "probabilities", "pauses", "durations", "intensity", "antipatterns")
+    for section_key in SECTION_KEYS:
         section = config.get(section_key)
         if isinstance(section, dict):
             for k, v in section.items():
                 if v is not None:
+                    if section_key == "p" and isinstance(v, (int, float)) and v > 1:
+                        v = v / 100.0
                     cfg[k] = v
                     applied.append(k)
     for k, v in config.items():
-        if k not in ("probabilities", "pauses", "durations", "intensity", "antipatterns") and v is not None:
+        if k not in SECTION_KEYS and v is not None:
             cfg[k] = v
             applied.append(k)
     if applied:
