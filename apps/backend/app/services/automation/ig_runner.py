@@ -1,7 +1,8 @@
-"""Async IG runner — dispatches Instagram task types to the IGDriver.
+"""Async IG runner — dispatches Instagram task types to ported ig_iphone modules.
 
-Ported from VPS ig_runner.py. Each task type maps to a handler function
-that uses DeviceSession + IGDriver to perform the action on the iPhone.
+Each task type maps to a handler that uses DeviceSession + IGDriver + IGNavigator
+to perform the action on the iPhone. The actual interaction logic lives in the
+ig_iphone/ package (ported from VPS); this file is the async dispatcher.
 
 Task types:
     ig_feed          Browse feed (scroll, like, comment)
@@ -23,13 +24,9 @@ Task types:
 
 import asyncio
 import logging
-import os
-import random
-from typing import Any, Callable
+from typing import Callable
 from uuid import UUID
 
-from app.services.automation.behavior import maybe_pattern
-from app.services.automation.behavior.patterns import hesitate_before_action
 from app.services.automation.device_session import (
     BUNDLE_INSTAGRAM,
     DeviceSession,
@@ -38,7 +35,8 @@ from app.services.automation.device_session import (
     LoginRequired,
 )
 from app.services.automation.ig_driver import IGDriver
-from app.services.dispatch import _ssh_exec
+from app.services.automation.ig_iphone.navigator import IGNavigator
+from app.services.automation.ig_iphone.health import check_account_health
 
 logger = logging.getLogger("automation.ig_runner")
 
@@ -55,7 +53,7 @@ def _handler(name: str):
     return wrap
 
 
-# ── Main entry point ─────────────────────────────────────────────────────────
+# ── Abort support ────────────────────────────────────────────────────────────
 
 class AbortedError(Exception):
     """Raised when a run is aborted mid-session."""
@@ -67,6 +65,18 @@ def _check_abort(abort_event: asyncio.Event | None):
     if abort_event and abort_event.is_set():
         raise AbortedError("Run avorté")
 
+
+# ── Health check helper ──────────────────────────────────────────────────────
+
+async def _ensure_healthy(sess: DeviceSession, log: Callable) -> tuple[bool, str] | None:
+    """Check account health before a session. Returns (False, msg) if unhealthy, None if OK."""
+    health = await check_account_health(sess.compte_id, log=log)
+    if not health["ok"]:
+        return False, f"Compte en {health['status']} — session annulée"
+    return None
+
+
+# ── Main entry point ─────────────────────────────────────────────────────────
 
 async def run_ig_task(
     compte_id: UUID,
@@ -94,8 +104,10 @@ async def run_ig_task(
         async with DeviceSession(compte_id, BUNDLE_INSTAGRAM, log=log) as sess:
             # Store abort_event on session so handlers can access it
             sess._abort_event = abort_event
+            sess._preset_ids = preset_ids
 
             drv = IGDriver(mcp_port=sess.mcp_port, log=log)
+            nav = IGNavigator(drv, log=log)
 
             # Ensure login
             await sess.ensure_login(drv, None)
@@ -103,7 +115,7 @@ async def run_ig_task(
             _check_abort(abort_event)
 
             # Run the handler
-            result = await handler(drv, sess, values, log)
+            result = await handler(drv, nav, sess, values, log)
             return result
 
     except AbortedError:
@@ -120,1363 +132,378 @@ async def run_ig_task(
         return False, f"Erreur : {str(e)[:200]}"
 
 
-# ── Feed session ─────────────────────────────────────────────────────────────
+# ── Helper: format stats dict into (bool, str) ──────────────────────────────
+
+def _fmt(stats: dict, label: str, keys: list[str] | None = None) -> tuple[bool, str]:
+    """Format a stats dict from a ported module into the runner's (bool, str)."""
+    if not stats:
+        return False, f"{label} : pas de résultat"
+    parts = []
+    for k in (keys or list(stats.keys())):
+        v = stats.get(k)
+        if v is not None and k not in ("started_at", "ended_at", "duration_s", "type"):
+            parts.append(f"{k}={v}")
+    dur = stats.get("duration_s", 0)
+    msg = f"{label} : {', '.join(parts)}" + (f" en {dur}s" if dur else "")
+    return True, msg
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  INTERACTION SESSIONS
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_feed")
-async def _feed_session(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Browse IG feed like a human — scroll, read, sometimes interact.
+async def _feed_session(drv, nav, sess, values, log):
+    """Browse IG feed."""
+    blocked = await _ensure_healthy(sess, log)
+    if blocked:
+        return blocked
+
+    from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
+    stats = await run_feed_session(drv, nav, config=values, log=log)
+    return _fmt(stats, "Feed", ["posts_seen", "likes", "saves", "comments_read"])
 
-    No centering. Just scroll down naturally, detect what's on screen,
-    interact with visible posts, repeat. Track seen posts to know when
-    we've actually moved to new content.
-    """
-    # Load behavior preset (pauses, durations, targets)
-    pauses = await _load_pauses(sess)
-    targets = await _load_market_targets(sess)
-    preset_dur = await _load_preset_duration(sess)
-
-    # Duration: preset durations override step values
-    if preset_dur:
-        duration = preset_dur
-    else:
-        dur_val = values.get("dur", values.get("duration", 120))
-        duration = _parse_duration(dur_val)
-
-    like_prob = values.get("like", values.get("like_probability", 15)) / 100
-    comment_prob = values.get("readComments", values.get("comment_probability", 3)) / 100
-    save_prob = values.get("save", values.get("save_probability", 0)) / 100
-
-    log(f"   [ig_feed] session {duration}s, like={like_prob}, comment={comment_prob}, pauses={len(pauses)}, targets={len(targets)}")
-
-    # Navigate to feed
-    await drv.go_home()
-    await drv.wait(1.5, 3.0)
-
-    import time
-    start = time.monotonic()
-    posts_seen = 0
-    likes = 0
-    comments = 0
-    saves = 0
-    seen_usernames: set[str] = set()
-    stale_count = 0  # how many consecutive loops with no new posts
-
-    abort_event = getattr(sess, '_abort_event', None)
-
-    while (time.monotonic() - start) < duration:
-        _check_abort(abort_event)
-
-        # 0. Check we're still on the feed — if not, go back
-        screen = await drv.detect_current_screen()
-        if screen and screen not in ("feed", "reels", "explore"):
-            log(f"   [ig] hors du feed (écran: {screen}), retour...")
-            backed = await drv.tap_element("Retour", contains=True)
-            if not backed:
-                backed = await drv.tap_element("Back", contains=True)
-            if not backed:
-                await drv.ht.swipe(5, drv.ht.screen_h * 0.5,
-                                   drv.ht.screen_w * 0.6, drv.ht.screen_h * 0.5,
-                                   duration=300, steps=20)
-            await drv.wait(0.8, 1.5)
-            await drv.go_home()
-            await drv.wait(1.0, 2.0)
-            continue
-
-        # 1. Read what's on screen
-        posts = await drv.detect_visible_posts()
-        new_posts = [p for p in posts if p["username"] not in seen_usernames]
-
-        if new_posts:
-            stale_count = 0
-            for post in new_posts:
-                seen_usernames.add(post["username"])
-                posts_seen += 1
-                is_target = post["username"].lower() in targets
-
-                # Center this post on screen
-                await _snap_to_post(drv, post)
-                await drv.wait(0.3, 0.6)
-
-                # Reading pause — weighted by scope (target/lambda)
-                pause_secs = _pick_pause(pauses, is_target)
-                if pause_secs > 0:
-                    log(f"   [ig] lecture {pause_secs:.1f}s sur {post['username']}" + (" (target)" if is_target else ""))
-                    await asyncio.sleep(pause_secs)
-
-                # Random behavior pattern
-                await maybe_pattern(drv, log, probability=0.12)
-
-                # Maybe like
-                if random.random() < like_prob:
-                    await hesitate_before_action(drv, log)
-                    liked = await drv.tap_like_button()
-                    if liked:
-                        likes += 1
-                        log(f"   [ig] like sur {post['username']}")
-                        await drv.wait(0.5, 1.5)
-
-                # Maybe save/bookmark
-                if save_prob > 0 and random.random() < save_prob:
-                    await hesitate_before_action(drv, log)
-                    saved = await drv.tap_save_button()
-                    if saved:
-                        saves += 1
-                        log(f"   [ig] enregistré {post['username']}")
-                        await drv.wait(0.3, 0.8)
-
-                # Maybe comment
-                if random.random() < comment_prob:
-                    comment_text = values.get("comment_text")
-                    if comment_text:
-                        await hesitate_before_action(drv, log)
-                        await drv.type_comment(comment_text)
-                        await drv.submit_comment()
-                        comments += 1
-                        log(f"   [ig] comment sur {post['username']}")
-                        await drv.wait(1.0, 3.0)
-
-                _check_abort(abort_event)
-
-                if (time.monotonic() - start) >= duration:
-                    break
-        else:
-            stale_count += 1
-
-        # 2. Scroll down to see next content
-        # If we keep seeing the same posts, scroll a bit more
-        scroll_mult = min(1.0 + stale_count * 0.3, 2.0)
-        await _feed_scroll_down(drv, multiplier=scroll_mult)
-        await drv.wait(0.8, 2.0)
-
-        # Safety: if stuck for too long, do a bigger scroll
-        if stale_count >= 4:
-            log(f"   [ig] stuck — grand scroll pour débloquer")
-            await drv.scroll_down()
-            stale_count = 0
-            await drv.wait(1.0, 2.0)
-
-    msg = f"Feed : {posts_seen} posts, {likes} likes, {saves} saves, {comments} comments en {duration}s"
-    log(f"   [ig_feed] {msg}")
-    return True, msg
-
-
-async def _load_pauses(sess) -> list[dict]:
-    """Load pause config from the behavior preset attached to this session.
-
-    Returns list of { label, min, max, prob, scope } dicts.
-    Falls back to sensible defaults if no preset.
-    """
-    try:
-        from app.db import AsyncSessionLocal
-        from app.models.compte import Compte
-
-        async with AsyncSessionLocal() as db:
-            compte = await db.get(Compte, sess.compte_id)
-            if not compte:
-                return _DEFAULT_PAUSES
-
-            # The preset_ids come from the scenario step's action config
-            # For now, load the first behavior preset for this account's platform
-            from sqlalchemy import select
-            from app.models.comportement import Comportement
-            stmt = select(Comportement).where(
-                Comportement.plat == "ig"
-            ).limit(1)
-            result = await db.execute(stmt)
-            preset = result.scalar_one_or_none()
-            if preset and preset.pauses:
-                return preset.pauses
-    except Exception:
-        pass
-    return _DEFAULT_PAUSES
-
-
-_DEFAULT_PAUSES = [
-    {"label": "Pas intéressé", "min": 2, "max": 4, "prob": 50, "scope": "both"},
-    {"label": "Intéressant", "min": 6, "max": 10, "prob": 35, "scope": "both"},
-    {"label": "Très intéressé", "min": 15, "max": 25, "prob": 15, "scope": "target"},
-]
-
-
-async def _load_market_targets(sess) -> set[str]:
-    """Load target handles for the same market as this account.
-
-    Returns a set of lowercase handles.
-    """
-    try:
-        from app.db import AsyncSessionLocal
-        from app.models.compte import Compte
-        from app.models.target import Target
-        from sqlalchemy import select
-
-        async with AsyncSessionLocal() as db:
-            compte = await db.get(Compte, sess.compte_id)
-            if not compte or not compte.market:
-                return set()
-
-            stmt = select(Target.handle).where(Target.market == compte.market)
-            result = await db.execute(stmt)
-            return {row[0].lower() for row in result.all() if row[0]}
-    except Exception:
-        return set()
-
-
-def _pick_pause(pauses: list[dict], is_target: bool) -> float:
-    """Pick a reading pause duration based on weighted random selection.
-
-    Filters pauses by scope (target/lambda/both) then picks one
-    weighted by 'prob'. Returns duration in seconds.
-    """
-    if not pauses:
-        return random.uniform(1.5, 4.0)  # fallback
-
-    # Filter by scope
-    scope_key = "target" if is_target else "lambda"
-    applicable = [p for p in pauses if p.get("scope", "both") in (scope_key, "both")]
-
-    if not applicable:
-        # No matching pauses — use all as fallback
-        applicable = pauses
-
-    # Weighted random selection by prob
-    total_weight = sum(p.get("prob", 10) for p in applicable)
-    if total_weight <= 0:
-        return random.uniform(1.5, 4.0)
-
-    roll = random.uniform(0, total_weight)
-    for p in applicable:
-        roll -= p.get("prob", 10)
-        if roll <= 0:
-            return random.uniform(p.get("min", 2), p.get("max", 5))
-
-    # Fallback to last
-    last = applicable[-1]
-    return random.uniform(last.get("min", 2), last.get("max", 5))
-
-
-def _parse_duration(dur_val) -> float:
-    """Parse a duration value into seconds.
-
-    Handles:
-      [min_minutes, max_minutes] → random between min*60 and max*60
-      number > 10 → assume seconds
-      number <= 10 → assume minutes, convert to seconds
-    """
-    if isinstance(dur_val, list) and len(dur_val) >= 2:
-        return random.uniform(dur_val[0] * 60, dur_val[1] * 60)
-    elif isinstance(dur_val, (int, float)):
-        return dur_val if dur_val > 10 else dur_val * 60
-    return 120.0
-
-
-async def _load_preset_duration(sess) -> float | None:
-    """Load duration from the behavior preset's durations config.
-
-    The preset has durations: [{ min, max, weight }] (in minutes).
-    Picks one weighted by 'weight', then returns random(min*60, max*60).
-    Returns None if no preset or no durations configured.
-    """
-    try:
-        from app.db import AsyncSessionLocal
-        from app.models.comportement import Comportement
-        from sqlalchemy import select
-
-        async with AsyncSessionLocal() as db:
-            stmt = select(Comportement).where(
-                Comportement.plat == "ig"
-            ).limit(1)
-            result = await db.execute(stmt)
-            preset = result.scalar_one_or_none()
-            if not preset or not preset.durations:
-                return None
-
-            durs = preset.durations
-            if not durs:
-                return None
-
-            # Weighted random selection
-            total_w = sum(d.get("weight", 1) for d in durs)
-            if total_w <= 0:
-                return None
-            roll = random.uniform(0, total_w)
-            for d in durs:
-                roll -= d.get("weight", 1)
-                if roll <= 0:
-                    return random.uniform(d.get("min", 5) * 60, d.get("max", 15) * 60)
-            last = durs[-1]
-            return random.uniform(last.get("min", 5) * 60, last.get("max", 15) * 60)
-    except Exception:
-        return None
-
-
-async def _snap_to_post(drv: IGDriver, post: dict):
-    """Adjust scroll to center a post's media on screen.
-
-    Uses the post's Y coordinate from detect_visible_posts() to compute
-    a small drag. No re-detection — one precise gesture, done.
-    """
-    await drv.ht._ensure_screen()
-    h = drv.ht.screen_h
-    w = drv.ht.screen_w
-
-    # Target: media center at ~45% of screen height
-    target_y = h * 0.45
-    post_y = post.get("y", target_y)
-    delta = post_y - target_y  # positive = post below center
-
-    # If already close enough (within 40px), skip
-    if abs(delta) < 40:
-        return
-
-    # Drag to center: finger moves opposite to delta
-    x = w * random.uniform(0.35, 0.65)
-    start_y = h * 0.5
-    # delta > 0 → post below center → finger goes UP (end_y < start_y) → post moves up
-    # delta < 0 → post above center → finger goes DOWN (end_y > start_y) → post moves down
-    end_y = start_y - delta * 0.85  # slight undershoot for natural feel
-
-    # Clamp to screen bounds
-    end_y = max(h * 0.10, min(h * 0.90, end_y))
-
-    points = drv.ht._build_swipe_points(
-        x, start_y, x + random.uniform(-3, 3), end_y,
-        random.randint(20, 35),
-    )
-    await drv.ht.drag(
-        points,
-        hold_duration=70,
-        move_duration=random.randint(350, 600),
-    )
-
-
-async def _feed_scroll_down(drv: IGDriver, *, multiplier: float = 1.0):
-    """Scroll down by roughly one post height.
-
-    Finger moves UP (start_y > end_y) = content moves UP = we see posts below.
-    multiplier > 1 scrolls further (used when stuck on same posts).
-    """
-    await drv.ht._ensure_screen()
-    w = drv.ht.screen_w
-    h = drv.ht.screen_h
-
-    # Base scroll: ~35-50% of screen height (one post ≈ 400-500px on 812px screen)
-    base_dist = random.uniform(0.35, 0.50) * h * multiplier
-    # Clamp so we never scroll more than 80% of screen
-    dist = min(base_dist, h * 0.80)
-
-    dur = random.randint(500, 900)
-    drift_x = random.uniform(-6, 6)
-
-    x = w * random.uniform(0.35, 0.65)
-    start_y = h * random.uniform(0.70, 0.80)
-    end_y = start_y - dist  # finger goes UP = scroll DOWN
-
-    points = drv.ht._build_swipe_points(
-        x, start_y, x + drift_x, end_y,
-        random.randint(30, 50),
-    )
-    await drv.ht.drag(
-        points,
-        hold_duration=80,
-        move_duration=dur,
-    )
-
-
-# ── Reels session ────────────────────────────────────────────────────────────
 
 @_handler("ig_reels")
-async def _reels_session(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Browse IG reels with realistic behavior and detailed logging."""
-    # Load behavior preset (pauses, durations, targets)
-    pauses = await _load_pauses(sess)
-    targets = await _load_market_targets(sess)
-    preset_dur = await _load_preset_duration(sess)
+async def _reels_session(drv, nav, sess, values, log):
+    """Browse IG reels."""
+    blocked = await _ensure_healthy(sess, log)
+    if blocked:
+        return blocked
 
-    # Duration: preset durations override step values
-    if preset_dur:
-        duration = preset_dur
-    else:
-        dur_val = values.get("dur", values.get("duration", 60))
-        duration = _parse_duration(dur_val)
+    from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
+    stats = await run_reels_session(drv, nav, config=values, log=log)
+    return _fmt(stats, "Reels", [
+        "reels_watched", "likes", "follows", "saves",
+        "comments_read", "sponsored_skipped", "fast_skipped",
+    ])
 
-    like_prob = values.get("like", values.get("like_probability", 10)) / 100
-    follow_prob = values.get("follow", values.get("follow_probability", 5)) / 100
-    save_prob = values.get("save", values.get("save_probability", 0)) / 100
-
-    log(f"   [ig_reels] session {duration:.0f}s, like={like_prob:.0%}, follow={follow_prob:.0%}, save={save_prob:.0%}")
-
-    # Navigate to Reels tab and verify
-    for nav_attempt in range(3):
-        await drv.go_reels()
-        await drv.wait(1.5, 2.5)
-        screen = await drv.detect_current_screen()
-        if screen == "reels":
-            log(f"   [ig_reels] sur l'onglet Reels")
-            break
-        log(f"   [ig_reels] après tap Reels → écran: {screen}, retry {nav_attempt + 1}/3")
-    else:
-        log(f"   [ig_reels] impossible de naviguer vers Reels, abandon")
-        return False, "Impossible de naviguer vers l'onglet Reels"
-
-    import time
-    start = time.monotonic()
-    reels_seen = 0
-    reels_skipped = 0
-    likes = 0
-    saves = 0
-    follows = 0
-    abort_event = getattr(sess, '_abort_event', None)
-
-    while (time.monotonic() - start) < duration:
-        _check_abort(abort_event)
-
-        # Detect current reel info
-        reel_info = await _detect_current_reel(drv)
-        username = reel_info.get("username", "inconnu")
-        is_ad = reel_info.get("is_ad", False)
-        is_target = username.lower() in targets
-
-        if is_ad:
-            reels_skipped += 1
-            log(f"   [ig_reels] ⏭ pub de {username}, skip")
-            await _swipe_next_reel(drv)
-            await drv.wait(0.3, 0.8)
-            continue
-
-        reels_seen += 1
-
-        # Watch time based on pauses config (target/lambda scope)
-        pause_secs = _pick_pause(pauses, is_target)
-        tag = f" (target)" if is_target else ""
-        log(f"   [ig_reels] ▶ {username}{tag} — {pause_secs:.1f}s")
-        await asyncio.sleep(pause_secs)
-
-        # Random behavior pattern
-        await maybe_pattern(drv, log, probability=0.10)
-
-        # Maybe like
-        if random.random() < like_prob:
-            await hesitate_before_action(drv, log)
-            liked = await drv.tap_like_button()
-            if liked:
-                likes += 1
-                log(f"   [ig_reels] ❤ like {username}")
-                await drv.wait(0.3, 0.8)
-
-        # Maybe save
-        if save_prob > 0 and random.random() < save_prob:
-            saved = await drv.tap_save_button()
-            if saved:
-                saves += 1
-                log(f"   [ig_reels] 🔖 save {username}")
-                await drv.wait(0.3, 0.6)
-
-        # Maybe follow
-        if random.random() < follow_prob:
-            followed = await drv.tap_element("Suivre", contains=False)
-            if followed:
-                follows += 1
-                log(f"   [ig_reels] ➕ follow {username}")
-                await drv.wait(0.5, 1.0)
-
-        _check_abort(abort_event)
-
-        # Swipe to next reel
-        await _swipe_next_reel(drv)
-        await drv.wait(0.5, 1.0)
-
-    msg = f"Reels : {reels_seen} vus, {reels_skipped} pubs skippées, {likes} likes, {saves} saves, {follows} follows en {duration:.0f}s"
-    log(f"   [ig_reels] {msg}")
-    return True, msg
-
-
-async def _detect_current_reel(drv: IGDriver) -> dict:
-    """Detect the current reel's username and whether it's an ad."""
-    await drv.refresh_elements()
-    username = "inconnu"
-    is_ad = False
-
-    for el in drv.elements:
-        text = el.get("text", "")
-        # "Reel de username" or "Reel de username."
-        if text.startswith("Reel de "):
-            username = text[8:].rstrip(". ")
-        # Sponsored/ad detection
-        if "sponsoris" in text.lower() or "sponsored" in text.lower():
-            is_ad = True
-        if text == "Publicité" or text == "Ad":
-            is_ad = True
-
-    return {"username": username, "is_ad": is_ad}
-
-
-async def _swipe_next_reel(drv: IGDriver):
-    """Swipe up to go to the next reel."""
-    await drv.ht._ensure_screen()
-    w = drv.ht.screen_w
-    h = drv.ht.screen_h
-    x = w / 2 + random.uniform(-15, 15)
-    await drv.ht.swipe(
-        x, h * 0.75,
-        x + random.uniform(-5, 5), h * 0.15,
-        duration=random.randint(400, 800),
-    )
-
-
-# ── Story viewing ────────────────────────────────────────────────────────────
 
 @_handler("ig_stories")
-async def _stories_session(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """View stories from the feed story tray."""
-    max_stories = values.get("max_stories", 10)
+async def _stories_session(drv, nav, sess, values, log):
+    """View stories from feed tray."""
+    blocked = await _ensure_healthy(sess, log)
+    if blocked:
+        return blocked
 
-    await drv.go_home()
-    await drv.wait(1.0, 2.0)
+    from app.services.automation.ig_iphone.interact.story_view import watch_stories
+    stats = await watch_stories(drv, nav, config=values, log=log)
+    return _fmt(stats, "Stories", ["stories_watched", "likes"])
 
-    # Tap first story in tray
-    ok = await drv.open_story()
-    if not ok:
-        return True, "Pas de stories disponibles"
-
-    await drv.wait(1.5, 3.0)
-    stories_viewed = 0
-
-    for _ in range(max_stories):
-        screen = await drv.detect_current_screen()
-        if screen != "story":
-            break
-
-        stories_viewed += 1
-        # Watch story for realistic duration
-        await asyncio.sleep(random.uniform(2.0, 6.0))
-        # Next story
-        await drv.next_story()
-        await drv.wait(0.5, 1.0)
-
-    # Close story
-    await drv.close_story()
-    await drv.wait(0.5, 1.0)
-
-    msg = f"Stories : {stories_viewed} vues"
-    log(f"   [ig_stories] {msg}")
-    return True, msg
-
-
-# ── Profile visit ────────────────────────────────────────────────────────────
 
 @_handler("ig_profile")
-async def _profile_visit(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Visit a user profile and optionally follow."""
-    username = values.get("username")
-    follow = values.get("follow", False)
+async def _profile_visit(drv, nav, sess, values, log):
+    """Visit a user profile."""
+    blocked = await _ensure_healthy(sess, log)
+    if blocked:
+        return blocked
 
+    username = values.get("username")
     if not username:
         return False, "username requis pour ig_profile"
 
-    # Navigate to search
-    await drv.go_search()
-    await drv.wait(0.5, 1.0)
+    from app.services.automation.ig_iphone.interact.profile_visit import visit_profile
+    stats = await visit_profile(drv, nav, username, config=values, log=log)
+    return _fmt(stats, f"Profil @{username}", ["behavior", "likes", "follows"])
 
-    # Search for user
-    await drv.tap_element("Rechercher", contains=True)
-    await drv.wait(0.3, 0.5)
-    await drv.ht.type_text(username)
-    await drv.wait(1.0, 2.0)
-
-    # Tap on the search result
-    await drv.tap_element(username, contains=True)
-    await drv.wait(1.5, 3.0)
-
-    # Get profile stats
-    stats = await drv.get_profile_stats()
-
-    # Follow if requested
-    if follow:
-        await drv.follow_user()
-        await drv.wait(0.5, 1.0)
-
-    msg = f"Profil {username} visité"
-    if stats:
-        msg += f" ({stats.get('followers', '?')} followers)"
-    if follow:
-        msg += " + suivi"
-    log(f"   [ig_profile] {msg}")
-    return True, msg
-
-
-# ── Media transfer ───────────────────────────────────────────────────────────
-
-
-async def _push_media(
-    media_url: str,
-    sess: "DeviceSession",
-    *,
-    market: str = "FR",
-    device_model: str = "iPhone10,6",
-    log: Callable = logger.info,
-) -> str | None:
-    """Push media through the pipeline: spoof EXIF → SCP → import to gallery.
-
-    Returns the iPhone gallery path on success, None on failure.
-    """
-    from app.services.media_pipeline import push_media
-    return await push_media(
-        media_url=media_url,
-        ssh_port=sess.ssh_port,
-        mcp_port=sess.mcp_port,
-        market=market,
-        device_model=device_model,
-        phone_id=sess.ctx.get("container_uuid", "default"),
-        host=sess.ctx.get("host", "127.0.0.1"),
-    )
-
-
-# ── Legacy media transfer (kept for reference) ──────────────────────────────
-
-async def _legacy_transfer_media_to_iphone(
-    ssh_port: int,
-    local_path: str,
-    *,
-    log: Callable = logger.info,
-) -> str | None:
-    """Transfer a media file from VPS to iPhone via SCP over SSH tunnel.
-
-    The file is placed in /var/mobile/Media/DCIM/100APPLE/ on the iPhone
-    so it appears in the Camera Roll.
-
-    Returns the remote path on success, None on failure.
-    """
-    filename = os.path.basename(local_path)
-    remote_dir = "/var/mobile/Media/DCIM/100APPLE"
-    remote_path = f"{remote_dir}/{filename}"
-
-    # Ensure target dir exists
-    await _ssh_exec(ssh_port, f"mkdir -p {remote_dir}", timeout=5)
-
-    # SCP the file
-    log(f"   [media] transfert {filename} → iPhone")
-    proc = await asyncio.create_subprocess_exec(
-        "scp",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        "-o", "ConnectTimeout=10",
-        "-o", "LogLevel=ERROR",
-        "-P", str(ssh_port),
-        local_path,
-        f"root@127.0.0.1:{remote_path}",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-
-    if proc.returncode != 0:
-        err = stderr.decode("utf-8", errors="replace").strip()
-        log(f"   [media] SCP échoué: {err}")
-        return None
-
-    # Trigger iOS media library scan so the file appears in gallery
-    await _ssh_exec(
-        ssh_port,
-        'su mobile -c "open com.apple.mobileslideshow" 2>/dev/null; '
-        "sleep 1; "
-        'killall -9 MobileSlideShow 2>/dev/null; '
-        "true",
-        timeout=10,
-    )
-
-    log(f"   [media] ✓ {filename} transféré")
-    return remote_path
-
-
-async def _legacy_download_r2_media(
-    media_url: str,
-    *,
-    log: Callable = logger.info,
-) -> str | None:
-    """Download a media file from R2/URL to a local temp path.
-
-    Returns local file path or None on failure.
-    """
-    import httpx
-    import tempfile
-
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(media_url)
-            resp.raise_for_status()
-
-            # Determine extension from content-type
-            ct = resp.headers.get("content-type", "")
-            ext = ".jpg"
-            if "video" in ct or "mp4" in ct:
-                ext = ".mp4"
-            elif "png" in ct:
-                ext = ".png"
-            elif "webp" in ct:
-                ext = ".webp"
-            elif "heic" in ct:
-                ext = ".heic"
-
-            tmp = tempfile.NamedTemporaryFile(
-                suffix=ext, prefix="scale_media_", delete=False
-            )
-            tmp.write(resp.content)
-            tmp.close()
-            log(f"   [media] téléchargé {len(resp.content)} bytes → {tmp.name}")
-            return tmp.name
-
-    except Exception as e:
-        log(f"   [media] erreur téléchargement R2: {e}")
-        return None
-
-
-# ── Post publication ─────────────────────────────────────────────────────────
-
-@_handler("ig_post")
-async def _publish_post(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Publish an IG post (photo, video, or carousel).
-
-    values:
-        media_urls: list[str]   — R2 URLs of media to post
-        media_paths: list[str]  — local VPS paths (alternative to URLs)
-        caption: str            — post caption (with hashtags)
-        location: str | None    — location name to tag
-        post_type: str          — "photo", "video", "carousel" (auto-detected if 1 media)
-    """
-    media_urls = values.get("media_urls", [])
-    media_paths = values.get("media_paths", [])
-    caption = values.get("caption", "")
-    location = values.get("location")
-
-    if not media_urls and not media_paths:
-        return False, "ig_post: media_urls ou media_paths requis"
-
-    # Step 1: Push media through pipeline (spoof EXIF → SCP → import gallery)
-    all_urls = list(media_urls)
-    # If local paths provided, they're already on VPS — skip spoof, just transfer
-    for url in all_urls:
-        iphone_path = await _push_media(url, sess, log=log)
-        if not iphone_path:
-            return False, f"ig_post: échec pipeline média {url}"
-
-    # For local VPS paths, use legacy transfer as fallback
-    for f in media_paths:
-        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, f, log=log)
-        if not remote:
-            return False, f"ig_post: échec transfert {os.path.basename(f)} vers iPhone"
-
-    # Step 2: Wait for media to appear in gallery
-    await asyncio.sleep(2.0)
-
-    # Step 4: UI automation — create new post
-    log("   [ig_post] ouverture flow de publication...")
-
-    # Tap the "+" create button (center of bottom bar or "Créer" / "Create")
-    await drv.refresh_elements()
-    tapped = (
-        await drv.tap_element("Nouveau post", contains=True, refresh=False)
-        or await drv.tap_element("Créer", contains=True, refresh=False)
-        or await drv.tap_element("Create", contains=True, refresh=False)
-    )
-
-    if not tapped:
-        # Fallback: tap the center bottom "+" button
-        await drv.ht._ensure_screen()
-        await drv.ht.tap(drv.ht.screen_w / 2, drv.ht.screen_h * 0.96)
-
-    await asyncio.sleep(1.5)
-
-    # If a menu appears (Post, Reel, Story), tap "Post" / "Publication"
-    await drv.refresh_elements()
-    all_text = " ".join((e.get("text") or "").lower() for e in drv.elements)
-    if "publication" in all_text or "post" in all_text:
-        tapped = (
-            await drv.tap_element("Publication", refresh=False)
-            or await drv.tap_element("Post", refresh=False)
-        )
-        if tapped:
-            await asyncio.sleep(1.5)
-
-    # Step 5: Gallery selection — tap first (most recent) photo/video
-    log("   [ig_post] sélection du média dans la galerie...")
-    await drv.refresh_elements()
-
-    # For carousel (multiple media), we'd need to tap "Sélection multiple"
-    is_carousel = len(local_files) > 1
-    if is_carousel:
-        multi = (
-            await drv.tap_element("Sélection multiple", contains=True, refresh=False)
-            or await drv.tap_element("Select Multiple", contains=True, refresh=False)
-        )
-        await asyncio.sleep(0.5)
-
-    # Tap the first gallery thumbnail (usually top-left of grid)
-    # The gallery grid starts below the preview area
-    await drv.ht._ensure_screen()
-    grid_y = drv.ht.screen_h * 0.62  # gallery grid area
-    cell_w = drv.ht.screen_w / 4
-    for i in range(min(len(local_files), 10)):
-        col = i % 4
-        row = i // 4
-        x = cell_w * col + cell_w / 2
-        y = grid_y + row * cell_w + cell_w / 2
-        await drv.ht.tap(x, y)
-        await asyncio.sleep(0.4)
-
-    # Step 6: Tap "Suivant" / "Next"
-    log("   [ig_post] validation sélection...")
-    await asyncio.sleep(0.5)
-    tapped = (
-        await drv.tap_element("Suivant")
-        or await drv.tap_element("Next")
-    )
-    if not tapped:
-        # Tap top-right area (where Next usually is)
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-    await asyncio.sleep(1.5)
-
-    # Step 7: Skip filter/edit screen → "Suivant" again
-    tapped = (
-        await drv.tap_element("Suivant")
-        or await drv.tap_element("Next")
-    )
-    if not tapped:
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-    await asyncio.sleep(1.5)
-
-    # Step 8: Type caption
-    if caption:
-        log(f"   [ig_post] saisie légende ({len(caption)} chars)...")
-        await drv.refresh_elements()
-        caption_field = (
-            drv.find_element("légende", contains=True)
-            or drv.find_element("caption", contains=True)
-            or drv.find_element("Écrire une légende", contains=True)
-            or drv.find_element("Write a caption", contains=True)
-        )
-
-        if caption_field:
-            x = caption_field.get("x", 0)
-            y = caption_field.get("y", 0)
-            await drv.ht.tap(x, y)
-        else:
-            # Tap at typical caption position
-            await drv.ht.tap_pos(0.5, 0.25)
-
-        await asyncio.sleep(0.5)
-        await drv.ht.type_text(caption, interval=random.randint(20, 50))
-        await asyncio.sleep(0.5)
-
-    # Step 9: Add location if specified
-    if location:
-        log(f"   [ig_post] ajout lieu: {location}")
-        tapped = (
-            await drv.tap_element("Ajouter un lieu", contains=True)
-            or await drv.tap_element("Add Location", contains=True)
-            or await drv.tap_element("lieu", contains=True)
-        )
-        if tapped:
-            await asyncio.sleep(1.0)
-            await drv.ht.type_text(location, interval=random.randint(40, 80))
-            await asyncio.sleep(1.5)
-            # Tap first search result
-            await drv.refresh_elements()
-            location_result = drv.find_element(location, contains=True)
-            if location_result:
-                x = location_result.get("x", 0)
-                y = location_result.get("y", 0)
-                await drv.ht.tap(x, y)
-                await asyncio.sleep(0.5)
-
-    # Step 10: Share!
-    log("   [ig_post] publication...")
-    tapped = (
-        await drv.tap_element("Partager")
-        or await drv.tap_element("Share")
-        or await drv.tap_element("Publier")
-    )
-    if not tapped:
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-
-    # Wait for upload
-    await asyncio.sleep(5.0)
-
-    # Verify we're back on feed
-    screen = await drv.detect_current_screen()
-    if screen in ("feed", "own_profile"):
-        msg = f"Post publié ({len(local_files)} média(s))"
-        if caption:
-            msg += f", légende {len(caption)} chars"
-        log(f"   [ig_post] ✓ {msg}")
-        return True, msg
-
-    # Might still be uploading
-    log("   [ig_post] upload en cours, attente...")
-    await asyncio.sleep(10.0)
-    screen = await drv.detect_current_screen()
-    if screen in ("feed", "own_profile", "explore"):
-        return True, f"Post publié ({len(local_files)} média(s))"
-
-    return False, f"ig_post: état post-publication incertain (écran: {screen})"
-
-
-@_handler("ig_story_post")
-async def _publish_story(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Publish an IG story.
-
-    values:
-        media_url: str     — R2 URL of media (photo or video, max 15s)
-        media_path: str    — local VPS path (alternative)
-        stickers: list     — sticker config (optional, future)
-        text: str          — text overlay (optional)
-    """
-    media_url = values.get("media_url")
-    media_path = values.get("media_path")
-
-    if not media_url and not media_path:
-        return False, "ig_story_post: media_url ou media_path requis"
-
-    # Push media through pipeline (spoof EXIF → SCP → import gallery)
-    if media_url:
-        iphone_path = await _push_media(media_url, sess, log=log)
-        if not iphone_path:
-            return False, f"ig_story_post: échec pipeline média {media_url}"
-    elif media_path:
-        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
-        if not remote:
-            return False, "ig_story_post: échec transfert média vers iPhone"
-
-    await asyncio.sleep(2.0)
-
-    # UI automation: open story creation
-    log("   [ig_story] ouverture création de story...")
-
-    # Navigate to feed first
-    await drv.go_home()
-    await asyncio.sleep(1.0)
-
-    # Tap own story avatar or "Votre story" / camera icon
-    tapped = (
-        await drv.tap_element("Votre story", contains=True)
-        or await drv.tap_element("Your story", contains=True)
-    )
-
-    if not tapped:
-        # Tap camera icon (top-left) or "+" on story tray
-        await drv.ht._ensure_screen()
-        await drv.ht.tap(40, 100)  # camera icon position
-
-    await asyncio.sleep(1.5)
-
-    # In story camera: tap gallery button (bottom-left) to select from gallery
-    log("   [ig_story] sélection depuis galerie...")
-    await drv.ht._ensure_screen()
-    await drv.ht.tap(40, drv.ht.screen_h * 0.92)  # gallery thumbnail (bottom-left)
-    await asyncio.sleep(1.5)
-
-    # Select the most recent media (first item)
-    await drv.ht.tap(drv.ht.screen_w * 0.13, drv.ht.screen_h * 0.22)
-    await asyncio.sleep(1.0)
-
-    # Add text overlay if specified
-    text = values.get("text")
-    if text:
-        log(f"   [ig_story] ajout texte: {text[:30]}...")
-        # Tap "Aa" text button
-        tapped = await drv.tap_element("Aa", contains=True)
-        if tapped:
-            await asyncio.sleep(0.5)
-            await drv.ht.type_text(text, interval=random.randint(30, 60))
-            await asyncio.sleep(0.3)
-            # Tap "OK" / "Terminé"
-            await drv.tap_element("Terminé") or await drv.tap_element("Done")
-            await asyncio.sleep(0.5)
-
-    # Share story: tap "Votre story" button or "Partager"
-    log("   [ig_story] publication story...")
-    tapped = (
-        await drv.tap_element("Votre story", contains=True)
-        or await drv.tap_element("Your Story", contains=True)
-        or await drv.tap_element("Partager", contains=True)
-        or await drv.tap_element("Share", contains=True)
-    )
-
-    if not tapped:
-        # Bottom send button
-        await drv.ht.tap(drv.ht.screen_w * 0.5, drv.ht.screen_h * 0.92)
-
-    await asyncio.sleep(4.0)
-
-    screen = await drv.detect_current_screen()
-    if screen in ("feed", "own_profile", "story"):
-        log("   [ig_story] ✓ Story publiée")
-        return True, "Story publiée"
-
-    return False, f"ig_story_post: état post-publication incertain (écran: {screen})"
-
-
-@_handler("ig_reel_post")
-async def _publish_reel(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Publish an IG reel.
-
-    values:
-        media_url: str     — R2 URL of video (up to 90s)
-        media_path: str    — local VPS path
-        caption: str       — reel caption with hashtags
-        audio: str | None  — audio name to use (optional)
-        cover_time: float  — timestamp for cover photo (optional)
-    """
-    media_url = values.get("media_url")
-    media_path = values.get("media_path")
-    caption = values.get("caption", "")
-
-    if not media_url and not media_path:
-        return False, "ig_reel_post: media_url ou media_path requis"
-
-    # Push media through pipeline (spoof EXIF → SCP → import gallery)
-    if media_url:
-        iphone_path = await _push_media(media_url, sess, log=log)
-        if not iphone_path:
-            return False, f"ig_reel_post: échec pipeline média {media_url}"
-    elif media_path:
-        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, media_path, log=log)
-        if not remote:
-            return False, "ig_reel_post: échec transfert vidéo vers iPhone"
-
-    await asyncio.sleep(2.0)
-
-    # UI automation: create reel
-    log("   [ig_reel] ouverture création de reel...")
-
-    # Tap "+" create button
-    await drv.refresh_elements()
-    tapped = (
-        await drv.tap_element("Nouveau post", contains=True, refresh=False)
-        or await drv.tap_element("Créer", contains=True, refresh=False)
-        or await drv.tap_element("Create", contains=True, refresh=False)
-    )
-
-    if not tapped:
-        await drv.ht._ensure_screen()
-        await drv.ht.tap(drv.ht.screen_w / 2, drv.ht.screen_h * 0.96)
-
-    await asyncio.sleep(1.5)
-
-    # Select "Reel" from the creation menu
-    await drv.refresh_elements()
-    tapped = (
-        await drv.tap_element("Reel", refresh=False)
-        or await drv.tap_element("Reels", refresh=False)
-    )
-    if tapped:
-        await asyncio.sleep(1.5)
-
-    # Select video from gallery (bottom-left gallery picker)
-    log("   [ig_reel] sélection vidéo depuis galerie...")
-    await drv.ht._ensure_screen()
-    await drv.ht.tap(40, drv.ht.screen_h * 0.92)
-    await asyncio.sleep(1.5)
-
-    # Tap first (most recent) video
-    await drv.ht.tap(drv.ht.screen_w * 0.13, drv.ht.screen_h * 0.22)
-    await asyncio.sleep(1.5)
-
-    # Tap "Ajouter" / "Add" to confirm video selection
-    tapped = (
-        await drv.tap_element("Ajouter")
-        or await drv.tap_element("Add")
-        or await drv.tap_element("Suivant")
-        or await drv.tap_element("Next")
-    )
-    if not tapped:
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-    await asyncio.sleep(1.5)
-
-    # Skip edit screen → "Suivant"
-    tapped = (
-        await drv.tap_element("Suivant")
-        or await drv.tap_element("Next")
-        or await drv.tap_element("Aperçu")
-        or await drv.tap_element("Preview")
-    )
-    if not tapped:
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-    await asyncio.sleep(1.5)
-
-    # Another "Suivant" may appear (audio, effects page)
-    tapped = (
-        await drv.tap_element("Suivant")
-        or await drv.tap_element("Next")
-    )
-    if tapped:
-        await asyncio.sleep(1.5)
-
-    # Type caption
-    if caption:
-        log(f"   [ig_reel] saisie légende ({len(caption)} chars)...")
-        await drv.refresh_elements()
-        caption_field = (
-            drv.find_element("légende", contains=True)
-            or drv.find_element("caption", contains=True)
-            or drv.find_element("Écrire une légende", contains=True)
-        )
-
-        if caption_field:
-            x = caption_field.get("x", 0)
-            y = caption_field.get("y", 0)
-            await drv.ht.tap(x, y)
-        else:
-            await drv.ht.tap_pos(0.5, 0.25)
-
-        await asyncio.sleep(0.5)
-        await drv.ht.type_text(caption, interval=random.randint(20, 50))
-        await asyncio.sleep(0.5)
-
-    # Share
-    log("   [ig_reel] publication reel...")
-    tapped = (
-        await drv.tap_element("Partager")
-        or await drv.tap_element("Share")
-        or await drv.tap_element("Publier")
-    )
-    if not tapped:
-        await drv.ht.tap(drv.ht.screen_w * 0.92, 50)
-
-    # Wait for upload (reels take longer)
-    await asyncio.sleep(8.0)
-
-    screen = await drv.detect_current_screen()
-    if screen in ("feed", "own_profile", "reels"):
-        log("   [ig_reel] ✓ Reel publié")
-        return True, f"Reel publié" + (f", légende {len(caption)} chars" if caption else "")
-
-    # Might still be processing
-    log("   [ig_reel] traitement en cours, attente...")
-    await asyncio.sleep(15.0)
-    screen = await drv.detect_current_screen()
-    if screen in ("feed", "own_profile", "reels", "explore"):
-        return True, "Reel publié"
-
-    return False, f"ig_reel_post: état post-publication incertain (écran: {screen})"
-
-
-# ── Warmup ───────────────────────────────────────────────────────────────────
 
 @_handler("ig_warmup")
-async def _warmup(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Gentle account warmup — browse feed, view a few stories."""
+async def _warmup(drv, nav, sess, values, log):
+    """Gentle account warmup — feed + stories + maybe reels."""
+    blocked = await _ensure_healthy(sess, log)
+    if blocked:
+        return blocked
+
+    from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
+    from app.services.automation.ig_iphone.interact.story_view import watch_stories
+    from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
+    import random
+
     duration = values.get("duration", 90)
+    results = []
 
-    log(f"   [ig_warmup] session {duration}s")
+    # Phase 1: Feed (60% of time)
+    log("\n--- Phase 1: Feed ---")
+    feed_cfg = {**values, "duration_min": 0, "duration_max": 0}
+    feed_cfg["duration"] = int(duration * 0.6)
+    feed_cfg["like_pct"] = values.get("like_pct", 0.08)
+    stats = await run_feed_session(drv, nav, config=feed_cfg, log=log)
+    results.append(("feed", stats))
 
-    # Short feed browse
-    feed_result = await _feed_session(
-        drv, sess,
-        {"duration": int(duration * 0.6), "like_probability": 0.08, "comment_probability": 0},
-        log,
-    )
+    _check_abort(getattr(sess, '_abort_event', None))
 
-    # View a few stories
-    story_result = await _stories_session(
-        drv, sess,
-        {"max_stories": 5},
-        log,
-    )
+    # Phase 2: Stories (80% chance)
+    if random.random() < 0.8:
+        log("\n--- Phase 2: Stories ---")
+        story_cfg = {**values, "max_stories": values.get("stories_max", 6)}
+        stats = await watch_stories(drv, nav, config=story_cfg, log=log)
+        results.append(("stories", stats))
 
-    msg = f"Warmup terminé ({duration}s)"
+    _check_abort(getattr(sess, '_abort_event', None))
+
+    # Phase 3: Reels (40% chance)
+    if random.random() < 0.4:
+        log("\n--- Phase 3: Reels ---")
+        reels_cfg = {**values, "duration_min": 0, "duration_max": 0}
+        reels_cfg["duration"] = int(duration * 0.2)
+        stats = await run_reels_session(drv, nav, config=reels_cfg, log=log)
+        results.append(("reels", stats))
+
+    msg = f"Warmup terminé ({duration}s, {len(results)} phases)"
     log(f"   [ig_warmup] {msg}")
     return True, msg
 
 
-# ── Login ────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  PUBLICATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@_handler("ig_post")
+async def _publish_post(drv, nav, sess, values, log):
+    """Publish a feed post (photo/video/carousel)."""
+    from app.services.automation.ig_iphone.interact.publish import (
+        publish_feed_post, publish_carousel,
+    )
+    from app.services.automation.ig_iphone.media import push_media_via_mcp
+
+    # Transfer media to iPhone if URLs provided
+    media_urls = values.get("media_urls", [])
+    if media_urls:
+        for url in media_urls:
+            result = await push_media_via_mcp(drv, url, log=log)
+            if not result:
+                return False, f"ig_post: échec pipeline média"
+        await asyncio.sleep(2.0)
+
+    caption = values.get("caption", "")
+    location = values.get("location")
+    photo_count = len(media_urls) if media_urls else 1
+
+    if photo_count > 1:
+        stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, log=log)
+    else:
+        stats = await publish_feed_post(drv, nav, caption=caption, location=location, log=log)
+
+    published = stats.get("published", False)
+    msg = f"Post {'publié' if published else 'échoué'}"
+    if caption:
+        msg += f" ({len(caption)} chars)"
+    return published, msg
+
+
+@_handler("ig_story_post")
+async def _publish_story(drv, nav, sess, values, log):
+    """Publish a story."""
+    from app.services.automation.ig_iphone.interact.publish import publish_story
+    from app.services.automation.ig_iphone.media import push_media_via_mcp
+
+    media_url = values.get("media_url")
+    if media_url:
+        result = await push_media_via_mcp(drv, media_url, log=log)
+        if not result:
+            return False, "ig_story_post: échec pipeline média"
+        await asyncio.sleep(2.0)
+
+    caption = values.get("text", values.get("caption"))
+    stickers = values.get("stickers")
+    stats = await publish_story(drv, nav, caption=caption, stickers=stickers, log=log)
+
+    published = stats.get("published", False)
+    return published, "Story publiée" if published else "Story : échec publication"
+
+
+@_handler("ig_reel_post")
+async def _publish_reel(drv, nav, sess, values, log):
+    """Publish a reel."""
+    from app.services.automation.ig_iphone.interact.publish import publish_reel
+    from app.services.automation.ig_iphone.media import push_media_via_mcp
+
+    media_url = values.get("media_url")
+    if media_url:
+        result = await push_media_via_mcp(drv, media_url, log=log)
+        if not result:
+            return False, "ig_reel_post: échec pipeline média"
+        await asyncio.sleep(2.0)
+
+    caption = values.get("caption", "")
+    stats = await publish_reel(drv, nav, caption=caption, log=log)
+
+    published = stats.get("published", False)
+    msg = "Reel publié" if published else "Reel : échec publication"
+    if caption and published:
+        msg += f" ({len(caption)} chars)"
+    return published, msg
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  AUTH
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_login")
-async def _login(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Force login attempt."""
-    log("   [ig_login] Tentative de connexion")
-    # Login is handled by DeviceSession.ensure_login
-    # If we reach here, login was already successful
+async def _login(drv, nav, sess, values, log):
+    """Force login attempt (handled by DeviceSession.ensure_login above)."""
+    log("   [ig_login] Connexion réussie")
     return True, "Connecté"
 
 
-# ── Config ───────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  CONFIG
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_config")
-async def _config(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
+async def _config(drv, nav, sess, values, log):
     """Apply profile config changes."""
-    log("   [ig_config] Config — en attente des modules config")
-    return False, "ig_config pas encore implémenté"
+    from app.services.automation.ig_iphone.config.profile_config import configure_profile
+    result = await configure_profile(drv, nav, log=log, **values)
+    if result:
+        return True, "Profil configuré"
+    return False, "ig_config : échec de la configuration"
 
 
 @_handler("ig_switch_pro")
-async def _switch_pro(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
+async def _switch_pro(drv, nav, sess, values, log):
     """Switch to professional account."""
-    log("   [ig_switch_pro] Switch pro — en attente des modules config")
-    return False, "ig_switch_pro pas encore implémenté"
+    from app.services.automation.ig_iphone.config.switch_pro import switch_to_pro
+    category = values.get("category", "Artiste")
+    account_type = values.get("account_type", "Creator")
+    ok = await switch_to_pro(drv, nav, category=category, account_type=account_type, log=log)
+    return ok, "Compte pro activé" if ok else "Switch pro : échec"
 
 
-# ── Highlights ───────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  HIGHLIGHTS
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_highlight_create")
-async def _highlight_create(drv, sess, values, log):
-    return False, "ig_highlight_create pas encore implémenté"
+async def _highlight_create(drv, nav, sess, values, log):
+    from app.services.automation.ig_iphone.config.highlights import create_highlight
+    name = values.get("name", "Highlight")
+    story_indices = values.get("story_indices")
+    ok = await create_highlight(drv, nav, name=name, story_indices=story_indices, log=log)
+    return ok, f"Highlight '{name}' créé" if ok else "Highlight : échec création"
 
 
 @_handler("ig_highlight_modify")
-async def _highlight_modify(drv, sess, values, log):
-    return False, "ig_highlight_modify pas encore implémenté"
+async def _highlight_modify(drv, nav, sess, values, log):
+    from app.services.automation.ig_iphone.config.highlights import modify_highlight
+    idx = values.get("index", 0)
+    new_name = values.get("new_name")
+    ok = await modify_highlight(drv, nav, highlight_index=idx, new_name=new_name, log=log)
+    return ok, "Highlight modifié" if ok else "Highlight : échec modification"
 
 
 @_handler("ig_highlight_delete")
-async def _highlight_delete(drv, sess, values, log):
-    return False, "ig_highlight_delete pas encore implémenté"
+async def _highlight_delete(drv, nav, sess, values, log):
+    from app.services.automation.ig_iphone.config.highlights import delete_highlight
+    idx = values.get("index", 0)
+    ok = await delete_highlight(drv, nav, highlight_index=idx, log=log)
+    return ok, "Highlight supprimé" if ok else "Highlight : échec suppression"
 
 
-# ── Banners ──────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  BANNERS
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_banner_add")
-async def _banner_add(drv, sess, values, log):
-    return False, "ig_banner_add pas encore implémenté"
+async def _banner_add(drv, nav, sess, values, log):
+    banner_type = values.get("type", "music")
+    if banner_type == "music":
+        from app.services.automation.ig_iphone.config.banners import add_music_banner
+        song = values.get("song")
+        ok = await add_music_banner(drv, nav, song=song, log=log)
+    else:
+        from app.services.automation.ig_iphone.config.banners import add_fill_banner
+        text_content = values.get("text", "")
+        ok = await add_fill_banner(drv, nav, text_content=text_content, log=log)
+    return ok, "Bannière ajoutée" if ok else "Bannière : échec ajout"
 
 
 @_handler("ig_banner_modify")
-async def _banner_modify(drv, sess, values, log):
-    return False, "ig_banner_modify pas encore implémenté"
+async def _banner_modify(drv, nav, sess, values, log):
+    from app.services.automation.ig_iphone.config.banners import modify_banner
+    banner_text = values.get("banner_text", "")
+    new_content = values.get("new_content")
+    ok = await modify_banner(drv, nav, banner_text=banner_text, new_content=new_content, log=log)
+    return ok, "Bannière modifiée" if ok else "Bannière : échec modification"
 
 
 @_handler("ig_banner_remove")
-async def _banner_remove(drv, sess, values, log):
-    return False, "ig_banner_remove pas encore implémenté"
+async def _banner_remove(drv, nav, sess, values, log):
+    from app.services.automation.ig_iphone.config.banners import remove_banner
+    banner_text = values.get("banner_text", "")
+    ok = await remove_banner(drv, nav, banner_text=banner_text, log=log)
+    return ok, "Bannière supprimée" if ok else "Bannière : échec suppression"
 
 
-# ── Media import ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  MEDIA IMPORT
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_media_import")
-async def _media_import(
-    drv: IGDriver,
-    sess: DeviceSession,
-    values: dict,
-    log: Callable,
-) -> tuple[bool, str]:
-    """Import media from R2/URL to device gallery.
+async def _media_import(drv, nav, sess, values, log):
+    """Import media from R2/URL to device gallery."""
+    from app.services.automation.ig_iphone.media import push_media_via_mcp
 
-    values:
-        media_urls: list[str]   — R2 URLs of media to import
-        media_paths: list[str]  — local VPS paths (alternative)
-    """
     media_urls = values.get("media_urls", [])
-    media_paths = values.get("media_paths", [])
-
-    if not media_urls and not media_paths:
-        return False, "ig_media_import: media_urls ou media_paths requis"
+    if not media_urls:
+        return False, "ig_media_import: media_urls requis"
 
     imported = 0
     errors = 0
-
-    # Push URLs through pipeline (spoof EXIF → SCP → import gallery)
     for url in media_urls:
-        iphone_path = await _push_media(url, sess, log=log)
-        if iphone_path:
+        result = await push_media_via_mcp(drv, url, log=log)
+        if result:
             imported += 1
         else:
             errors += 1
-
-    # Transfer local VPS paths via legacy method
-    for f in media_paths:
-        remote = await _legacy_transfer_media_to_iphone(sess.ssh_port, f, log=log)
-        if remote:
-            imported += 1
-        else:
-            errors += 1
-
-    # Cleanup temp downloads (legacy paths only)
-    for f in media_paths:
-        try:
-            os.unlink(f)
-        except OSError:
-            pass
 
     if imported == 0:
         return False, f"ig_media_import: aucun média importé ({errors} erreurs)"
+    msg = f"{imported} média(s) importé(s)"
+    if errors:
+        msg += f" ({errors} erreurs)"
+    return True, msg
 
-    return True, f"{imported} média(s) importé(s) sur l'iPhone" + (
-        f" ({errors} erreurs)" if errors else ""
-    )
 
-
-# ── Story sticker ────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  STORY STICKER
+# ══════════════════════════════════════════════════════════════════════════════
 
 @_handler("ig_story_sticker")
-async def _story_sticker(drv, sess, values, log):
-    return False, "ig_story_sticker pas encore implémenté"
+async def _story_sticker(drv, nav, sess, values, log):
+    """Add a sticker to a story in creation."""
+    sticker_type = values.get("sticker_type", "link")
+
+    from app.services.automation.ig_iphone.interact import story_stickers as ss
+
+    if sticker_type == "link":
+        ok = await ss.add_link_sticker(drv, url=values.get("url", ""), text=values.get("text"), log=log)
+    elif sticker_type == "poll":
+        ok = await ss.add_poll_sticker(drv, question=values.get("question", ""), options=values.get("options"), log=log)
+    elif sticker_type == "question":
+        ok = await ss.add_question_sticker(drv, question=values.get("question"), log=log)
+    elif sticker_type == "location":
+        ok = await ss.add_location_sticker(drv, location=values.get("location", ""), log=log)
+    elif sticker_type == "music":
+        ok = await ss.add_music_sticker(drv, song=values.get("song"), artist=values.get("artist"), log=log)
+    else:
+        return False, f"ig_story_sticker: type inconnu '{sticker_type}'"
+
+    return ok, f"Sticker {sticker_type} ajouté" if ok else f"Sticker {sticker_type} : échec"
 
 
-# ── Frontend action-name aliases ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+#  FRONTEND ALIASES
+# ══════════════════════════════════════════════════════════════════════════════
 # The Scenarios frontend stores short identifiers (igi_feed, igi_prof, …)
-# that differ from the canonical handler names. Register aliases so the
-# engine can dispatch them without a mapping layer.
+# that differ from the canonical handler names.
 
 _ALIASES: dict[str, str] = {
     "igi_feed":  "ig_feed",
     "igi_prof":  "ig_profile",
     "igi_reels": "ig_reels",
     "igi_conf":  "ig_config",
-    "igi_camp":  "ig_post",      # campaign enrollment → posting handler
+    "igi_camp":  "ig_post",
 }
 
 for _alias, _canonical in _ALIASES.items():
