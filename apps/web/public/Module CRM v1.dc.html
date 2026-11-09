@@ -762,7 +762,7 @@ class Component extends DCLogic {
   dd(d, y) { return this.date(d).toLocaleDateString('fr-FR', y ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' }); }
   dstr(d) { const x = this.date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }
   dayOf(str) { const p = String(str).split('-').map(Number); if (p.length < 3 || p.some(isNaN)) return null; const t = new Date(); t.setHours(0, 0, 0, 0); const x = new Date(p[0], p[1] - 1, p[2]); return Math.round((x - t) / 864e5) + this.N - 1; }
-  ago(h) { if (h == null) return '—'; if (h < 1) return 'il y a moins d'1 h'; if (h < 24) return 'il y a ' + Math.floor(h) + ' h'; const d = Math.floor(h / 24); return d === 1 ? 'hier' : 'il y a ' + d + ' j'; }
+  ago(h) { if (h == null) return '—'; if (h < 1) return "il y a moins d'1 h"; if (h < 24) return 'il y a ' + Math.floor(h) + ' h'; const d = Math.floor(h / 24); return d === 1 ? 'hier' : 'il y a ' + d + ' j'; }
   agoD(d) { const n = this.N - 1 - d; return n <= 0 ? 'aujourd\'hui' : n === 1 ? 'hier' : 'il y a ' + n + ' j'; }
   hhmm(h) { const H = Math.floor(h), M = Math.floor((h - H) * 60); return String(H).padStart(2, '0') + ':' + String(M).padStart(2, '0'); }
   toastMsg(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
