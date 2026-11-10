@@ -327,10 +327,8 @@ class IGDriver:
                 return "profile"
 
         # Debug: log visible texts when we can't identify the screen
-        import logging
-        _log = logging.getLogger("automation.ig_driver")
         visible = [el.get("text", "")[:60] for el in self._elements_cache if el.get("text")]
-        _log.info(f"   [screen] 'other' — textes visibles: {visible[:15]}")
+        self.log("   [screen] 'other' — textes visibles: %s" % visible[:15])
         return "other"
 
     # ── Popup dismiss & screen navigation ────────────────────────────────
@@ -628,10 +626,8 @@ class IGDriver:
 
     async def go_reels(self) -> bool:
         """Navigate to the reels tab."""
-        import logging
-        _log = logging.getLogger("automation.ig_driver")
         ok = await self.tap_element(_NAV_REELS)
-        _log.info(f"   [ig] go_reels tap '{_NAV_REELS}' → {'ok' if ok else 'introuvable'}")
+        self.log("   [ig] go_reels tap '%s' → %s" % (_NAV_REELS, 'ok' if ok else 'introuvable'))
         return ok
 
     async def go_profile(self) -> bool:
