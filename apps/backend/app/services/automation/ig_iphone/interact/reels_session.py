@@ -150,13 +150,11 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
             await driver.wait('micro')
             continue
 
-        # Regarder le reel
-        if random.random() < cfg["watch_full_pct"]:
-            watch = random.uniform(cfg["watch_max"], cfg["watch_full_max"])
-        else:
-            watch = random.uniform(cfg["watch_min"], cfg["watch_max"])
-        log("   watch %.1fs" % watch)
-        await asyncio.sleep(watch)
+        # Pause (sélection pondérée depuis le comportement)
+        from app.services.automation.ig_iphone.behavior.presets import pick_pause
+        pause_s = pick_pause(cfg)
+        log("   pause %.1fs" % pause_s)
+        await asyncio.sleep(pause_s)
         stats["reels_watched"] += 1
 
         # Like

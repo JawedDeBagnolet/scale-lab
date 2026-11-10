@@ -111,38 +111,95 @@ _PRESET_KEY_MAP = {
 
 
 def apply_behavior(cfg: dict, behavior: dict | None, log=print) -> dict:
-    """Aplatit les params du preset dans cfg (le preset ecrase)."""
+    """Aplatit les params du preset dans cfg (le preset ecrase).
+
+    Structure preset config:
+      p: {like: 25, save: 0, ...}          → probas 0-100, converties en 0-1
+      pauses: [{min, max, prob, scope}, ...]  → liste de pauses pondérées
+      durations: [{min, max, weight}, ...]    → durée de session pondérée (minutes)
+    """
     if not behavior:
         return cfg
     config = behavior.get("config") or {}
     applied = []
 
-    # Le champ config est un JSONB libre — on itere ses cles
-    # Structure attendue: {p: {like: 20, ...}, durations: {min: 1, max: 3}, ...}
-    # "p" is the key used in the DB for probabilities (like, save, follow, etc.)
-    SECTION_KEYS = ("p", "probabilities", "pauses", "durations", "intensity", "antipatterns")
-    for section_key in SECTION_KEYS:
+    DICT_SECTIONS = ("p", "probabilities", "intensity", "antipatterns")
+    for section_key in DICT_SECTIONS:
         section = config.get(section_key)
         if isinstance(section, dict):
             for k, v in section.items():
                 if v is not None:
-                    # Probabilities in DB are 0-100 integers, convert to 0-1 floats
                     if section_key == "p" and isinstance(v, (int, float)) and v > 1:
                         v = v / 100.0
-                    # Map preset key to session config key
                     mapped = _PRESET_KEY_MAP.get(k, k)
                     cfg[mapped] = v
                     applied.append(mapped)
 
-    # Aussi les params a la racine (flat keys)
+    # Pauses : liste d'objets [{min, max, prob, label, scope}, ...]
+    # Stockées dans cfg pour sélection pondérée par la session
+    pauses = config.get("pauses")
+    if isinstance(pauses, list) and pauses:
+        cfg["_pauses"] = pauses
+        applied.append("_pauses(%d)" % len(pauses))
+
+    # Durations : liste d'objets [{min, max, weight}, ...]
+    # Sélection pondérée → duration_min / duration_max (en minutes)
+    durations = config.get("durations")
+    if isinstance(durations, list) and durations:
+        chosen = _weighted_pick(durations, key="weight")
+        if chosen:
+            cfg["duration_min"] = chosen.get("min", cfg.get("duration_min", 3))
+            cfg["duration_max"] = chosen.get("max", cfg.get("duration_max", 8))
+            applied.append("duration(%d-%dmin)" % (cfg["duration_min"], cfg["duration_max"]))
+
+    # Flat keys at root (icon, weight, etc.)
+    SKIP_KEYS = {"p", "probabilities", "pauses", "durations", "intensity", "antipatterns", "icon", "weight"}
     for k, v in config.items():
-        if k not in SECTION_KEYS and v is not None:
+        if k not in SKIP_KEYS and v is not None:
             mapped = _PRESET_KEY_MAP.get(k, k)
             cfg[mapped] = v
             applied.append(mapped)
 
     if applied:
-        log("   [igbh] applique: %s" % ", ".join(applied[:10]))
+        log("   [igbh] applique: %s" % ", ".join(applied[:12]))
+
+    return cfg
+
+
+def pick_pause(cfg: dict) -> float:
+    """Sélectionne une pause pondérée depuis le preset, retourne la durée en secondes.
+
+    Utilise cfg["_pauses"] si disponible, sinon retourne un fallback.
+    """
+    pauses = cfg.get("_pauses")
+    if not pauses:
+        # Fallback : pause aléatoire simple
+        return random.uniform(2.0, 8.0)
+
+    chosen = _weighted_pick(pauses, key="prob")
+    if not chosen:
+        return random.uniform(2.0, 8.0)
+
+    mn = float(chosen.get("min", 2))
+    mx = float(chosen.get("max", 8))
+    return random.uniform(mn, mx)
+
+
+def _weighted_pick(items: list[dict], key: str = "weight") -> dict | None:
+    """Sélection pondérée dans une liste de dicts."""
+    if not items:
+        return None
+    weights = [max(0.0, float(item.get(key, 1) or 0)) for item in items]
+    total = sum(weights)
+    if total <= 0:
+        return random.choice(items)
+    r = random.uniform(0, total)
+    acc = 0.0
+    for item, w in zip(items, weights):
+        acc += w
+        if r <= acc:
+            return item
+    return items[-1]
     return cfg
 
 

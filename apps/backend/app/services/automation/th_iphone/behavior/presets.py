@@ -43,32 +43,14 @@ async def resolve_behavior(preset_ids=None, platform="th"):
     return None
 
 
-    # Import shared key mapping from IG presets (same DB structure)
-from app.services.automation.ig_iphone.behavior.presets import _PRESET_KEY_MAP
+    # Reuse IG preset infrastructure (same DB structure)
+from app.services.automation.ig_iphone.behavior.presets import (
+    _PRESET_KEY_MAP, apply_behavior as _ig_apply, pick_pause,
+)
 
 
 def apply_behavior(cfg, behavior, log=print):
-    """Applique les overrides du behavior sur la config."""
-    if not behavior:
-        return cfg
-    config = behavior.get("config", {})
-    applied = []
-    SECTION_KEYS = ("p", "probabilities", "pauses", "durations", "intensity", "antipatterns")
-    for section_key in SECTION_KEYS:
-        section = config.get(section_key)
-        if isinstance(section, dict):
-            for k, v in section.items():
-                if v is not None:
-                    if section_key == "p" and isinstance(v, (int, float)) and v > 1:
-                        v = v / 100.0
-                    mapped = _PRESET_KEY_MAP.get(k, k)
-                    cfg[mapped] = v
-                    applied.append(mapped)
-    for k, v in config.items():
-        if k not in SECTION_KEYS and v is not None:
-            mapped = _PRESET_KEY_MAP.get(k, k)
-            cfg[mapped] = v
-            applied.append(mapped)
-    if applied:
-        log("   [thbh] override: %s" % ", ".join(applied[:10]))
-    return cfg
+    """Applique les overrides du behavior sur la config (délègue à IG presets)."""
+    result = _ig_apply(cfg, behavior, log=log)
+    # Replace log prefix if present
+    return result
