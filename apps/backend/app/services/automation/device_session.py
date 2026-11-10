@@ -368,10 +368,15 @@ class DeviceSession:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        # Kill app before releasing lock
+        # Graceful kill — let the tweak save session state before dying
         if self.ctx and self.kill_on_exit:
             try:
-                await scalectl_kill_app(self.ctx["ssh_port"], self.bundle)
+                await scalectl_kill_app(
+                    self.ctx["ssh_port"],
+                    self.bundle,
+                    mcp_port=self.ctx.get("mcp_port"),
+                    graceful=True,
+                )
             except Exception as e:
                 self.log(f"   [scalectl] kill KO: {str(e)[:80]}")
 

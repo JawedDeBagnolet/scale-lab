@@ -499,10 +499,17 @@ async def scalectl_switch_container(
     if not relaunch:
         return True
 
-    # Step 2: Kill the app
+    # Step 2: Graceful kill — let the tweak save container state before dying
     process_name = BUNDLE_TO_PROCESS.get(bundle)
     if process_name:
-        await _ssh_exec(ssh_port, f"killall -9 {process_name}", host=host, timeout=5)
+        # First try SIGTERM for clean shutdown, then SIGKILL as fallback
+        await _ssh_exec(
+            ssh_port,
+            f"killall -SIGTERM {process_name} 2>/dev/null; sleep 1; "
+            f"killall -9 {process_name} 2>/dev/null",
+            host=host,
+            timeout=8,
+        )
         await asyncio.sleep(0.5)
 
     # Step 3: Relaunch via MCP launch_app (NEVER use uiopen — causes system popup)
@@ -524,22 +531,55 @@ async def scalectl_kill_app(
     bundle: str = "com.burbn.instagram",
     *,
     host: str = "127.0.0.1",
+    mcp_port: int | None = None,
+    graceful: bool = True,
 ) -> bool:
-    """Kill an app on the iPhone via SSH."""
+    """Kill an app on the iPhone via SSH.
+
+    Graceful mode (default):
+      1. Press Home button via MCP → triggers UIApplicationDidEnterBackgroundNotification
+         which tells the tweak to save session state to container plist files
+      2. Wait 1.5s for the save to complete
+      3. Send SIGTERM → gives the process a clean shutdown chance
+      4. Wait 1s
+      5. SIGKILL as fallback if still alive
+
+    This fixes session persistence: killall -9 alone prevents the tweak's
+    background/periodic save from flushing session keys to disk.
+    """
     process_name = BUNDLE_TO_PROCESS.get(bundle)
     if not process_name:
         logger.warning("Unknown bundle for kill: %s", bundle)
         return False
 
-    ok, output = await _ssh_exec(
-        ssh_port,
-        f"killall -9 {process_name}",
-        host=host,
-        timeout=5,
-    )
-    # killall returns 1 if process not found — that's OK (already dead)
-    if not ok and "No matching processes" not in str(output):
-        logger.warning("kill_app failed for %s: %s", process_name, output)
+    if graceful:
+        _mcp = mcp_port or DEFAULT_MCP_PORT
+        # Step 1: Press Home to background the app (triggers save handlers)
+        try:
+            await mcp_call(_mcp, "press_button", {"button": "home"}, host=host, timeout=5)
+            await asyncio.sleep(1.5)  # Let the tweak's background save complete
+        except Exception:
+            pass  # MCP might be unreachable, continue with kill
+
+        # Step 2: SIGTERM — clean shutdown
+        await _ssh_exec(
+            ssh_port,
+            f"killall -SIGTERM {process_name} 2>/dev/null; sleep 1; "
+            f"killall -9 {process_name} 2>/dev/null",
+            host=host,
+            timeout=8,
+        )
+    else:
+        # Hard kill (legacy behavior)
+        ok, output = await _ssh_exec(
+            ssh_port,
+            f"killall -9 {process_name}",
+            host=host,
+            timeout=5,
+        )
+        # killall returns 1 if process not found — that's OK (already dead)
+        if not ok and "No matching processes" not in str(output):
+            logger.warning("kill_app failed for %s: %s", process_name, output)
     return True
 
 
