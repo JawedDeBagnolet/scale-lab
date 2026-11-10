@@ -454,12 +454,23 @@ class DeviceSession:
 
         # Wait for the app to settle after container switch + relaunch
         # Instagram can take 5-15s to fully load, especially after container switch
+        # Also dismiss common popups (tracking consent, notifications, etc.)
+        _dismiss_texts = ["Continuer", "OK", "Fermer", "Pas maintenant", "Not Now", "Ignorer", "Autoriser"]
         screen = None
         for attempt in range(5):
             await asyncio.sleep(3.0)
             screen = await drv.detect_current_screen()
             if screen and screen != "other":
                 break
+            # Try dismissing popups that block the real screen
+            for txt in _dismiss_texts:
+                el = await drv.find_element(txt, clickable=True, refresh=(txt == _dismiss_texts[0]))
+                if el:
+                    tap = el.get('tap', {})
+                    self.log(f"   [login] dismiss popup: '{txt}'")
+                    await drv.ht.tap(tap.get('x', 0), tap.get('y', 0))
+                    await asyncio.sleep(2.0)
+                    break
             if attempt < 4:
                 self.log(f"   [login] chargement IG... ({attempt + 1}/5)")
         self.log(f"   [login] écran détecté: {screen}")
@@ -495,12 +506,19 @@ class DeviceSession:
             self.log("   [login] IG: écran de login, tentative de connexion...")
             return await self._do_ig_login(drv)
 
-        # Unknown screen — might be a loading state or an in-between screen
-        # Wait a bit and retry
-        self.log("   [login] IG: écran inconnu, attente 3s...")
-        await asyncio.sleep(3.0)
+        # Unknown screen — try dismissing popups then retry
+        self.log("   [login] IG: écran inconnu, tentative dismiss...")
+        for txt in _dismiss_texts:
+            el = await drv.find_element(txt, clickable=True, refresh=(txt == _dismiss_texts[0]))
+            if el:
+                tap = el.get('tap', {})
+                self.log(f"   [login] dismiss: '{txt}'")
+                await drv.ht.tap(tap.get('x', 0), tap.get('y', 0))
+                await asyncio.sleep(2.0)
+                break
+        await asyncio.sleep(1.0)
         screen = await drv.detect_current_screen()
-        self.log(f"   [login] écran après attente: {screen}")
+        self.log(f"   [login] écran après dismiss: {screen}")
 
         if screen in ("feed", "reels", "own_profile", "explore", "post_view", "story", "profile"):
             return True
