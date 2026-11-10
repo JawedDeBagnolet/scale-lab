@@ -111,6 +111,11 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         # Detecter le reel en cours
         reel = await _detect_current_reel(driver)
         if not reel:
+            # Peut-être un popup bloque l'écran
+            dismissed = await _dismiss_popup(driver)
+            if dismissed:
+                log("   popup dismiss -> retry")
+                continue
             log("   pas de reel detecte -> swipe")
             await _swipe_next_reel(driver)
             await asyncio.sleep(1)
@@ -223,7 +228,10 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 if confirm:
                     tap2 = confirm.get('tap', {})
                     await driver.ht.tap(tap2['x'], tap2['y'])
-                    await driver.wait('tap')
+                    await driver.wait('transition')
+                # Dismiss le popup "Vous avez republié ce reel"
+                await asyncio.sleep(1)
+                await _dismiss_popup(driver)
                 stats["reposts"] += 1
 
         # Actions menu (3 points) : save, interested, not interested
@@ -368,6 +376,23 @@ async def _swipe_next_reel(driver):
     end_y = h * random.uniform(0.15, 0.25)
     dur = random.randint(250, 450)
     await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
+
+
+async def _dismiss_popup(driver):
+    """Try to dismiss common IG popups (repost confirm, notifications, etc.).
+
+    Returns True if a popup was dismissed.
+    """
+    await driver.refresh_elements()
+    dismiss_texts = ["OK", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
+    for text in dismiss_texts:
+        el = await driver.find_element(text, clickable=True)
+        if el:
+            tap = el.get('tap', {})
+            await driver.ht.tap(tap.get('x', 0), tap.get('y', 0))
+            await asyncio.sleep(0.8)
+            return True
+    return False
 
 
 async def _swipe_prev_reel(driver):
