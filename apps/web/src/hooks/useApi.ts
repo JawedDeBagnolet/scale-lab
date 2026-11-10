@@ -768,7 +768,7 @@ export const useDeleteScraperAccount = () =>
 export const useVerifyScraperAccount = () =>
   useApiMutation(
     (id: string) => api<{ ok: boolean; error?: string }>(`/api/scraper-accounts/${id}/verify`, { method: 'POST' }),
-    { invalidate: [['scraperAccounts']] },
+    { invalidate: [["scraperAccounts"]], success: "Session vérifiée" },
   )
 
 export const useScrapigoBalance = () =>
