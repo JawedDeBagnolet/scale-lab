@@ -102,7 +102,7 @@ async def visit_profile(driver, navigator, username, config=None, log=print):
 
     # 2b. Stories a la une
     if random.random() < cfg["highlights_pct"]:
-        _browse_highlights(driver, cfg, stats, log)
+        await _browse_highlights(driver, cfg, stats, log)
 
     # 3. Pick behavior : glance / browse / deep_read / reels
     elapsed = time.time() - start
@@ -130,19 +130,19 @@ async def visit_profile(driver, navigator, username, config=None, log=print):
     if behavior == "glance":
         n = random.randint(1, 2)
         for _ in range(n):
-            await driver.scroll_down('light')
+            await driver.ht.scroll_down()
             await driver.wait('scroll')
 
     elif behavior == "browse":
         if do_reels and not do_switch:
-            _browse_reels_tab(driver, navigator, cfg, stats, log, remaining)
+            await _browse_reels_tab(driver, navigator, cfg, stats, log, remaining)
         elif do_switch:
             # Alterner entre grille et reels
             half = remaining / 2
-            _browse_posts(driver, navigator, cfg, stats, log, half, username)
-            _browse_reels_tab(driver, navigator, cfg, stats, log, half)
+            await _browse_posts(driver, navigator, cfg, stats, log, half, username)
+            await _browse_reels_tab(driver, navigator, cfg, stats, log, half)
         else:
-            _browse_posts(driver, navigator, cfg, stats, log, remaining, username)
+            await _browse_posts(driver, navigator, cfg, stats, log, remaining, username)
 
     elif behavior == "deep_read":
         extra_read = random.uniform(3.0, 8.0)
@@ -150,9 +150,9 @@ async def visit_profile(driver, navigator, username, config=None, log=print):
         await asyncio.sleep(extra_read)
         remaining2 = remaining - extra_read
         if do_reels:
-            _browse_reels_tab(driver, navigator, cfg, stats, log, remaining2)
+            await _browse_reels_tab(driver, navigator, cfg, stats, log, remaining2)
         else:
-            _browse_posts(driver, navigator, cfg, stats, log, remaining2, username)
+            await _browse_posts(driver, navigator, cfg, stats, log, remaining2, username)
 
     # 4. Follow (avec delai)
     if random.random() < cfg["follow_pct"]:
@@ -258,7 +258,7 @@ async def _browse_reels_tab(driver, navigator, cfg, stats, log, max_time):
     await asyncio.sleep(1.5)
 
     # Scroll pour voir les reels
-    await driver.scroll_down('light')
+    await driver.ht.scroll_down()
     await asyncio.sleep(1)
 
     # Trouver les miniatures de reels
@@ -328,7 +328,7 @@ async def _browse_reels_tab(driver, navigator, cfg, stats, log, max_time):
 
             # Swipe up pour reel suivant ou retour
             if i < n_reels - 1:
-                await driver.scroll_down('strong')
+                await driver.ht.scroll_down()
                 await asyncio.sleep(1.5)
             else:
                 await navigator.go_back()
@@ -402,7 +402,7 @@ async def _handle_carousel(driver, log):
 
 async def _interact_post(driver, navigator, cfg, stats, log):
     """Regarde le post ouvert, interagit selon le type et la config."""
-    post_type = _detect_post_type(driver)
+    post_type = await _detect_post_type(driver)
     view_time = _view_time_for_type(post_type)
     log("   %s — lecture %.1fs" % (post_type, view_time))
     await asyncio.sleep(view_time)
@@ -410,7 +410,7 @@ async def _interact_post(driver, navigator, cfg, stats, log):
 
     # Carousel : swipe horizontal
     if post_type == 'carousel':
-        _handle_carousel(driver, log)
+        await _handle_carousel(driver, log)
 
     # Lire les commentaires
     if random.random() < cfg.get("read_comments_pct", 0.15):
@@ -443,17 +443,19 @@ async def _interact_post(driver, navigator, cfg, stats, log):
             screen = await driver.detect_current_screen()
             if screen not in ('post_view', 'profile'):
                 log("   ! bloque apres commentaires, recovery")
-                _ensure_on_profile(driver, navigator, username, log)
+                await _ensure_on_profile(driver, navigator, username, log)
 
     # Like
     if random.random() < cfg["like_pct"]:
         # Double-tap sur le media (plus naturel en vue post)
+        await driver.ht._ensure_screen()
         sh = driver.ht.screen_h
         sw = driver.ht.screen_w
-        await driver.ht.double_tap(
-            sw * 0.5 + random.gauss(0, 20),
-            sh * 0.40 + random.gauss(0, 20)
-        )
+        tx = sw * 0.5 + random.gauss(0, 20)
+        ty = sh * 0.40 + random.gauss(0, 20)
+        await driver.ht.tap(tx, ty)
+        await asyncio.sleep(random.uniform(0.08, 0.15))
+        await driver.ht.tap(tx + random.gauss(0, 3), ty + random.gauss(0, 3))
         log("   like (double-tap)")
         stats["liked"] += 1
         await driver.wait('tap')
@@ -504,7 +506,7 @@ async def _ensure_post_view(driver, navigator, username, log):
         return False  # on est sur la grille, pas un post
     # Perdu ailleurs
     log("   ! ecran=%s apres navigation" % screen)
-    _ensure_on_profile(driver, navigator, username, log)
+    await _ensure_on_profile(driver, navigator, username, log)
     return False
 
 
@@ -519,19 +521,19 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
     n_posts = random.randint(cfg["browse_posts_min"], cfg["browse_posts_max"])
 
     # Scroll pour voir la grille
-    await driver.scroll_down('normal')
+    await driver.ht.scroll_down()
     await driver.wait('read_short')
 
     if n_posts == 0:
         return
 
     # Verifier qu on est bien sur le profil
-    screen = _ensure_on_profile(driver, navigator, username, log)
+    screen = await _ensure_on_profile(driver, navigator, username, log)
     if screen not in ('profile', 'post_view'):
         log("   ! pas sur le profil, abandon browse")
         return
 
-    post_els = _find_grid_posts(driver, username)
+    post_els = await _find_grid_posts(driver, username)
     if not post_els:
         log("   pas de posts dans la grille")
         return
@@ -545,7 +547,7 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
     await asyncio.sleep(1)
 
     # Verifier qu on est en vue post
-    if not _ensure_post_view(driver, navigator, username, log):
+    if not await _ensure_post_view(driver, navigator, username, log):
         log("   ! vue post non atteinte")
         return
 
@@ -561,11 +563,11 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             # Verifier qu on est sur la grille
             screen = await driver.detect_current_screen()
             if screen != 'profile':
-                screen = _ensure_on_profile(driver, navigator, username, log)
+                screen = await _ensure_on_profile(driver, navigator, username, log)
                 if screen != 'profile':
                     break
 
-            post_els = _find_grid_posts(driver, username)
+            post_els = await _find_grid_posts(driver, username)
             unseen = [p for p in post_els if id(p) not in seen_in_grid]
             if not unseen:
                 unseen = post_els
@@ -578,7 +580,7 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             await driver.wait('transition')
             await asyncio.sleep(1)
 
-            if not _ensure_post_view(driver, navigator, username, log):
+            if not await _ensure_post_view(driver, navigator, username, log):
                 in_post_view = False
                 continue
 
@@ -586,7 +588,7 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             in_post_view = True
 
         # Regarder et interagir avec le post
-        _interact_post(driver, navigator, cfg, stats, log)
+        await _interact_post(driver, navigator, cfg, stats, log)
         opened += 1
 
         if time.time() - start > max_time:
@@ -605,33 +607,22 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             direction = random.choices(["down", "up"], weights=[75, 25])[0]
             if direction == "down":
                 log("   [nav] scroll au post suivant")
-                await driver.scroll_down("normal")
+                await driver.ht.scroll_down()
             else:
                 log("   [nav] scroll au post precedent")
-                await driver.scroll_up("light")
+                await driver.ht.scroll_up()
             await driver.wait("scroll")
             await asyncio.sleep(random.uniform(0.8, 1.5))
 
             # Verifier qu on est toujours en vue post
             screen = await driver.detect_current_screen()
             if screen == "post_view":
-                # Centrer le media du nouveau post
-                posts = driver.detect_visible_posts()
-                if posts:
-                    new_post = posts[0]
-                    mp = new_post.get(media_pos)
-                    if mp:
-                        my = mp.get(y, 400)
-                        target = driver.ht.screen_h * 0.45
-                        if abs(my - target) > driver.ht.screen_h * 0.12:
-                            driver.scroll_to_y(new_post[username], target_y=target, tol=driver.ht.screen_h*0.12, max_moves=2)
-                            log("   [nav] centrage media")
                 in_post_view = True
             elif screen == "profile":
                 in_post_view = False
                 continue
             else:
-                _ensure_on_profile(driver, navigator, username, log)
+                await _ensure_on_profile(driver, navigator, username, log)
                 in_post_view = False
                 continue
 
@@ -646,14 +637,14 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             if screen == 'profile':
                 n_scrolls = random.randint(1, 2)
                 for _ in range(n_scrolls):
-                    await driver.scroll_down('light')
+                    await driver.ht.scroll_down()
                     await asyncio.sleep(random.uniform(0.8, 2.0))
                 in_post_view = False
             elif screen == 'post_view':
                 # go_back n a pas marche, on est encore dans le post
                 in_post_view = True
             else:
-                _ensure_on_profile(driver, navigator, username, log)
+                await _ensure_on_profile(driver, navigator, username, log)
                 in_post_view = False
 
         elif pattern == "quick_pick":
@@ -668,7 +659,7 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             elif screen == 'post_view':
                 in_post_view = True
             else:
-                _ensure_on_profile(driver, navigator, username, log)
+                await _ensure_on_profile(driver, navigator, username, log)
                 in_post_view = False
 
     # S assurer qu on revient a la grille du profil
@@ -681,5 +672,5 @@ async def _browse_posts(driver, navigator, cfg, stats, log, max_time, username="
             await driver.wait('transition')
             await asyncio.sleep(0.5)
         else:
-            _ensure_on_profile(driver, navigator, username, log)
+            await _ensure_on_profile(driver, navigator, username, log)
             break
