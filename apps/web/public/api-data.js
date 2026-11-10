@@ -241,6 +241,13 @@ if ('serviceWorker' in navigator) {
         var k = sessionStorage.key(i);
         if (k && k.indexOf(CACHE_PREFIX + base) === 0) keys.push(k);
       }
+      // Mutations on /integrations also invalidate /settings (keys live there)
+      if (base === '/integrations') {
+        for (var j = 0; j < sessionStorage.length; j++) {
+          var k2 = sessionStorage.key(j);
+          if (k2 && k2.indexOf(CACHE_PREFIX + '/settings') === 0 && keys.indexOf(k2) === -1) keys.push(k2);
+        }
+      }
       keys.forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
   }
