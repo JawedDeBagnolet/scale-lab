@@ -46,9 +46,13 @@ class IGScraperClient:
     # ── Factory ──────────────────────────────────────────────────────────
 
     @classmethod
-    def from_scraper_account(cls, account) -> "IGScraperClient | None":
-        """Build client from a ScraperAccount model instance."""
-        session = account.session_data
+    def from_compte(cls, compte) -> "IGScraperClient | None":
+        """Build client from a Compte model instance (is_scraper=True).
+
+        Reads session_data from the compte — same data ScaleTweak extracts
+        after a login on the iPhone.
+        """
+        session = compte.session_data
         if not session or not session.get("authorization"):
             return None
 
@@ -67,12 +71,15 @@ class IGScraperClient:
             mid=session.get("mid", ""),
             ig_did=session.get("ig_did", session.get("unique_id", "")),
             ds_user_id=session.get("ds_user_id", ""),
-            user_agent=account.user_agent or session.get("user_agent",
+            user_agent=session.get("user_agent",
                 "Instagram 454.1.0.0.21 (iPhone10,6; iOS 16_7_15; fr_FR; fr; scale=3.00; 1125x2436; 588848498)"),
             www_claim=www_claim,
             extra_headers=session.get("request_headers", {}),
-            account_id=account.id,
+            account_id=compte.id,
         )
+
+    # Keep old name as alias for verify endpoint compat
+    from_scraper_account = from_compte
 
     @classmethod
     async def from_db(
@@ -82,40 +89,58 @@ class IGScraperClient:
         account_id: UUID | None = None,
         exclude_ids: list[UUID] | None = None,
     ) -> "IGScraperClient | None":
-        """Pick a scraper account from DB and build a client with Scrapigo proxy.
+        """Pick a scraper compte from DB and build a client with Scrapigo proxy.
 
-        If account_id is given, uses that specific account.
-        Otherwise, picks the least recently used active account (load balancing).
+        If account_id is given, uses that specific compte.
+        Otherwise, picks the least recently used active scraper compte (load balancing).
         """
-        from app.services.scraper_accounts import get_account, pick_account
+        from sqlalchemy import select
+        from app.models.compte import Compte
 
         if account_id:
-            account = await get_account(db, account_id)
+            compte = await db.get(Compte, account_id)
         else:
-            account = await pick_account(db, platform=platform, exclude_ids=exclude_ids)
+            # Pick least recently used active scraper compte
+            stmt = (
+                select(Compte)
+                .where(
+                    Compte.is_scraper.is_(True),
+                    Compte.plateforme == platform,
+                    Compte.status == "ok",
+                    Compte.session_data.isnot(None),
+                )
+                .order_by(Compte.updated_at.asc().nullsfirst())
+                .limit(1)
+            )
+            if exclude_ids:
+                stmt = stmt.where(Compte.id.notin_(exclude_ids))
+            result = await db.execute(stmt)
+            compte = result.scalar_one_or_none()
 
-        if not account:
-            logger.warning("ig_scraper: no active scraper account for %s", platform)
+        if not compte:
+            logger.warning("ig_scraper: no active scraper compte for %s", platform)
             return None
 
-        client = cls.from_scraper_account(account)
+        client = cls.from_compte(compte)
         if not client:
-            logger.warning("ig_scraper: invalid session for @%s", account.username)
+            logger.warning("ig_scraper: invalid session for @%s", compte.handle)
             return None
 
         # Generate Scrapigo proxy
         from app.services.scrapigo import get_scrapigo_client
         scrapigo = await get_scrapigo_client()
         if scrapigo:
+            env = compte.env or {}
+            country = env.get("proxy_country", "FR")
             proxy = await scrapigo.get_proxy_for_account(
-                account_id=str(account.id),
-                country=account.proxy_country or "FR",
+                account_id=str(compte.id),
+                country=country,
                 ttl_minutes=120,
             )
             if proxy:
                 client.proxy_url = proxy.url
                 logger.info("ig_scraper: @%s → proxy %s:%d (%s)",
-                            account.username, proxy.host, proxy.port, account.proxy_country)
+                            compte.handle, proxy.host, proxy.port, country)
         else:
             logger.warning("ig_scraper: Scrapigo non configuré, requêtes sans proxy")
 

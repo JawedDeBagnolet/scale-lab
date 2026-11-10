@@ -76,6 +76,43 @@ async def _ensure_healthy(sess: DeviceSession, log: Callable) -> tuple[bool, str
     return None
 
 
+# ── Session extraction for scraper comptes ───────────────────────────────
+
+async def _maybe_extract_session(sess, log):
+    """After login, extract and store the API session for scraper comptes.
+
+    ScaleTweak writes /tmp/scale_session.json 15s after app launch.
+    We read it, verify it, and store it in Compte.session_data so the
+    IGScraperClient can use it for private API calls via Scrapigo proxy.
+
+    Only runs for comptes with is_scraper=True.
+    """
+    try:
+        from app.db import AsyncSessionLocal
+        from app.models.compte import Compte
+
+        async with AsyncSessionLocal() as db:
+            compte = await db.get(Compte, sess.compte_id)
+            if not compte or not compte.is_scraper:
+                return  # Not a scraper account, skip
+
+        log("   [scraper] compte scraper détecté — extraction de session...")
+        from app.services.session_extract import extract_and_store
+        session = await extract_and_store(
+            str(sess.compte_id),
+            mcp_port=sess.ctx.get("mcp_port", 8090),
+            ssh_port=sess.ctx.get("ssh_port", 2223),
+            host=sess.ctx.get("host", "127.0.0.1"),
+            platform="ig",
+        )
+        if session:
+            log(f"   [scraper] ✓ session extraite et stockée (ds_user_id={session.get('ds_user_id', '?')})")
+        else:
+            log("   [scraper] ⚠ extraction de session échouée — le compte sera réessayé au prochain login")
+    except Exception as e:
+        log(f"   [scraper] ⚠ erreur extraction session: {str(e)[:150]}")
+
+
 # ── Main entry point ─────────────────────────────────────────────────────────
 
 async def run_ig_task(
@@ -114,6 +151,9 @@ async def run_ig_task(
 
             # Ensure login
             await sess.ensure_login(drv, None)
+
+            # Extract & store session for scraper accounts (auto after login)
+            await _maybe_extract_session(sess, log)
 
             _check_abort(abort_event)
 

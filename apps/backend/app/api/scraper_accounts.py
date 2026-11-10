@@ -1,171 +1,116 @@
-"""API routes for scraper accounts — CRUD + session + proxy management."""
+"""API routes for scraper accounts — queries Comptes with is_scraper=True.
+
+Scraper accounts are regular Comptes that go through the standard iPhone
+login pipeline. The only difference is they're flagged is_scraper=True and
+used exclusively for IG/Threads/X private API scraping (veille, search, stats).
+"""
 
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.services import scraper_accounts as service
+from app.models.compte import Compte
 
 router = APIRouter()
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────
 
-class ScraperAccountCreate(BaseModel):
-    platform: str  # ig, threads, x
-    username: str
-    password: str | None = None
-    proxy_country: str = "FR"
-
-
-class ScraperAccountUpdate(BaseModel):
-    username: str | None = None
-    password: str | None = None
-    proxy_country: str | None = None
-    status: str | None = None
-
-
-class ScraperAccountOut(BaseModel):
+class ScraperCompteOut(BaseModel):
     id: UUID
-    platform: str
-    username: str
-    has_password: bool = False
-    ds_user_id: str | None = None
-    user_agent: str | None = None
-    has_session: bool = False
-    proxy_country: str
+    handle: str
+    plateforme: str
+    workflow: str
     status: str
-    last_error: str | None = None
+    has_session: bool
+    proxy_country: str
     bytes_used: int
     requests_count: int
-    last_used_at: str | None = None
     created_at: str
     updated_at: str
 
     @classmethod
-    def from_model(cls, m):
+    def from_model(cls, c: Compte):
+        env = c.env or {}
         return cls(
-            id=m.id,
-            platform=m.platform,
-            username=m.username,
-            has_password=bool(m.password),
-            ds_user_id=m.ds_user_id,
-            user_agent=m.user_agent,
-            has_session=bool(m.session_data),
-            proxy_country=m.proxy_country,
-            status=m.status,
-            last_error=m.last_error,
-            bytes_used=m.bytes_used,
-            requests_count=m.requests_count,
-            last_used_at=m.last_used_at.isoformat() if m.last_used_at else None,
-            created_at=m.created_at.isoformat(),
-            updated_at=m.updated_at.isoformat(),
+            id=c.id,
+            handle=c.handle,
+            plateforme=c.plateforme,
+            workflow=c.workflow,
+            status=c.status,
+            has_session=bool(c.session_data),
+            proxy_country=env.get("proxy_country", "FR"),
+            bytes_used=c.scraper_bytes_used,
+            requests_count=c.scraper_requests_count,
+            created_at=c.created_at.isoformat(),
+            updated_at=c.updated_at.isoformat(),
         )
-
-
-class SessionSaveRequest(BaseModel):
-    session_data: dict
-    user_agent: str | None = None
-    ds_user_id: str | None = None
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
 
-@router.get("/", response_model=list[ScraperAccountOut])
+@router.get("/", response_model=list[ScraperCompteOut])
 async def list_scraper_accounts(
-    platform: str | None = Query(None),
-    status: str | None = Query(None),
+    platform: str | None = Query(None, alias="plateforme"),
     db: AsyncSession = Depends(get_db),
 ):
-    accounts = await service.list_accounts(db, platform=platform, status=status)
-    return [ScraperAccountOut.from_model(a) for a in accounts]
-
-
-@router.get("/{account_id}", response_model=ScraperAccountOut)
-async def get_scraper_account(account_id: UUID, db: AsyncSession = Depends(get_db)):
-    a = await service.get_account(db, account_id)
-    if not a:
-        raise HTTPException(404, "scraper account not found")
-    return ScraperAccountOut.from_model(a)
-
-
-@router.post("/", response_model=ScraperAccountOut, status_code=201)
-async def create_scraper_account(
-    data: ScraperAccountCreate, db: AsyncSession = Depends(get_db)
-):
-    a = await service.create_account(db, data.model_dump())
-    return ScraperAccountOut.from_model(a)
-
-
-@router.patch("/{account_id}", response_model=ScraperAccountOut)
-async def update_scraper_account(
-    account_id: UUID,
-    data: ScraperAccountUpdate,
-    db: AsyncSession = Depends(get_db),
-):
-    a = await service.get_account(db, account_id)
-    if not a:
-        raise HTTPException(404, "scraper account not found")
-    a = await service.update_account(db, a, data.model_dump(exclude_unset=True))
-    return ScraperAccountOut.from_model(a)
-
-
-@router.delete("/{account_id}", status_code=204)
-async def delete_scraper_account(account_id: UUID, db: AsyncSession = Depends(get_db)):
-    a = await service.get_account(db, account_id)
-    if not a:
-        raise HTTPException(404, "scraper account not found")
-    await service.delete_account(db, a)
-
-
-# ── Session management ───────────────────────────────────────────────────
-
-@router.post("/{account_id}/session", response_model=ScraperAccountOut)
-async def save_session(
-    account_id: UUID,
-    data: SessionSaveRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """Save extracted session data (from iPhone login) to a scraper account."""
-    a = await service.save_session(
-        db, account_id,
-        session_data=data.session_data,
-        user_agent=data.user_agent,
-        ds_user_id=data.ds_user_id,
+    """List all comptes flagged as scraper."""
+    stmt = (
+        select(Compte)
+        .where(Compte.is_scraper.is_(True))
+        .order_by(Compte.created_at.desc())
     )
-    if not a:
-        raise HTTPException(404, "scraper account not found")
-    return ScraperAccountOut.from_model(a)
+    if platform:
+        stmt = stmt.where(Compte.plateforme == platform)
+    result = await db.execute(stmt)
+    return [ScraperCompteOut.from_model(c) for c in result.scalars().all()]
 
 
-@router.post("/{account_id}/verify")
-async def verify_session(account_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Verify the scraper account's session is still valid."""
-    a = await service.get_account(db, account_id)
-    if not a:
+@router.delete("/{compte_id}", status_code=204)
+async def delete_scraper_account(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Remove scraper flag from a compte (doesn't delete the compte itself)."""
+    c = await db.get(Compte, compte_id)
+    if not c or not c.is_scraper:
         raise HTTPException(404, "scraper account not found")
-    if not a.session_data:
-        raise HTTPException(400, "no session data")
+    c.is_scraper = False
+    c.session_data = None
+    c.scraper_bytes_used = 0
+    c.scraper_requests_count = 0
+    await db.commit()
+
+
+@router.post("/{compte_id}/verify")
+async def verify_session(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Verify a scraper compte's session is still valid via IG private API."""
+    c = await db.get(Compte, compte_id)
+    if not c or not c.is_scraper:
+        raise HTTPException(404, "scraper account not found")
+    if not c.session_data:
+        raise HTTPException(400, "no session data — login via iPhone first")
 
     from app.services.ig_api_scraper import IGScraperClient
-    client = IGScraperClient.from_scraper_account(a)
+    client = IGScraperClient.from_compte(c)
     if not client:
         raise HTTPException(400, "cannot build client from session")
 
     try:
         result = await client.verify()
         if result.get("ok"):
-            await service.update_account(db, a, {"status": "active", "last_error": None})
+            c.status = "ok"
+            await db.commit()
             return {"ok": True, "user": result.get("user")}
         else:
             error = result.get("error", "session invalid")
-            await service.mark_error(db, account_id, error)
+            c.status = "session"
+            await db.commit()
             return {"ok": False, "error": error}
     except Exception as e:
-        await service.mark_error(db, account_id, str(e)[:200])
+        c.status = "error"
+        await db.commit()
         return {"ok": False, "error": str(e)[:200]}
 
 

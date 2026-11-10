@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,13 @@ class Compte(Base):
     sessions: Mapped[int] = mapped_column(Integer, default=0)
     follows: Mapped[int] = mapped_column(Integer, default=0)
     creds_encrypted: Mapped[dict | None] = mapped_column(JSONB)              # {password, two_fa, token} chiffre
+
+    # ── Scraper fields ──────────────────────────────────────────────────
+    is_scraper: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    session_data: Mapped[dict | None] = mapped_column(JSONB)                 # cookies/tokens API privée (extrait par ScaleTweak)
+    scraper_bytes_used: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    scraper_requests_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
