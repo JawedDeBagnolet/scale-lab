@@ -36,6 +36,22 @@ logger = logging.getLogger("engine")
 TICK_INTERVAL = 5          # seconds between engine ticks
 BLOCKED_STATUSES = {"error", "suspendu", "session"}  # compte.status values that block execution
 JOURNAL_BROADCAST_TAIL = 5  # how many recent journal entries to broadcast
+LOG_LINES_MAX = 500        # max log lines captured per action
+
+
+class LogCollector:
+    """Captures log lines from a runner session for storage in run journal."""
+
+    def __init__(self, upstream=None):
+        self.lines: list[str] = []
+        self.upstream = upstream or logger.info
+
+    def __call__(self, msg, *args):
+        line = msg % args if args else str(msg)
+        if len(self.lines) < LOG_LINES_MAX:
+            self.lines.append(line)
+        if self.upstream:
+            self.upstream(line)
 
 # Abort signals — one asyncio.Event per running run_id.
 # When abort_run() is called, the event is set and the runner checks it.
@@ -268,29 +284,52 @@ async def _execute_iphone_action(
     DeviceSession handles connection mode (USB/tunnel) transparently
     by resolving the account → device → MCP/SSH ports from PostgreSQL.
     """
+    collector = LogCollector()
+    abort_evt = get_abort_event(run_id) if run_id else None
+
     if platform == "ig_iph":
         from app.services.automation.ig_runner import run_ig_task
-        abort_evt = get_abort_event(run_id) if run_id else None
-        return await run_ig_task(
+        result = await run_ig_task(
             account_id,
             action_type,
             values=values,
             preset_ids=preset_ids,
+            log=collector,
             abort_event=abort_evt,
         )
-
     elif platform == "th_iph":
         from app.services.automation.th_runner import run_th_task
-        abort_evt = get_abort_event(run_id) if run_id else None
-        return await run_th_task(
+        result = await run_th_task(
             account_id,
             action_type,
             values=values,
             preset_ids=preset_ids,
+            log=collector,
             abort_event=abort_evt,
         )
+    else:
+        return False, f"Plateforme iPhone inconnue : {platform}"
 
-    return False, f"Plateforme iPhone inconnue : {platform}"
+    # Store captured logs in the run journal for debugging
+    if run_id and collector.lines:
+        try:
+            async with AsyncSessionLocal() as db:
+                run = await db.get(Run, run_id)
+                if run:
+                    journal = list(run.journal or [])
+                    journal.append({
+                        "t": datetime.now(UTC).isoformat(),
+                        "type": "session_logs",
+                        "account_id": str(account_id),
+                        "action": action_type,
+                        "lines": collector.lines,
+                    })
+                    run.journal = journal
+                    await db.commit()
+        except Exception as e:
+            logger.warning("Failed to save session logs: %s", str(e)[:100])
+
+    return result
 
 
 # ---------------------------------------------------------------------------

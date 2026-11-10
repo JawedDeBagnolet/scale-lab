@@ -287,10 +287,20 @@ input::placeholder { color: #5b6175; }
 
 <sc-if value="{{ evOpen }}">
 <div onClick="{{ evClose }}" style="position:fixed;inset:0;z-index:60;background:rgba(5,6,12,.3);display:flex;align-items:center;justify-content:center;padding:24px">
-<div onClick="{{ stopProp }}" style="width:min(560px,100%);border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
-<div style="display:flex;align-items:flex-start;gap:12px"><span style="{{ ev.lvlStyle }}"><i class="{{ ev.lvlIcon }}" style="font-size:12px"></i>{{ ev.lvl }}</span><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:600;line-height:1.4;color:#f2f3fa">{{ ev.msg }}</div><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8a91a8;margin-top:5px"><i class="{{ ev.modIcon }}" style="font-size:13px"></i>{{ ev.mod }} · {{ ev.when }}</div></div><span onClick="{{ evClose }}" style="width:32px;height:32px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)"><i class="ph ph-x" style="font-size:15px"></i></span></div>
+<div onClick="{{ stopProp }}" style="{{ evHasLogs ? 'width:min(1080px,100%);height:calc(100vh - 48px);max-height:760px;display:flex;flex-direction:column' : 'width:min(560px,100%);display:flex;flex-direction:column;gap:16px;padding:22px 24px' }};border-radius:22px;overflow:hidden;background:linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34));backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)">
+<div style="flex:none;display:flex;align-items:flex-start;gap:12px;padding:{{ evHasLogs ? '20px 24px 16px' : '0' }};{{ evHasLogs ? 'border-bottom:1px solid rgba(255,255,255,.07)' : '' }}"><span style="{{ ev.lvlStyle }}"><i class="{{ ev.lvlIcon }}" style="font-size:12px"></i>{{ ev.lvl }}</span><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:600;line-height:1.4;color:#f2f3fa">{{ ev.msg }}</div><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8a91a8;margin-top:5px"><i class="{{ ev.modIcon }}" style="font-size:13px"></i>{{ ev.mod }} · {{ ev.when }}</div></div><span onClick="{{ evClose }}" style="width:32px;height:32px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)"><i class="ph ph-x" style="font-size:15px"></i></span></div>
+<div style="{{ evHasLogs ? 'flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)' : 'display:flex;flex-direction:column;gap:16px' }}">
+<div style="{{ evHasLogs ? 'overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px;border-right:1px solid rgba(255,255,255,.07)' : 'display:contents' }}">
 <div style="display:flex;flex-direction:column;gap:1px;border-radius:12px;overflow:hidden"><sc-for list="{{ ev.ctx }}" as="c" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:8px 12px;background:rgba(255,255,255,.03)"><span style="font-size:11.5px;color:#8a91a8">{{ c.k }}</span><span style="{{ c.vStyle }}">{{ c.v }}</span></div></sc-for></div>
 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><sc-if value="{{ ev.hasLink }}"><a href="{{ ev.href }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);color:#c5c9d8;font-size:12.5px;font-weight:500"><i class="ph ph-arrow-square-out" style="font-size:14px"></i>{{ ev.linkLabel }}</a></sc-if><span style="flex:1"></span><sc-if value="{{ ev.hasInc }}"><div onClick="{{ ev.openInc }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:10px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:12.5px;font-weight:600;cursor:pointer"><i class="ph ph-wrench" style="font-size:14px"></i>{{ ev.incLabel }}</div></sc-if></div>
+</div>
+<sc-if value="{{ evHasLogs }}">
+<div style="overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:8px"><i class="ph ph-terminal-window" style="font-size:14px;color:#8db4fd"></i><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Logs de session</span><span style="flex:1"></span><sc-if value="{{ evLogsLoading }}"><span style="font-size:11px;color:#8a91a8">Chargement…</span></sc-if><sc-if value="{{ evCopyLogs }}"><div onClick="{{ evCopyLogs }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);color:#c5c9d8;font-size:11.5px;cursor:pointer" style-hover="background:rgba(255,255,255,.06)"><i class="{{ evLogsCopied ? 'ph ph-check' : 'ph ph-copy' }}" style="font-size:13px"></i>{{ evLogsCopied ? 'Copié !' : 'Copier' }}</div></sc-if></div>
+<div style="flex:1;min-height:0;overflow-y:auto;padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);font-family:'Geist Mono',monospace;font-size:11px;line-height:1.7"><sc-for list="{{ evLogLines }}" as="l" hint-placeholder-count="10"><div style="{{ l.style }}">{{ l.text }}</div></sc-for><sc-if value="{{ !evLogLines.length && !evLogsLoading }}"><div style="color:#555872;font-style:italic">Aucun log capturé pour cette session</div></sc-if></div>
+</div>
+</sc-if>
+</div>
 </div>
 </div>
 </sc-if>
@@ -431,9 +441,29 @@ class Component extends DCLogic {
     const isAcc = /^[a-z0-9._]+$/.test(e.target) && ['comptes', 'posting', 'planner'].indexOf(e.mod) >= 0;
     const ctx = [['Cible', isAcc ? '@' + e.target : e.target], ['Horodatage', new Date(e.t).toLocaleString('fr-FR')], ['Code', e.code || '—']].concat(c ? [['Cause', c[1]]].concat(c[4].map((x, k) => [k ? '' : 'Détail', x.replace('{t}', e.target).replace('{acc}', (this._slugAcc || {})[String(e.target).split('/').pop()] || String(e.target).split('/').pop())])) : []).concat(isAcc ? [['Proxy', this.proxyOf(e.target)]] : []).concat([['ID', e.id]]);
     const link = e.mod === 'comptes' || (isAcc && e.mod !== 'posting' && e.mod !== 'planner') ? ['Module%20Comptes%20v1.dc.html', 'Ouvrir le compte'] : e.mod === 'posting' || e.mod === 'planner' ? ['Module%20Posting%20v1.dc.html', 'Ouvrir dans Posting'] : e.mod === 'veille' ? ['Module%20Veille%20v1.dc.html', 'Ouvrir la Veille'] : null;
-    return { evOpen: true, evClose: () => this.setState({ evView: null }), ev: { msg: e.msg, lvl: L[0], lvlIcon: L[2], lvlStyle: { ...this.badge(L[1]), flex: 'none', marginTop: 2 }, mod: m[1], modIcon: m[2], when: this.ago(e.t),
+    const meta = e.meta || {}; const runId = meta.run_id;
+    const hasLogs = !!runId && e.lvl === 'error';
+    const logLines = (s.evLogs || {})[e.id] || null;
+    const logsCopied = (s.evLogsCopied || {})[e.id] || false;
+    const loadLogs = hasLogs && !logLines ? () => { this._loadRunLogs(e.id, runId); } : null;
+    if (hasLogs && !logLines && !((s.evLogsLoading || {})[e.id])) { this._loadRunLogs(e.id, runId); }
+    const copyLogs = logLines ? () => {
+      const txt = logLines.join('\n');
+      navigator.clipboard.writeText(txt).then(() => { this.setState(x => ({ evLogsCopied: { ...x.evLogsCopied, [e.id]: true } })); setTimeout(() => this.setState(x => ({ evLogsCopied: { ...x.evLogsCopied, [e.id]: false } })), 2000); });
+    } : null;
+    return { evOpen: true, evClose: () => this.setState({ evView: null }), evHasLogs: hasLogs, evLogLines: (logLines || []).map((l, i) => ({ text: l, idx: i, style: l.includes('ERROR') || l.includes('error') || l.includes('✗') ? 'color:#f4728c' : l.includes('WARNING') || l.includes('warning') || l.includes('⚠') ? 'color:#f5c77e' : l.includes('✓') || l.includes('OK') ? 'color:#4ade80' : 'color:#aab0c5' })), evLogsLoading: !!((s.evLogsLoading || {})[e.id]), evLogsCopied: logsCopied, evCopyLogs: copyLogs, ev: { msg: e.msg, lvl: L[0], lvlIcon: L[2], lvlStyle: { ...this.badge(L[1]), flex: 'none', marginTop: 2 }, mod: m[1], modIcon: m[2], when: this.ago(e.t),
       ctx: ctx.map(x => ({ k: x[0], v: x[1], vStyle: { fontSize: 12, lineHeight: 1.5, color: '#e8eaf3', fontFamily: x[0] === 'Code' || x[0] === 'ID' ? "'Geist Mono',monospace" : 'inherit' } })),
       hasLink: !!link, href: link ? link[0] : '#', linkLabel: link ? link[1] : '', hasInc: !!inc, incLabel: inc ? (inc.status === 'resolved' ? 'Voir l\'incident (résolu)' : 'Résoudre l\'incident') : '', openInc: () => { this.setState({ evView: null }); this.openRes(e.key); } } };
+  }
+  async _loadRunLogs(evId, runId) {
+    this.setState(x => ({ evLogsLoading: { ...x.evLogsLoading, [evId]: true } }));
+    try {
+      const data = await window.SCALE_DATA.api('/api/scenarios/runs/' + runId + '/logs');
+      const lines = []; (data.logs || []).forEach(l => { lines.push('── ' + (l.action || '') + ' ──'); (l.lines || []).forEach(x => lines.push(x)); });
+      this.setState(x => ({ evLogs: { ...x.evLogs, [evId]: lines }, evLogsLoading: { ...x.evLogsLoading, [evId]: false } }));
+    } catch (err) {
+      this.setState(x => ({ evLogs: { ...x.evLogs, [evId]: ['Impossible de charger les logs : ' + err.message] }, evLogsLoading: { ...x.evLogsLoading, [evId]: false } }));
+    }
   }
   openRes(key) { this.setState({ resolve: { key, run: null, step: 0, result: null, input: {} } }); }
   diag(inc) { const C = this.CAUSES[inc.mod + '.' + inc.type]; if (!C) return null; const cz = inc.causes || {}; const tot = Object.values(cz).reduce((a, b) => a + b, 0) || 1; const id = Object.keys(cz).sort((a, b) => cz[b] - cz[a])[0] || C[0][0]; const c = C.find(x => x[0] === id) || C[0]; return { c, conf: Math.max(55, Math.round((cz[id] || 1) / tot * 100)), others: C.filter(x => x[0] !== c[0] && cz[x[0]]).map(x => x[1] + ' (' + cz[x[0]] + '×)') }; }

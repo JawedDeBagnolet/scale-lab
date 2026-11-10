@@ -68,6 +68,31 @@ async def get_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
     return r
 
 
+@router.get("/runs/{run_id}/logs")
+async def get_run_logs(run_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Get the captured session logs for a run.
+
+    Returns all session_logs entries from the journal as a flat list of lines.
+    Used by the frontend Logs module to display full session output in alert modals.
+    """
+    from app.models.scenario import Run
+    run = await db.get(Run, run_id)
+    if not run:
+        raise HTTPException(404, "run not found")
+    journal = run.journal or []
+    # Collect all session_logs entries
+    logs = []
+    for entry in journal:
+        if entry.get("type") == "session_logs":
+            logs.append({
+                "t": entry.get("t"),
+                "account_id": entry.get("account_id"),
+                "action": entry.get("action"),
+                "lines": entry.get("lines", []),
+            })
+    return {"run_id": str(run_id), "status": run.status, "logs": logs}
+
+
 @router.post("/runs", response_model=RunOut, status_code=201)
 async def create_run(data: RunCreate, db: AsyncSession = Depends(get_db)):
     return await service.create_run(db, data)
