@@ -81,13 +81,14 @@ class HumanTouch:
     RTI_PORT = 8195
 
     async def _rti_call(self, endpoint: str, data: dict | None = None):
-        """Call RealTouchInject HTTP API via MCP run_command + curl on-device.
+        """Call RealTouchInject HTTP API via SSH + curl on-device.
 
-        RTI runs on port 8195 on the iPhone. Since it's not tunneled,
-        we reach it by running curl on the device through ios-mcp's run_command.
+        RTI runs on port 8195 on the iPhone. MCP run_command is broken
+        (rootless jailbreak has no /bin/sh), so we use SSH (port 2223) instead.
         Non-critical: failures are silently ignored (RTI tap enrichment is automatic).
         """
         try:
+            from app.services.dispatch import _ssh_exec, DEFAULT_SSH_PORT
             import json as _json
             if data:
                 payload = _json.dumps(data).replace("'", "'\\''")
@@ -97,7 +98,7 @@ class HumanTouch:
                 )
             else:
                 cmd = f"curl -s --max-time 3 http://127.0.0.1:{self.RTI_PORT}{endpoint}"
-            await self._call("run_command", {"command": cmd}, timeout=5)
+            await _ssh_exec(DEFAULT_SSH_PORT, cmd, timeout=5, host=self.host)
         except Exception:
             pass  # RTI enrichment is automatic for taps, this is best-effort
 
@@ -116,13 +117,12 @@ class HumanTouch:
     async def rti_health(self) -> dict | None:
         """Check RTI health. Returns parsed JSON or None."""
         try:
+            from app.services.dispatch import _ssh_exec, DEFAULT_SSH_PORT
             import json as _json
             cmd = f"curl -s --max-time 3 http://127.0.0.1:{self.RTI_PORT}/health"
-            result = await self._call("run_command", {"command": cmd}, timeout=5)
-            if result:
-                content = result.get("content", [])
-                if content and isinstance(content, list):
-                    return _json.loads(content[0].get("text", "{}"))
+            ok, output = await _ssh_exec(DEFAULT_SSH_PORT, cmd, timeout=5, host=self.host)
+            if ok and output:
+                return _json.loads(output)
         except Exception:
             pass
         return None

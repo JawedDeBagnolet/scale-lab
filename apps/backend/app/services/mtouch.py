@@ -1,8 +1,8 @@
 """MTOUCH service — multi-touch gestures and media import on iPhone.
 
-MTOUCH is a tweak running on port 8091 on the iPhone. Since the SSH
-tunnel only forwards ports 2223 (SSH) and 18090 (MCP), we reach MTOUCH
-by calling ios-mcp's `run_command` tool to curl localhost:8091 on-device.
+MTOUCH is a tweak running on port 8091 on the iPhone. We reach it
+via SSH (port 2223) + curl on-device, because MCP's run_command is
+broken on rootless jailbreak (no /bin/sh).
 
 Endpoints:
     GET  /health                           → health check
@@ -16,7 +16,7 @@ import json
 import logging
 from typing import Any
 
-from app.services.dispatch import mcp_call, DEFAULT_MCP_PORT
+from app.services.dispatch import _ssh_exec, DEFAULT_SSH_PORT
 
 logger = logging.getLogger("mtouch")
 
@@ -28,11 +28,11 @@ async def _mtouch_call(
     *,
     method: str = "GET",
     data: dict | None = None,
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
     timeout: float = 15,
 ) -> dict | None:
-    """Call a MTOUCH HTTP endpoint via MCP run_command + curl on-device.
+    """Call a MTOUCH HTTP endpoint via SSH + curl on-device.
 
     Returns parsed JSON response or None on failure.
     """
@@ -50,24 +50,20 @@ async def _mtouch_call(
             f"-d '{payload_escaped}'"
         )
 
-    result = await mcp_call(mcp_port, "run_command", {"command": cmd}, timeout=timeout, host=host)
-    if result is None:
-        logger.warning("mtouch %s %s: MCP run_command failed", method, endpoint)
+    ok, output = await _ssh_exec(DEFAULT_SSH_PORT, cmd, timeout=timeout, host=host)
+    if not ok:
+        logger.warning("mtouch %s %s: SSH failed: %s", method, endpoint, str(output)[:80])
         return None
 
-    # Parse the MCP result — run_command returns content[].text with stdout
     try:
-        content = result.get("content", [])
-        if not content or not isinstance(content, list):
-            logger.warning("mtouch %s %s: empty MCP content", method, endpoint)
+        if not isinstance(output, str):
+            output = output.decode("utf-8", errors="replace")
+        if not output.strip():
+            logger.warning("mtouch %s %s: empty output", method, endpoint)
             return None
-        stdout = content[0].get("text", "")
-        if not stdout.strip():
-            logger.warning("mtouch %s %s: empty stdout", method, endpoint)
-            return None
-        return json.loads(stdout)
+        return json.loads(output)
     except json.JSONDecodeError:
-        logger.warning("mtouch %s %s: invalid JSON: %s", method, endpoint, stdout[:100])
+        logger.warning("mtouch %s %s: invalid JSON: %s", method, endpoint, str(output)[:100])
         return None
     except Exception as e:
         logger.warning("mtouch %s %s: parse error: %s", method, endpoint, e)
@@ -79,7 +75,7 @@ async def _mtouch_call(
 # ═════════════════════════════════════════════════════════════════════════════
 
 async def mtouch_health(
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Check MTOUCH health. Returns {"ok": true, "service": "mtouch"} or None."""
@@ -92,7 +88,7 @@ async def mtouch_pinch(
     scale: float,
     duration: int = 300,
     *,
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Two-finger pinch gesture.
@@ -118,7 +114,7 @@ async def mtouch_rotate(
     angle: float,
     duration: int = 300,
     *,
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Two-finger rotation gesture.
@@ -141,7 +137,7 @@ async def mtouch_rotate(
 async def mtouch_import_media(
     path: str,
     *,
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Import a media file into the iPhone Camera Roll via PHPhotoLibrary.
@@ -163,7 +159,7 @@ async def mtouch_tap(
     x: float,
     y: float,
     *,
-    mcp_port: int = DEFAULT_MCP_PORT,
+    mcp_port: int = 18090,
     host: str = "127.0.0.1",
 ) -> dict | None:
     """Tap via MTOUCH (passes through to MCP manager).
