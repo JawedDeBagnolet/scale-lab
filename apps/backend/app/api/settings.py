@@ -12,7 +12,7 @@ from app.services import settings as service
 
 router = APIRouter()
 
-PROVIDERS = ("oc", "gms", "tg")
+PROVIDERS = ("oc", "gms", "tg", "scrapigo")
 
 
 @router.get("/", response_model=WorkspaceOut)

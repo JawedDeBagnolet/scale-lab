@@ -4,17 +4,25 @@ import {
   CheckCircle,
   FloppyDisk,
   GearSix,
+  Globe,
   Link as LinkIcon,
+  MagnifyingGlass,
+  Plus,
+  Trash,
   XCircle,
 } from '@phosphor-icons/react'
 import { ErrorState, Loading } from '../../components/StateBlock'
 import {
+  useCreateScraperAccount,
+  useDeleteScraperAccount,
+  useScraperAccounts,
   useSettings,
   useUpdateIntegration,
   useUpdateNotifications,
   useUpdateWorkspace,
+  useVerifyScraperAccount,
 } from '../../hooks/useApi'
-import type { IntegrationUpdate, NotificationsConfig, WorkspaceUpdate } from '../../types/settings'
+import type { IntegrationUpdate, NotificationsConfig, ScraperAccountCreate, WorkspaceUpdate } from '../../types/settings'
 
 // --- Workspace card ----------------------------------------------------------
 
@@ -130,6 +138,11 @@ const INTEGRATION_META: Record<string, { label: string; description: string; fie
     label: 'Telegram',
     description: 'Alertes et notifications en temps reel.',
     fields: ['bot_token', 'chat_id'],
+  },
+  scrapigo: {
+    label: 'Scrapigo',
+    description: 'Proxies residentiels pour le scraping API privee IG, Threads et X.',
+    fields: ['api_key'],
   },
 }
 
@@ -300,6 +313,195 @@ function NotificationsCard() {
   )
 }
 
+// --- Scraper Accounts card ---------------------------------------------------
+
+const PLATFORM_LABELS: Record<string, string> = { ig: 'Instagram', threads: 'Threads', x: 'X' }
+const STATUS_COLORS: Record<string, string> = {
+  active: 'bg-success/15 text-success',
+  pending: 'bg-white/5 text-dim',
+  expired: 'bg-warning/15 text-warning',
+  banned: 'bg-error/15 text-error',
+  rate_limited: 'bg-warning/15 text-warning',
+}
+
+function ScraperAccountsCard() {
+  const { data: accounts, isLoading } = useScraperAccounts()
+  const create = useCreateScraperAccount()
+  const remove = useDeleteScraperAccount()
+  const verify = useVerifyScraperAccount()
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState<ScraperAccountCreate>({
+    platform: 'ig',
+    username: '',
+    password: '',
+    proxy_country: 'FR',
+  })
+
+  const handleCreate = () => {
+    if (!form.username.trim()) return
+    create.mutate(form, {
+      onSuccess: () => {
+        setAdding(false)
+        setForm({ platform: 'ig', username: '', password: '', proxy_country: 'FR' })
+      },
+    })
+  }
+
+  const formatBytes = (b: number) => {
+    if (b < 1024) return `${b} B`
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
+    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`
+    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  }
+
+  return (
+    <section className="card p-6">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-bold">
+            <MagnifyingGlass size={20} className="text-accent-1" /> Comptes Scraper
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">
+            Comptes dedies au scraping API privee (veille, recherche, statistiques)
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+          <Plus size={16} /> Ajouter
+        </button>
+      </div>
+
+      {adding && (
+        <div className="mb-5 rounded-xl border border-white/[.07] bg-white/[.022] p-4">
+          <div className="grid grid-cols-4 gap-3">
+            <div>
+              <label className="label">Plateforme</label>
+              <select
+                className="field"
+                value={form.platform}
+                onChange={(e) => setForm({ ...form, platform: e.target.value })}
+              >
+                <option value="ig">Instagram</option>
+                <option value="threads">Threads</option>
+                <option value="x">X</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Username</label>
+              <input
+                className="field"
+                placeholder="@username"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Mot de passe</label>
+              <input
+                className="field"
+                type="password"
+                placeholder="••••••"
+                value={form.password ?? ''}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Pays proxy</label>
+              <select
+                className="field"
+                value={form.proxy_country}
+                onChange={(e) => setForm({ ...form, proxy_country: e.target.value })}
+              >
+                <option value="FR">France</option>
+                <option value="US">USA</option>
+                <option value="GB">UK</option>
+                <option value="DE">Allemagne</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" className="btn btn-ghost" onClick={() => setAdding(false)}>
+              Annuler
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={create.isPending || !form.username.trim()}
+              onClick={handleCreate}
+            >
+              <FloppyDisk size={16} /> Creer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-xs text-muted">Chargement...</div>
+      ) : !accounts?.length ? (
+        <div className="text-center text-xs text-dim py-8">
+          Aucun compte scraper configure
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center gap-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-3"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-1/10 text-xs font-bold text-accent-1">
+                {a.platform.toUpperCase().slice(0, 2)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">@{a.username}</span>
+                  <span className="text-xs text-muted">{PLATFORM_LABELS[a.platform] ?? a.platform}</span>
+                </div>
+                {a.last_error && (
+                  <div className="mt-0.5 truncate text-xs text-error">{a.last_error}</div>
+                )}
+              </div>
+              <div className="text-right">
+                <div className="text-xs tabular-nums text-muted">{formatBytes(a.bytes_used)}</div>
+                <div className="text-[11px] text-dim">{a.requests_count.toLocaleString('fr-FR')} req</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Globe size={13} className="text-dim" />
+                <span className="text-xs text-muted">{a.proxy_country}</span>
+              </div>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_COLORS[a.status] ?? 'bg-white/5 text-dim'}`}
+              >
+                {a.has_session ? (
+                  <><CheckCircle size={12} weight="fill" className="mr-1" />{a.status}</>
+                ) : (
+                  <><XCircle size={12} weight="fill" className="mr-1" />sans session</>
+                )}
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost p-1.5"
+                title="Verifier la session"
+                onClick={() => verify.mutate(a.id)}
+              >
+                <CheckCircle size={16} />
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost p-1.5 hover:text-error"
+                title="Supprimer"
+                onClick={() => {
+                  if (confirm(`Supprimer @${a.username} ?`)) remove.mutate(a.id)
+                }}
+              >
+                <Trash size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // --- Main page ---------------------------------------------------------------
 
 export default function ParametresPage() {
@@ -321,6 +523,8 @@ export default function ParametresPage() {
           ))}
         </div>
       </section>
+
+      <ScraperAccountsCard />
 
       <NotificationsCard />
     </div>

@@ -16,6 +16,7 @@ class WorkspaceOut(BaseModel):
     oc: IntegrationStatus
     gms: IntegrationStatus
     tg: IntegrationStatus
+    scrapigo: IntegrationStatus
     env_providers: dict | None = None
     notifications: dict | None = None
     updated_at: datetime

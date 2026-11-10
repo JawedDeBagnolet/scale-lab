@@ -32,6 +32,10 @@ def _to_out(s: WorkspaceSettings) -> WorkspaceOut:
             connected=s.tg_connected,
             key_tail=_tail(s.tg_bot_token),
         ),
+        scrapigo=IntegrationStatus(
+            connected=bool(s.scrapigo_api_key),
+            key_tail=_tail(s.scrapigo_api_key),
+        ),
         env_providers=s.env_providers,
         notifications=s.notifications,
         updated_at=s.updated_at,
@@ -93,6 +97,15 @@ async def update_integration(
         if "chat_id" in data and data["chat_id"] is not None:
             s.tg_chat_id = data["chat_id"]
         s.tg_connected = bool(s.tg_bot_token and s.tg_chat_id)
+    elif provider == "scrapigo":
+        if "api_key" in data and data["api_key"] is not None:
+            s.scrapigo_api_key = data["api_key"]
+            # Test the key
+            from app.services.scrapigo import ScrapigoClient
+            client = ScrapigoClient(data["api_key"])
+            result = await client.get_balance()
+            if not result:
+                s.scrapigo_api_key = data["api_key"]  # save anyway
 
     await db.commit()
     await db.refresh(s)

@@ -7,7 +7,7 @@ import type { AlertRule, AlertRuleCreate, EventFilters, Incident, LogEvent, LogS
 import type { Persona, PersonaInput } from '../types/persona'
 import type { Preset, PresetFilters, PresetInput } from '../types/preset'
 import type { Marche, Niche } from '../types/referentiel'
-import type { IntegrationUpdate, NotificationsConfig, WorkspaceSettings, WorkspaceUpdate } from '../types/settings'
+import type { IntegrationUpdate, NotificationsConfig, ScraperAccount, ScraperAccountCreate, WorkspaceSettings, WorkspaceUpdate } from '../types/settings'
 import type { Proxy, ProxyFilters, ProxyInput } from '../types/proxy'
 import type { DailyStat, StatFilters, StatsOverview } from '../types/statistique'
 import type { Target, TargetFilters, TargetInput } from '../types/target'
@@ -745,4 +745,35 @@ export const useDeletePublication = () =>
   useApiMutation((id: string) => api<void>(`/api/posting/publications/${id}`, { method: 'DELETE' }), {
     invalidate: [['publications'], ['postingOverview']],
     success: 'Publication supprimee',
+  })
+
+// --- Scraper Accounts --------------------------------------------------------
+
+export const useScraperAccounts = () =>
+  useApiQuery<ScraperAccount[]>(['scraperAccounts'], '/api/scraper-accounts/')
+
+export const useCreateScraperAccount = () =>
+  useApiMutation(
+    (data: ScraperAccountCreate) =>
+      api<ScraperAccount>('/api/scraper-accounts/', { method: 'POST', body: body(data) }),
+    { invalidate: [['scraperAccounts']], success: 'Compte scraper cree' },
+  )
+
+export const useDeleteScraperAccount = () =>
+  useApiMutation(
+    (id: string) => api<void>(`/api/scraper-accounts/${id}`, { method: 'DELETE' }),
+    { invalidate: [['scraperAccounts']], success: 'Compte scraper supprime' },
+  )
+
+export const useVerifyScraperAccount = () =>
+  useApiMutation(
+    (id: string) => api<{ ok: boolean; error?: string }>(`/api/scraper-accounts/${id}/verify`, { method: 'POST' }),
+    { invalidate: [['scraperAccounts']] },
+  )
+
+export const useScrapigoBalance = () =>
+  useQuery({
+    queryKey: ['scrapigoBalance'],
+    queryFn: () => api<Record<string, unknown>>('/api/scraper-accounts/scrapigo/balance'),
+    retry: false,
   })
