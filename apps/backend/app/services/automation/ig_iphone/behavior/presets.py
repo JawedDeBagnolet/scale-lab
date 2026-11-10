@@ -75,6 +75,41 @@ async def resolve_behavior(
     return None
 
 
+    # Mapping preset keys → session config keys
+    # Preset uses short names (like, save), sessions use _pct suffix (like_pct, save_pct)
+_PRESET_KEY_MAP = {
+    # Probabilities (from "p" section)
+    "like":             "like_pct",
+    "save":             "save_pct",
+    "follow":           "follow_pct",
+    "story":            "story_view_pct",
+    "comments":         "comment_read_pct",
+    "comment":          "comment_read_pct",
+    "likeComment":      "like_comment_pct",
+    "commentAuthor":    "visit_commenter_pct",
+    "openPost":         "open_post_pct",
+    "scrollback":       "scroll_back_pct",
+    "target":           "visit_profile_pct",
+    "repost":           "repost_pct",
+    "notInterested":    "not_interested_pct",
+    "interested":       "interested_pct",
+    "skipFast":         "skip_fast_pct",
+    "goBack":           "go_back_pct",
+    "pauseLong":        "pause_long_pct",
+    "watchFull":        "watch_full_pct",
+    # Durations (from "durations" section or root)
+    "min":              "duration_min",
+    "max":              "duration_max",
+    "durationMin":      "duration_min",
+    "durationMax":      "duration_max",
+    "watchMin":         "watch_min",
+    "watchMax":         "watch_max",
+    "watchFullMax":     "watch_full_max",
+    "pauseLongMin":     "pause_long_min",
+    "pauseLongMax":     "pause_long_max",
+}
+
+
 def apply_behavior(cfg: dict, behavior: dict | None, log=print) -> dict:
     """Aplatit les params du preset dans cfg (le preset ecrase)."""
     if not behavior:
@@ -83,7 +118,7 @@ def apply_behavior(cfg: dict, behavior: dict | None, log=print) -> dict:
     applied = []
 
     # Le champ config est un JSONB libre — on itere ses cles
-    # Structure attendue: {probabilities: {like: 0.7, ...}, pauses: {...}, durations: {...}, ...}
+    # Structure attendue: {p: {like: 20, ...}, durations: {min: 1, max: 3}, ...}
     # "p" is the key used in the DB for probabilities (like, save, follow, etc.)
     SECTION_KEYS = ("p", "probabilities", "pauses", "durations", "intensity", "antipatterns")
     for section_key in SECTION_KEYS:
@@ -94,14 +129,17 @@ def apply_behavior(cfg: dict, behavior: dict | None, log=print) -> dict:
                     # Probabilities in DB are 0-100 integers, convert to 0-1 floats
                     if section_key == "p" and isinstance(v, (int, float)) and v > 1:
                         v = v / 100.0
-                    cfg[k] = v
-                    applied.append(k)
+                    # Map preset key to session config key
+                    mapped = _PRESET_KEY_MAP.get(k, k)
+                    cfg[mapped] = v
+                    applied.append(mapped)
 
     # Aussi les params a la racine (flat keys)
     for k, v in config.items():
         if k not in SECTION_KEYS and v is not None:
-            cfg[k] = v
-            applied.append(k)
+            mapped = _PRESET_KEY_MAP.get(k, k)
+            cfg[mapped] = v
+            applied.append(mapped)
 
     if applied:
         log("   [igbh] applique: %s" % ", ".join(applied[:10]))
