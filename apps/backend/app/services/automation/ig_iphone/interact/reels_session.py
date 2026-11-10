@@ -359,16 +359,23 @@ async def _detect_current_reel(driver):
 
 
 async def _swipe_next_reel(driver):
-    """Swipe up pour passer au reel suivant — via ScrollEngine."""
+    """Swipe up pour passer au reel suivant."""
     await driver.ht._ensure_screen()
-    h = driver.ht.screen_h
-    distance = h * random.uniform(0.55, 0.75)
-    await driver.scroller.flick(distance)
+    w, h = driver.ht.screen_w, driver.ht.screen_h
+    # Fast vertical swipe — simulates a flick to advance to next reel
+    x = w * random.uniform(0.35, 0.65)
+    start_y = h * random.uniform(0.70, 0.80)
+    end_y = h * random.uniform(0.15, 0.25)
+    dur = random.randint(250, 450)
+    await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
 
 
 async def _swipe_prev_reel(driver):
-    """Swipe down pour revenir au reel precedent — via ScrollEngine."""
+    """Swipe down pour revenir au reel precedent."""
     await driver.ht._ensure_screen()
-    h = driver.ht.screen_h
-    distance = h * random.uniform(-0.55, -0.75)
-    await driver.scroller.flick(distance)
+    w, h = driver.ht.screen_w, driver.ht.screen_h
+    x = w * random.uniform(0.35, 0.65)
+    start_y = h * random.uniform(0.20, 0.30)
+    end_y = h * random.uniform(0.75, 0.85)
+    dur = random.randint(250, 450)
+    await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
