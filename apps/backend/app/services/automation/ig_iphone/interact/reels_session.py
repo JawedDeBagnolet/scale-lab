@@ -161,11 +161,11 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         if random.random() < cfg["like_pct"]:
             like_els = await driver.find_elements(text="J'aime", clickable=True, refresh=True)
             for el in (like_els or []):
-                w = el.get('rect', {}).get('width', 0)
+                rect = el.get('rect', {})
+                w = rect.get('width', 0)
                 if 30 <= w <= 50:
-                    tap = el.get('tap', {})
                     log("   like reel @%s" % username)
-                    await driver.ht.tap(tap['x'], tap['y'])
+                    await _tap_el(driver, el)
                     await driver.wait('tap')
                     stats["likes"] += 1
                     break
@@ -174,9 +174,8 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         if random.random() < cfg["comment_read_pct"]:
             comment_el = await driver.find_element(text="Commenter", clickable=True, refresh=True)
             if comment_el:
-                tap = comment_el.get('tap', {})
                 log("   ouvre commentaires reel @%s" % username)
-                await driver.ht.tap(tap['x'], tap['y'])
+                await _tap_el(driver, comment_el)
                 await driver.wait('transition')
                 await asyncio.sleep(1)
                 # Lire quelques commentaires
@@ -214,9 +213,8 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         if random.random() < cfg["follow_pct"]:
             follow_el = await driver.find_element(contains="Suivre " + username, refresh=True)
             if follow_el:
-                tap = follow_el.get('tap', {})
                 log("   follow @%s" % username)
-                await driver.ht.tap(tap['x'], tap['y'])
+                await _tap_el(driver, follow_el)
                 await driver.wait('tap')
                 stats["follows"] += 1
 
@@ -224,16 +222,14 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         if random.random() < cfg["repost_pct"]:
             repost_el = await driver.find_element(text="Republier", clickable=True, refresh=True)
             if repost_el:
-                tap = repost_el.get('tap', {})
                 log("   repost reel @%s" % username)
-                await driver.ht.tap(tap['x'], tap['y'])
+                await _tap_el(driver, repost_el)
                 await driver.wait('transition')
                 await asyncio.sleep(1)
                 # Confirmer le repost si dialogue
                 confirm = await driver.find_element(contains="Republier", clickable=True, refresh=True)
                 if confirm:
-                    tap2 = confirm.get('tap', {})
-                    await driver.ht.tap(tap2['x'], tap2['y'])
+                    await _tap_el(driver, confirm)
                     await driver.wait('transition')
                 # Dismiss le popup "Vous avez republié ce reel"
                 await asyncio.sleep(1)
@@ -252,18 +248,16 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
         if _menu_action:
             menu_el = await driver.find_element(text="Plus d'actions", clickable=True, refresh=True)
             if menu_el:
-                tap = menu_el.get('tap', {})
                 log("   ouvre menu reel @%s" % username)
-                await driver.ht.tap(tap['x'], tap['y'])
+                await _tap_el(driver, menu_el)
                 await driver.wait('transition')
                 await asyncio.sleep(0.8)
 
                 if _menu_action == "save":
                     target = await driver.find_element(contains="Enregistrer", clickable=True, refresh=True)
                     if target:
-                        tap2 = target.get('tap', {})
                         log("   enregistrer reel @%s" % username)
-                        await driver.ht.tap(tap2['x'], tap2['y'])
+                        await _tap_el(driver, target)
                         await driver.wait('transition')
                         # Dismiss le menu "Enregistré" / collections
                         await _dismiss_popup(driver)
@@ -271,18 +265,16 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 elif _menu_action == "not_interested":
                     target = await driver.find_element(contains="ne m'int", clickable=True, refresh=True)
                     if target:
-                        tap2 = target.get('tap', {})
                         log("   pas interesse @%s" % username)
-                        await driver.ht.tap(tap2['x'], tap2['y'])
+                        await _tap_el(driver, target)
                         stats["not_interested"] += 1
                 elif _menu_action == "interested":
                     target = await driver.find_element(contains="m'int", clickable=True, refresh=True)
                     if not target or "ne m" in (target.get('text', '') or '').lower():
                         target = await driver.find_element(contains="Ce reel m", clickable=True, refresh=False)
                     if target:
-                        tap2 = target.get('tap', {})
                         log("   interesse @%s" % username)
-                        await driver.ht.tap(tap2['x'], tap2['y'])
+                        await _tap_el(driver, target)
                         stats["interested"] += 1
 
                 await driver.wait('tap')
@@ -300,9 +292,8 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                     if follow_el:
                         rect = follow_el.get('rect', {})
                         if rect.get('width', 0) >= 60:
-                            tap = follow_el.get('tap', {})
                             log("   follow @%s depuis profil" % username)
-                            await driver.ht.tap(tap['x'], tap['y'])
+                            await _tap_el(driver, follow_el)
                             await driver.wait('tap')
                             stats["follows"] += 1
                 await navigator.go_back()
@@ -375,6 +366,18 @@ async def _detect_current_reel(driver):
     return None
 
 
+async def _tap_el(driver, el):
+    """Tap sur un element avec jitter gaussien (bounds du rect)."""
+    tap = el.get('tap', {})
+    rect = el.get('rect', {})
+    w = rect.get('width', 0)
+    h = rect.get('height', 0)
+    if w > 0 and h > 0:
+        await driver.ht.tap(tap['x'], tap['y'], bounds=(w, h))
+    else:
+        await driver.ht.tap(tap['x'], tap['y'])
+
+
 async def _swipe_next_reel(driver):
     """Swipe up pour passer au reel suivant — full screen flick."""
     await driver.ht._ensure_screen()
@@ -398,8 +401,7 @@ async def _dismiss_popup(driver):
     for text in dismiss_texts:
         el = await driver.find_element(text, clickable=True)
         if el:
-            tap = el.get('tap', {})
-            await driver.ht.tap(tap.get('x', 0), tap.get('y', 0))
+            await _tap_el(driver, el)
             await asyncio.sleep(0.8)
             return True
     return False

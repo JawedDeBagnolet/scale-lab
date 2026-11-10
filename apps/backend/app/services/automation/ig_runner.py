@@ -109,6 +109,9 @@ async def run_ig_task(
             drv = IGDriver(mcp_port=sess.mcp_port, log=log)
             nav = IGNavigator(drv, log=log)
 
+            # Change RTI posture for this session (randomizes gravity/motion)
+            await drv.ht.change_posture()
+
             # Ensure login
             await sess.ensure_login(drv, None)
 

@@ -77,6 +77,56 @@ class HumanTouch:
         self.screen_h = DEFAULT_SCREEN_H
         self._screen_checked = False
 
+    # ── RealTouchInject (RTI) — enrichissement force/radius/motion ──────
+    RTI_PORT = 8195
+
+    async def _rti_call(self, endpoint: str, data: dict | None = None):
+        """Call RealTouchInject HTTP API via MCP run_command + curl on-device.
+
+        RTI runs on port 8195 on the iPhone. Since it's not tunneled,
+        we reach it by running curl on the device through ios-mcp's run_command.
+        Non-critical: failures are silently ignored (RTI tap enrichment is automatic).
+        """
+        try:
+            import json as _json
+            if data:
+                payload = _json.dumps(data).replace("'", "'\\''")
+                cmd = (
+                    f"curl -s --max-time 3 -X POST http://127.0.0.1:{self.RTI_PORT}{endpoint} "
+                    f"-H 'Content-Type: application/json' -d '{payload}'"
+                )
+            else:
+                cmd = f"curl -s --max-time 3 http://127.0.0.1:{self.RTI_PORT}{endpoint}"
+            await self._call("run_command", {"command": cmd}, timeout=5)
+        except Exception:
+            pass  # RTI enrichment is automatic for taps, this is best-effort
+
+    async def signal_scroll(self, duration_ms: int):
+        """Signal RTI that a scroll is starting so it uses progressive force profile."""
+        await self._rti_call("/scroll", {"duration_ms": duration_ms})
+
+    async def change_posture(self, posture_id: int | None = None):
+        """Change RTI simulated posture (0=assis, 1=dos, 2=côté, 3=debout, 4=bureau).
+
+        If posture_id is None, picks a random one.
+        """
+        data = {"id": posture_id} if posture_id is not None else {}
+        await self._rti_call("/posture", data)
+
+    async def rti_health(self) -> dict | None:
+        """Check RTI health. Returns parsed JSON or None."""
+        try:
+            import json as _json
+            cmd = f"curl -s --max-time 3 http://127.0.0.1:{self.RTI_PORT}/health"
+            result = await self._call("run_command", {"command": cmd}, timeout=5)
+            if result:
+                content = result.get("content", [])
+                if content and isinstance(content, list):
+                    return _json.loads(content[0].get("text", "{}"))
+        except Exception:
+            pass
+        return None
+
     # ── Low-level MCP call ───────────────────────────────────────────────
 
     async def _call(
@@ -215,6 +265,9 @@ class HumanTouch:
         drift = random.uniform(cfg["drift_min"], cfg["drift_max"])
         pts = random.randint(cfg["pts_min"], cfg["pts_max"])
 
+        # Signal RTI: switch to scroll force profile (progressive ramp)
+        await self.signal_scroll(dur)
+
         x = self.screen_w * random.uniform(0.3, 0.7)
         start_y = self.screen_h * random.uniform(0.65, 0.80)
         end_y = start_y - (self.screen_h * dist)
@@ -230,6 +283,9 @@ class HumanTouch:
         dur = random.randint(cfg["dur_min"], cfg["dur_max"])
         drift = random.uniform(cfg["drift_min"], cfg["drift_max"])
         pts = random.randint(cfg["pts_min"], cfg["pts_max"])
+
+        # Signal RTI: switch to scroll force profile (progressive ramp)
+        await self.signal_scroll(dur)
 
         x = self.screen_w * random.uniform(0.3, 0.7)
         start_y = self.screen_h * random.uniform(0.25, 0.40)
