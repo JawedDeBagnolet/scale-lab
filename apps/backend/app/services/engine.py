@@ -870,10 +870,12 @@ async def skip_step(db: AsyncSession, run: Run) -> Run:
 
 async def abort_run(db: AsyncSession, run: Run) -> Run:
     """Abort a run entirely. Signals the runner to stop in real-time."""
-    if run.status in ("done", "aborted"):
+    if run.status in ("done", "aborted", "error"):
         raise ValueError(f"Run already in terminal status '{run.status}'")
     # Signal the runner to stop immediately
-    get_abort_event(run.id).set()
+    evt = get_abort_event(run.id)
+    evt.set()
+    logger.info("ABORT: set event for run %s (event id=%s, is_set=%s)", run.id, id(evt), evt.is_set())
     run.status = "aborted"
     run.finished_at = _now()
     run.journal = (run.journal or []) + [
