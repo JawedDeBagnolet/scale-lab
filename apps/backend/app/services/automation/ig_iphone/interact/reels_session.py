@@ -150,13 +150,11 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
             await driver.wait('micro')
             continue
 
-        # Regarder le reel
-        if random.random() < cfg["watch_full_pct"]:
-            watch = random.uniform(cfg["watch_max"], cfg["watch_full_max"])
-        else:
-            watch = random.uniform(cfg["watch_min"], cfg["watch_max"])
-        log("   watch %.1fs" % watch)
-        await asyncio.sleep(watch)
+        # Pause (sélection pondérée depuis le comportement)
+        from app.services.automation.ig_iphone.behavior.presets import pick_pause
+        pause_s = pick_pause(cfg)
+        log("   pause %.1fs" % pause_s)
+        await asyncio.sleep(pause_s)
         stats["reels_watched"] += 1
 
         # Like
@@ -184,7 +182,7 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 # Lire quelques commentaires
                 read_time = random.uniform(3.0, 7.0)
                 await asyncio.sleep(read_time / 2)
-                await driver.scroll_down('light')
+                await driver.ht.scroll_down()
                 await asyncio.sleep(read_time / 2)
                 # Fermer (bouton ou swipe down)
                 log("   ferme commentaires")
@@ -199,9 +197,17 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 screen = await driver.detect_current_screen()
                 if screen != "reels":
                     log("   ! bloque apres commentaires (ecran=%s)" % screen)
-                    closed2 = await driver.tap_element(text="Fermer")
-                    if closed2:
+                    # post_view = le reel s'est ouvert en mode post, il faut revenir
+                    # 1) Essayer bouton retour / Fermer
+                    back = await driver.tap_element(text="Retour") or await driver.tap_element(text="Fermer")
+                    if back:
                         await asyncio.sleep(1)
+                    # 2) Si toujours pas dans reels, forcer navigation
+                    screen2 = await driver.detect_current_screen()
+                    if screen2 != "reels":
+                        log("   -> force retour reels")
+                        await navigator.go_reels()
+                        await asyncio.sleep(2)
                 stats["comments_read"] += 1
 
         # Follow
@@ -258,6 +264,9 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                         tap2 = target.get('tap', {})
                         log("   enregistrer reel @%s" % username)
                         await driver.ht.tap(tap2['x'], tap2['y'])
+                        await driver.wait('transition')
+                        # Dismiss le menu "Enregistré" / collections
+                        await _dismiss_popup(driver)
                         stats["saves"] += 1
                 elif _menu_action == "not_interested":
                     target = await driver.find_element(contains="ne m'int", clickable=True, refresh=True)
@@ -367,15 +376,16 @@ async def _detect_current_reel(driver):
 
 
 async def _swipe_next_reel(driver):
-    """Swipe up pour passer au reel suivant."""
+    """Swipe up pour passer au reel suivant — full screen flick."""
     await driver.ht._ensure_screen()
     w, h = driver.ht.screen_w, driver.ht.screen_h
-    # Fast vertical swipe — simulates a flick to advance to next reel
+    # Full-screen fast swipe — must cover enough distance to reliably advance
     x = w * random.uniform(0.35, 0.65)
-    start_y = h * random.uniform(0.70, 0.80)
-    end_y = h * random.uniform(0.15, 0.25)
-    dur = random.randint(250, 450)
-    await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
+    start_y = h * random.uniform(0.78, 0.88)
+    end_y = h * random.uniform(0.08, 0.15)
+    dur = random.randint(200, 380)
+    await driver.ht.swipe(x, start_y, x + random.gauss(0, 4), end_y, duration=dur, steps=random.randint(12, 22))
+    await asyncio.sleep(0.5)  # laisser l'animation se stabiliser
 
 
 async def _dismiss_popup(driver):
@@ -384,7 +394,7 @@ async def _dismiss_popup(driver):
     Returns True if a popup was dismissed.
     """
     await driver.refresh_elements()
-    dismiss_texts = ["OK", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
+    dismiss_texts = ["OK", "Fermer", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
     for text in dismiss_texts:
         el = await driver.find_element(text, clickable=True)
         if el:
