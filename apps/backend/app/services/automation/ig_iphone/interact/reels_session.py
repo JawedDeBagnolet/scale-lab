@@ -184,7 +184,7 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 # Lire quelques commentaires
                 read_time = random.uniform(3.0, 7.0)
                 await asyncio.sleep(read_time / 2)
-                await driver.scroll_down('light')
+                await driver.ht.scroll_down()
                 await asyncio.sleep(read_time / 2)
                 # Fermer (bouton ou swipe down)
                 log("   ferme commentaires")
@@ -370,15 +370,16 @@ async def _detect_current_reel(driver):
 
 
 async def _swipe_next_reel(driver):
-    """Swipe up pour passer au reel suivant."""
+    """Swipe up pour passer au reel suivant — full screen flick."""
     await driver.ht._ensure_screen()
     w, h = driver.ht.screen_w, driver.ht.screen_h
-    # Fast vertical swipe — simulates a flick to advance to next reel
+    # Full-screen fast swipe — must cover enough distance to reliably advance
     x = w * random.uniform(0.35, 0.65)
-    start_y = h * random.uniform(0.70, 0.80)
-    end_y = h * random.uniform(0.15, 0.25)
-    dur = random.randint(250, 450)
-    await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
+    start_y = h * random.uniform(0.78, 0.88)
+    end_y = h * random.uniform(0.08, 0.15)
+    dur = random.randint(200, 380)
+    await driver.ht.swipe(x, start_y, x + random.gauss(0, 4), end_y, duration=dur, steps=random.randint(12, 22))
+    await asyncio.sleep(0.5)  # laisser l'animation se stabiliser
 
 
 async def _dismiss_popup(driver):
