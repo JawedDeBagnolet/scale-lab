@@ -150,11 +150,13 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
             await driver.wait('micro')
             continue
 
-        # Pause (sélection pondérée depuis le comportement)
-        from app.services.automation.ig_iphone.behavior.presets import pick_pause
-        pause_s = pick_pause(cfg)
-        log("   pause %.1fs" % pause_s)
-        await asyncio.sleep(pause_s)
+        # Regarder le reel
+        if random.random() < cfg["watch_full_pct"]:
+            watch = random.uniform(cfg["watch_max"], cfg["watch_full_max"])
+        else:
+            watch = random.uniform(cfg["watch_min"], cfg["watch_max"])
+        log("   watch %.1fs" % watch)
+        await asyncio.sleep(watch)
         stats["reels_watched"] += 1
 
         # Like
@@ -182,7 +184,7 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                 # Lire quelques commentaires
                 read_time = random.uniform(3.0, 7.0)
                 await asyncio.sleep(read_time / 2)
-                await driver.ht.scroll_down()
+                await driver.scroll_down('light')
                 await asyncio.sleep(read_time / 2)
                 # Fermer (bouton ou swipe down)
                 log("   ferme commentaires")
@@ -256,9 +258,6 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                         tap2 = target.get('tap', {})
                         log("   enregistrer reel @%s" % username)
                         await driver.ht.tap(tap2['x'], tap2['y'])
-                        await driver.wait('transition')
-                        # Dismiss le menu "Enregistré" / collections
-                        await _dismiss_popup(driver)
                         stats["saves"] += 1
                 elif _menu_action == "not_interested":
                     target = await driver.find_element(contains="ne m'int", clickable=True, refresh=True)
@@ -368,16 +367,15 @@ async def _detect_current_reel(driver):
 
 
 async def _swipe_next_reel(driver):
-    """Swipe up pour passer au reel suivant — full screen flick."""
+    """Swipe up pour passer au reel suivant."""
     await driver.ht._ensure_screen()
     w, h = driver.ht.screen_w, driver.ht.screen_h
-    # Full-screen fast swipe — must cover enough distance to reliably advance
+    # Fast vertical swipe — simulates a flick to advance to next reel
     x = w * random.uniform(0.35, 0.65)
-    start_y = h * random.uniform(0.78, 0.88)
-    end_y = h * random.uniform(0.08, 0.15)
-    dur = random.randint(200, 380)
-    await driver.ht.swipe(x, start_y, x + random.gauss(0, 4), end_y, duration=dur, steps=random.randint(12, 22))
-    await asyncio.sleep(0.5)  # laisser l'animation se stabiliser
+    start_y = h * random.uniform(0.70, 0.80)
+    end_y = h * random.uniform(0.15, 0.25)
+    dur = random.randint(250, 450)
+    await driver.ht.swipe(x, start_y, x + random.gauss(0, 5), end_y, duration=dur, steps=random.randint(15, 25))
 
 
 async def _dismiss_popup(driver):
@@ -386,7 +384,7 @@ async def _dismiss_popup(driver):
     Returns True if a popup was dismissed.
     """
     await driver.refresh_elements()
-    dismiss_texts = ["OK", "Fermer", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
+    dismiss_texts = ["OK", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
     for text in dismiss_texts:
         el = await driver.find_element(text, clickable=True)
         if el:
