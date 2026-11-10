@@ -732,8 +732,24 @@ class IGDriver:
 
     # ── Timing ───────────────────────────────────────────────────────────
 
-    async def wait(self, min_s: float = 0.5, max_s: float = 2.0):
-        """Human-like pause."""
+    # Named timing presets for natural pauses
+    WAIT_PRESETS = {
+        "micro":      (0.1, 0.3),    # tiny pause between rapid actions
+        "tap":        (0.2, 0.6),    # post-tap settle
+        "short":      (0.3, 0.8),    # quick micro-pause
+        "scroll":     (0.5, 1.5),    # between scroll gestures
+        "read_short": (0.8, 2.0),    # quick glance at content
+        "medium":     (1.0, 2.5),    # standard interaction pause
+        "transition": (1.5, 3.0),    # screen transition / navigation
+        "load":       (2.0, 4.0),    # waiting for content to load
+        "long":       (2.5, 5.0),    # reading / viewing content
+    }
+
+    async def wait(self, min_s: float | str = 0.5, max_s: float = 2.0):
+        """Human-like pause. Accepts floats or a preset name ('transition', 'short', 'medium', 'long', 'load')."""
+        if isinstance(min_s, str):
+            preset = self.WAIT_PRESETS.get(min_s, (0.5, 2.0))
+            min_s, max_s = preset
         await self.ht.wait(min_s, max_s)
 
     async def reading_pause(self, text_length: int = 100):
