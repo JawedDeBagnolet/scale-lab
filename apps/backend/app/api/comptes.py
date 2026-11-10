@@ -71,6 +71,39 @@ async def delete_compte(compte_id: UUID, db: AsyncSession = Depends(get_db)):
     await service.delete_compte(db, c)
 
 
+# ── Live profile data (via IG private API + scraper account) ───────────────
+
+@router.get("/{compte_id}/profile-live")
+async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Fetch real-time profile data from IG private API.
+
+    Uses a scraper account (is_scraper=True) to call the IG private API
+    and returns: profile pic, bio, highlights, follower/following counts, etc.
+    """
+    c = await service.get_compte(db, compte_id)
+    if not c:
+        raise HTTPException(404, "compte not found")
+
+    if c.plateforme not in ("ig", "th"):
+        raise HTTPException(400, "profile-live only supports ig and th")
+
+    from app.services.ig_api_scraper import IGScraperClient
+    client = await IGScraperClient.from_db(db, platform="ig")
+    if not client:
+        raise HTTPException(503, "Aucun compte scraper actif disponible — ajoute-en un avec is_scraper=true")
+
+    try:
+        profile = await client.get_user_profile_full(c.handle.lstrip("@"))
+        if not profile:
+            raise HTTPException(404, f"Profil @{c.handle} introuvable sur Instagram")
+        return profile
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("profile-live error for %s: %s", c.handle, e)
+        raise HTTPException(502, f"Erreur API IG: {str(e)[:200]}")
+
+
 # ── Batch login endpoints ───────────────────────────────────────────────────
 
 @router.post("/batch-login")

@@ -312,6 +312,81 @@ class IGScraperClient:
             "category": user.get("category", ""),
         }
 
+    async def get_user_highlights(self, user_pk: str) -> list[dict]:
+        """Get user's story highlights (tray)."""
+        data = await self._get(
+            f"/api/v1/highlights/{user_pk}/highlights_tray/",
+        )
+        trays = data.get("tray", [])
+        return [
+            {
+                "id": t.get("id"),
+                "title": t.get("title", ""),
+                "cover_url": (
+                    (t.get("cover_media", {}) or {})
+                    .get("cropped_image_version", {})
+                    .get("url", "")
+                ),
+                "media_count": t.get("media_count", 0),
+            }
+            for t in trays
+        ]
+
+    async def get_user_profile_full(self, username: str) -> dict | None:
+        """Get full profile data: info + highlights. One call for the modal.
+
+        Uses web profile endpoint to resolve username → pk, then fetches
+        detailed info and highlights in parallel.
+        """
+        import asyncio
+
+        # Resolve username to pk via search
+        data = await self._get(
+            "/api/v1/users/web_profile_info/",
+            params={"username": username},
+        )
+        user = (data.get("data", {}) or {}).get("user") or data.get("user")
+        if not user:
+            return None
+
+        pk = str(user.get("pk", user.get("id", "")))
+        if not pk:
+            return None
+
+        # Fetch detailed info + highlights in parallel
+        info_task = self.get_user_info(pk)
+        highlights_task = self.get_user_highlights(pk)
+        info, highlights = await asyncio.gather(info_task, highlights_task, return_exceptions=True)
+
+        if isinstance(info, Exception):
+            logger.warning("get_user_info failed for %s: %s", username, info)
+            info = None
+        if isinstance(highlights, Exception):
+            logger.warning("get_highlights failed for %s: %s", username, highlights)
+            highlights = []
+
+        if not info:
+            # Fallback: use data from web_profile_info
+            info = {
+                "pk": pk,
+                "username": user.get("username", username),
+                "full_name": user.get("full_name", ""),
+                "biography": user.get("biography", ""),
+                "profile_pic_url": user.get("profile_pic_url", ""),
+                "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
+                "is_verified": user.get("is_verified", False),
+                "is_private": user.get("is_private", False),
+                "is_business": user.get("is_business", False),
+                "follower_count": user.get("edge_followed_by", {}).get("count", user.get("follower_count", 0)),
+                "following_count": user.get("edge_follow", {}).get("count", user.get("following_count", 0)),
+                "media_count": user.get("edge_owner_to_timeline_media", {}).get("count", user.get("media_count", 0)),
+                "external_url": user.get("external_url", ""),
+                "category": user.get("category_name", user.get("category", "")),
+            }
+
+        info["highlights"] = highlights if not isinstance(highlights, Exception) else []
+        return info
+
     async def get_user_feed(
         self, user_pk: str, count: int = 12, max_id: str | None = None
     ) -> dict:
