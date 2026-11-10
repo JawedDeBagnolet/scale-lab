@@ -266,7 +266,7 @@ async def _execute_action(
         account_id, platform, action_type,
     )
     await asyncio.sleep(0.1)
-    return True, f"stub: {action_type} executed (web)"
+    return True, f"stub: {action_type} executed (web)", []
 
 
 async def _execute_iphone_action(
@@ -308,28 +308,9 @@ async def _execute_iphone_action(
             abort_event=abort_evt,
         )
     else:
-        return False, f"Plateforme iPhone inconnue : {platform}"
+        return False, f"Plateforme iPhone inconnue : {platform}", []
 
-    # Store captured logs in the run journal for debugging
-    if run_id and collector.lines:
-        try:
-            async with AsyncSessionLocal() as db:
-                run = await db.get(Run, run_id)
-                if run:
-                    journal = list(run.journal or [])
-                    journal.append({
-                        "t": datetime.now(UTC).isoformat(),
-                        "type": "session_logs",
-                        "account_id": str(account_id),
-                        "action": action_type,
-                        "lines": collector.lines,
-                    })
-                    run.journal = journal
-                    await db.commit()
-        except Exception as e:
-            logger.warning("Failed to save session logs: %s", str(e)[:100])
-
-    return result
+    return result[0], result[1], collector.lines
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +498,7 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
                 values = action_data[1] if len(action_data) > 1 else {}
                 preset_ids = action_data[2] if len(action_data) > 2 else []
 
-            success, detail = await _execute_action(
+            success, detail, log_lines = await _execute_action(
                 acc_id, platform, action_type, values, preset_ids,
                 run_id=run.id,
             )
@@ -528,6 +509,15 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
                 step=current_step_idx,
                 detail=f"{action_type}: {detail}",
             ))
+            # Store session logs in journal (same DB session, no race condition)
+            if log_lines:
+                journal.append({
+                    "t": datetime.now(UTC).isoformat(),
+                    "type": "session_logs",
+                    "account_id": str(acc_id),
+                    "action": action_type,
+                    "lines": log_lines,
+                })
             if not success:
                 step_ok = False
                 await emit_event(

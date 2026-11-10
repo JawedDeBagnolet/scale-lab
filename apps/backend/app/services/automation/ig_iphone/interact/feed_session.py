@@ -95,7 +95,50 @@ async def _scroll(driver, kind, up=False):
     """Scroll d'une distance tiree dans la plage de `kind`."""
     lo, hi = SCROLL_RANGES[kind]
     d = driver.ht.screen_h * random.uniform(lo, hi)
-    return await driver.scroller.scroll_by(-d if up else d)
+    if up:
+        await driver.ht.scroll_up()
+    else:
+        await driver.ht.scroll_down()
+
+
+async def _cycle_next_post(driver, seen, intensity="normal"):
+    """Scan les elements UI pour trouver le prochain post non vu.
+
+    Retourne un dict {id, username, text, type, el} ou None.
+    """
+    await driver.refresh_elements()
+    elements = driver._elements_cache or []
+
+    for el in elements:
+        text = (el.get("text") or "").strip()
+        # Posts IG ont des labels comme "Post by X", "Photo by X", "Video by X",
+        # "Reel by X", "Publication de X", "Photo de X"
+        is_post = False
+        username = ""
+        for prefix in ("Post by ", "Photo by ", "Video by ", "Reel by ",
+                        "Publication de ", "Photo de ", "Vidéo de ", "Reel de "):
+            if text.startswith(prefix):
+                username = text[len(prefix):].split(",")[0].split(".")[0].strip()
+                is_post = True
+                break
+
+        if not is_post:
+            continue
+
+        post_id = username or text[:40]
+        if post_id in seen:
+            continue
+
+        seen.add(post_id)
+        return {
+            "id": post_id,
+            "username": username,
+            "text": text,
+            "el": el,
+            "y": el.get("y", el.get("tap", {}).get("y", 0)),
+        }
+
+    return None
 
 
 def _pick_intensity():
@@ -156,7 +199,7 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print,
     if screen != 'feed':
         await navigator.go_home()
 
-    _scroll(driver, 'open')
+    await _scroll(driver, 'open')
     await driver.wait('read_short')
 
     while True:
@@ -183,22 +226,22 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print,
         # Anti-pattern : scroll back
         if stats["posts_seen"] > 2 and random.random() < cfg["scroll_back_pct"]:
             log("   [anti] scroll back")
-            _scroll(driver, 'back_up', up=True)
+            await _scroll(driver, 'back_up', up=True)
             await driver.wait('read_short')
             stats["scroll_backs"] += 1
-            _scroll(driver, 'back_down')
+            await _scroll(driver, 'back_down')
             await driver.wait('scroll')
             continue
 
         # Avancer au post suivant
         intensity = _pick_intensity()
-        post = driver.cycle_next_post(seen=seen, intensity=intensity)
+        post = await _cycle_next_post(driver, seen, intensity=intensity)
         if not post:
             log("   pas de post -> avance")
-            _scroll(driver, 'advance')
+            await _scroll(driver, 'advance')
             await driver.wait('scroll')
             # Recovery : verifier qu'on est toujours sur le feed
-            post2 = driver.cycle_next_post(seen=seen, intensity='strong')
+            post2 = await _cycle_next_post(driver, seen, intensity='strong')
             if not post2:
                 screen = await navigator.where_am_i()
                 stats["_recovery_fails"] += 1
@@ -339,7 +382,7 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print,
             await driver.wait('transition')
             read_time = random.uniform(3.0, 8.0)
             await asyncio.sleep(read_time / 2)
-            _scroll(driver, 'read')
+            await _scroll(driver, 'read')
             await asyncio.sleep(read_time / 2)
             # Ecrire un commentaire IA ?
             if random.random() < cfg.get("comment_write_pct", 0.03):
