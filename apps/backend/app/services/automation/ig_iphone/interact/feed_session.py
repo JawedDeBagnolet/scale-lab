@@ -114,15 +114,9 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print,
         task: dict de la task (pour resolution preset)
     Returns: dict de stats {posts_seen, likes, comments_read, duration_s, ...}
     """
-    from app.services.automation.ig_iphone.behavior.presets import resolve_behavior, apply_behavior
-
+    # Presets are resolved and applied by ig_runner before calling this function.
+    # The config dict already contains merged preset overrides.
     cfg = {**DEFAULT_CONFIG, **(config or {})}
-    task = task or {}
-
-    # Resoudre et appliquer un preset comportement
-    behavior = resolve_behavior(task, cfg, log)
-    if behavior:
-        cfg = apply_behavior(cfg, behavior, log)
 
     duration_s = random.uniform(cfg["duration_min"] * 60, cfg["duration_max"] * 60)
 

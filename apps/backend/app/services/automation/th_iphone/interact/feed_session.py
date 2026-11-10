@@ -45,17 +45,8 @@ def _pick_intensity():
 async def run_feed_session(driver, navigator, config=None, task=None, log=print):
     """Execute une session feed Threads complete (async)."""
 
+    # Presets are resolved and applied by th_runner before calling this function.
     cfg = {**DEFAULT_CONFIG, **(config or {})}
-    task = task or {}
-
-    # Resolve behavior preset if available
-    try:
-        from ..behavior.presets import resolve_behavior, apply_behavior
-        behavior = await resolve_behavior()
-        if behavior:
-            cfg = apply_behavior(cfg, behavior, log)
-    except Exception:
-        behavior = None
 
     duration_s = random.uniform(cfg["duration_min"] * 60, cfg["duration_max"] * 60)
 
