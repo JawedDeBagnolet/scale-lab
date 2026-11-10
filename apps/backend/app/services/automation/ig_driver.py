@@ -151,18 +151,22 @@ class IGDriver:
 
     # ── Element finding ──────────────────────────────────────────────────
 
-    def find_elements(
+    async def find_elements(
         self,
         text: str | None = None,
         *,
         contains: bool = False,
-        clickable: bool = False,
+        clickable: bool | None = False,
         element_type: str | None = None,
+        refresh: bool = False,
     ) -> list[dict]:
         """Find elements in the cache matching criteria.
 
         Uses Unicode NFKD normalization for accent-insensitive matching.
+        refresh=True reloads the UI tree before searching.
         """
+        if refresh:
+            await self.refresh_elements()
         results = []
         if text:
             needle = _normalize(text).lower()
@@ -187,15 +191,18 @@ class IGDriver:
 
         return results
 
-    def find_element(
+    async def find_element(
         self,
-        text: str,
+        text: str = "",
         *,
         contains: bool = False,
         clickable: bool = False,
+        refresh: bool = False,
     ) -> dict | None:
-        """Find first matching element or None."""
-        matches = self.find_elements(
+        """Find first matching element or None. refresh=True reloads UI tree first."""
+        if refresh:
+            await self.refresh_elements()
+        matches = await self.find_elements(
             text, contains=contains, clickable=clickable
         )
         return matches[0] if matches else None
@@ -211,10 +218,10 @@ class IGDriver:
         if refresh:
             await self.refresh_elements()
 
-        el = self.find_element(text, contains=contains, clickable=True)
+        el = await self.find_element(text, contains=contains, clickable=True)
         if not el:
             # Try without clickable filter
-            el = self.find_element(text, contains=contains)
+            el = await self.find_element(text, contains=contains)
 
         if not el:
             self.log(f"   [ig] élément '{text}' introuvable")
@@ -244,7 +251,7 @@ class IGDriver:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             await self.refresh_elements()
-            el = self.find_element(text, contains=contains)
+            el = await self.find_element(text, contains=contains)
             if el:
                 return el
             await asyncio.sleep(interval)
@@ -557,7 +564,7 @@ class IGDriver:
             await self.refresh_elements()
 
             if probe_element:
-                el = self.find_element(probe_element, contains=True)
+                el = await self.find_element(probe_element, contains=True)
                 if not el:
                     return False
                 current_y = el.get("y", 0)
@@ -574,7 +581,7 @@ class IGDriver:
 
             # Re-probe to feed ScrollEngine
             await self.refresh_elements()
-            el = self.find_element(probe_element, contains=True)
+            el = await self.find_element(probe_element, contains=True)
             if el:
                 new_y = el.get("y", 0)
                 actual = old_y - new_y

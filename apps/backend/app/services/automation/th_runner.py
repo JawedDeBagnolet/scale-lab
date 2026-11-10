@@ -115,6 +115,14 @@ async def run_th_task(
 
             _check_abort(abort_event)
 
+            # Resolve behavior presets and apply overrides
+            if preset_ids:
+                from app.services.automation.th_iphone.behavior.presets import (
+                    resolve_behavior, apply_behavior,
+                )
+                behavior = await resolve_behavior(preset_ids=preset_ids, log=log)
+                values = apply_behavior(dict(values), behavior, log=log)
+
             result = await handler(drv, nav, sess, values, preset_ids, log)
             return result
 

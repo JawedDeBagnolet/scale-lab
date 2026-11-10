@@ -114,6 +114,14 @@ async def run_ig_task(
 
             _check_abort(abort_event)
 
+            # Resolve behavior presets and apply overrides
+            if preset_ids:
+                from app.services.automation.ig_iphone.behavior.presets import (
+                    resolve_behavior, apply_behavior,
+                )
+                behavior = await resolve_behavior(preset_ids=preset_ids, log=log)
+                values = apply_behavior(dict(values), behavior, log=log)
+
             # Run the handler
             result = await handler(drv, nav, sess, values, log)
             return result
