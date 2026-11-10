@@ -400,6 +400,33 @@ async def _ssh_check(
 # SCALECTL — container management via SSH → scalectl on iPhone
 # ═══════════════════════════════════════════════════════════════════════════
 
+
+async def _fix_container_ownership(
+    ssh_port: int,
+    container_uuid: str,
+    *,
+    host: str = "127.0.0.1",
+) -> None:
+    """Fix container directory ownership after scalectl creates it as root.
+
+    scalectl runs via SSH (as root). NSFileManager attributes for ownership
+    are silently ignored on iOS, so directories end up root:mobile instead of
+    mobile:mobile. IG (running as mobile) can't write to root-owned dirs,
+    which breaks session persistence. This chown fixes it.
+    """
+    # Glob matches the single IG app container — avoids hardcoding the app UUID
+    fix_cmd = (
+        f"chown -R mobile:mobile "
+        f"/var/mobile/Containers/Data/Application/*/Library/___Scale_Containers/{container_uuid}/ "
+        f"2>/dev/null && echo OK"
+    )
+    ok, output = await _ssh_exec(ssh_port, fix_cmd, host=host, timeout=10)
+    if ok and "OK" in output:
+        logger.info("Fixed container ownership: %s", container_uuid[:8])
+    else:
+        logger.warning("chown container failed for %s: %s", container_uuid[:8], output)
+
+
 async def scalectl_list_containers(
     ssh_port: int,
     bundle: str = "com.burbn.instagram",
@@ -495,6 +522,9 @@ async def scalectl_switch_container(
 
     await _dispatch_log("device", "info", bundle, f"Container switché: {bundle} → {container_uuid[:8]}")
     logger.info("scalectl: switched %s → %s", bundle, container_uuid)
+
+    # Ensure container dirs are mobile-owned (fix for scalectl creating as root)
+    await _fix_container_ownership(ssh_port, container_uuid, host=host)
 
     if not relaunch:
         return True
@@ -611,9 +641,14 @@ async def scalectl_create_container(
     containers = await scalectl_list_containers(ssh_port, bundle, host=host)
     for c in containers:
         if c.get("name") == name:
+            uuid = c["uuid"]
+            # Fix container ownership — scalectl runs as root, NSFileManager
+            # attributes are silently ignored on iOS, leaving dirs as root:mobile.
+            # IG (mobile) can't write to root-owned dirs → session not persisted.
+            await _fix_container_ownership(ssh_port, uuid, host=host)
             # Activate the new container immediately
-            await scalectl_switch_container(ssh_port, c["uuid"], bundle, host=host)
-            return c["uuid"]
+            await scalectl_switch_container(ssh_port, uuid, bundle, host=host)
+            return uuid
 
     logger.warning("scalectl create: container '%s' not found after creation", name)
     await _dispatch_log("device", "error", host, f"Container '{name}' introuvable après création", code="CONTAINER_NOT_FOUND")
