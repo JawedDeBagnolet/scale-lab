@@ -774,6 +774,7 @@ if ('serviceWorker' in navigator) {
       oc: w.oc || { connected: false },
       gms: w.gms || { connected: false },
       tg: w.tg || { connected: false },
+      scrapigo: w.scrapigo || { connected: false },
       envProviders: w.env_providers || {},
       notifications: w.notifications || {},
       updated: w.updated_at
