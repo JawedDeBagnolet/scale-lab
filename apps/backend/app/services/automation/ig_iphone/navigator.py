@@ -29,7 +29,7 @@ class IGNavigator:
     async def open_instagram(self):
         """Lance IG et attend que le feed soit charge."""
         self.log("-> Ouverture Instagram")
-        await self.d.ht.launch(IG_BUNDLE)
+        await self.d.ht.launch_app(IG_BUNDLE)
         await self.d.wait('transition')
         await asyncio.sleep(2)
 
@@ -44,7 +44,7 @@ class IGNavigator:
 
     async def close_instagram(self):
         """Ferme IG."""
-        await self.d.ht.kill(IG_BUNDLE)
+        await self.d.ht.terminate_app(IG_BUNDLE)
         self.log("   IG ferme")
 
     # ── Navigation tabs ───────────────────────────────────────────────────
@@ -397,9 +397,9 @@ class IGNavigator:
             return False
         log("   [feed] !! relance de l'app (dernier recours)")
         try:
-            await self.d.ht.kill(self.IG_BUNDLE_ID)
+            await self.d.ht.terminate_app(self.IG_BUNDLE_ID)
             await asyncio.sleep(2)
-            await self.d.ht.launch(self.IG_BUNDLE_ID)
+            await self.d.ht.launch_app(self.IG_BUNDLE_ID)
             await asyncio.sleep(6)
         except Exception as e:
             log("   [feed] relance KO: %s" % str(e)[:80])

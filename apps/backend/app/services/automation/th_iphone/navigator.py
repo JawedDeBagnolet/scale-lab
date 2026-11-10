@@ -27,7 +27,7 @@ class THNavigator:
     async def open_threads(self):
         """Lance Threads et attend que le feed soit charge."""
         self.log("-> Ouverture Threads")
-        await self.d.ht.launch(TH_BUNDLE)
+        await self.d.ht.launch_app(TH_BUNDLE)
         await self.d.wait('transition')
         await asyncio.sleep(2)
 
@@ -39,7 +39,7 @@ class THNavigator:
 
     async def close_threads(self):
         """Ferme Threads."""
-        await self.d.ht.kill(TH_BUNDLE)
+        await self.d.ht.terminate_app(TH_BUNDLE)
         self.log("   Threads ferme")
 
     # ── Navigation tabs ───────────────────────────────────────────────────

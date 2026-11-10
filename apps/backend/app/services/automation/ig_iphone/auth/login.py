@@ -180,7 +180,7 @@ async def login(driver, navigator, username, password,
     """Connecte un compte IG."""
     log("-> Auth: login '%s'" % username)
 
-    await driver.ht.launch("com.burbn.instagram")
+    await driver.ht.launch_app("com.burbn.instagram")
     await asyncio.sleep(4)
 
     # Boucle de navigation vers l'ecran de login
@@ -206,7 +206,7 @@ async def login(driver, navigator, username, password,
         log("   ecran inconnu, tentative retour (%d)" % (attempt + 1))
         await driver.ht._call("press_key", {"key": "home"})
         await asyncio.sleep(1)
-        await driver.ht.launch("com.burbn.instagram")
+        await driver.ht.launch_app("com.burbn.instagram")
         await asyncio.sleep(4)
 
     # Ecran de login

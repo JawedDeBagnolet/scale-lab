@@ -586,7 +586,7 @@ async def scalectl_kill_app(
         _mcp = mcp_port or DEFAULT_MCP_PORT
         # Step 1: Press Home to background the app (triggers save handlers)
         try:
-            await mcp_call(_mcp, "press_button", {"button": "home"}, host=host, timeout=5)
+            await mcp_call(_mcp, "press_key", {"key": "home"}, host=host, timeout=5)
             await asyncio.sleep(1.5)  # Let the tweak's background save complete
         except Exception:
             pass  # MCP might be unreachable, continue with kill

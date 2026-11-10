@@ -67,7 +67,7 @@ async def create_threads_account(driver, navigator, username, password,
 
     log("-> Creation compte Threads @%s" % username)
 
-    await driver.ht.launch("com.burbn.barcelona")
+    await driver.ht.launch_app("com.burbn.barcelona")
     await driver.wait('transition')
     await asyncio.sleep(4)
 
