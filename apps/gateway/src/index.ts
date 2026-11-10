@@ -91,9 +91,14 @@ app.use('/api/*', async (c, next) => {
     return
   }
   // Mutating method — invalidate matching cache key
-  const ck = cacheKeyFor(new URL(c.req.url).pathname)
+  const pathname = new URL(c.req.url).pathname
+  const ck = cacheKeyFor(pathname)
   if (ck) {
     try { await c.env.CACHE.delete(ck) } catch { /* best effort */ }
+  }
+  // Mutations on /api/integrations/* also invalidate /api/settings cache
+  if (pathname.startsWith('/api/integrations')) {
+    try { await c.env.CACHE.delete('cache:/api/settings') } catch { /* best effort */ }
   }
   await next()
 })
