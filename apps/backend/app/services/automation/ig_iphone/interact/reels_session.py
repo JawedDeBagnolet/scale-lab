@@ -258,6 +258,9 @@ async def run_reels_session(driver, navigator, config=None, task=None, log=print
                         tap2 = target.get('tap', {})
                         log("   enregistrer reel @%s" % username)
                         await driver.ht.tap(tap2['x'], tap2['y'])
+                        await driver.wait('transition')
+                        # Dismiss le menu "Enregistré" / collections
+                        await _dismiss_popup(driver)
                         stats["saves"] += 1
                 elif _menu_action == "not_interested":
                     target = await driver.find_element(contains="ne m'int", clickable=True, refresh=True)
@@ -384,7 +387,7 @@ async def _dismiss_popup(driver):
     Returns True if a popup was dismissed.
     """
     await driver.refresh_elements()
-    dismiss_texts = ["OK", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
+    dismiss_texts = ["OK", "Fermer", "Annuler", "Pas maintenant", "Not Now", "Ignorer", "Continuer"]
     for text in dismiss_texts:
         el = await driver.find_element(text, clickable=True)
         if el:
