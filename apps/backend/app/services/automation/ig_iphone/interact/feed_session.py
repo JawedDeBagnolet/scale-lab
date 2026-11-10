@@ -149,12 +149,7 @@ async def run_feed_session(driver, navigator, config=None, task=None, log=print,
         bname, cfg["duration_min"], cfg["duration_max"], cfg["like_pct"] * 100))
     log("=" * 50)
 
-    # Health check avant session
-    health = check_account_health(log=log)
-    if not health["ok"]:
-        log("   ! compte en %s — session annulee" % health["status"])
-        stats["aborted"] = health["status"]
-        return stats
+    # Health check is done by ig_runner before calling this function
 
     await navigator.open_instagram()
     screen = await navigator.where_am_i()

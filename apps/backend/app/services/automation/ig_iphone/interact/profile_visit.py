@@ -69,11 +69,7 @@ async def visit_profile(driver, navigator, username, config=None, log=print):
         "duration_s": 0,
     }
 
-    # Health check avant visite
-    health = check_account_health(log=log)
-    if not health["ok"]:
-        log("   ! compte en %s — visite annulee" % health["status"])
-        return stats
+    # Health check is done by ig_runner before calling this function
 
     log("-> Visite profil @%s" % username)
 
