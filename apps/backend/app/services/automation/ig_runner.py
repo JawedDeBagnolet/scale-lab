@@ -121,6 +121,9 @@ async def run_ig_task(
                 )
                 behavior = await resolve_behavior(preset_ids=preset_ids, log=log)
                 values = apply_behavior(dict(values), behavior, log=log)
+                if behavior:
+                    values["_preset_name"] = behavior.get("name", "")
+                    values["_preset_id"] = behavior.get("id", "")
 
             # Run the handler
             result = await handler(drv, nav, sess, values, log)
