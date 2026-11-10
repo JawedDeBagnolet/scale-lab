@@ -542,9 +542,20 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
                 journal.append(_journal_entry(run.id, "loop_restart"))
                 run.journal = journal
             else:
-                run.status = "done"
+                # Check if any account had errors on any step
+                has_errors = False
+                for aid in accounts:
+                    ap = progress.get(str(aid), {})
+                    for sv in ap.values():
+                        if sv == "error":
+                            has_errors = True
+                            break
+                    if has_errors:
+                        break
+
+                run.status = "error" if has_errors else "done"
                 run.finished_at = _now()
-                journal.append(_journal_entry(run.id, "done"))
+                journal.append(_journal_entry(run.id, "done" if not has_errors else "error"))
                 run.journal = journal
 
     await db.commit()
@@ -561,6 +572,15 @@ async def _process_run(db: AsyncSession, run: Run) -> None:
             level="info",
             target=scenario.name if scenario else None,
             message=f"Run terminé avec succès",
+            meta={"run_id": str(run.id)},
+        )
+    elif run.status == "error":
+        await emit_event(
+            module="scenarios",
+            event_type="run.error",
+            level="error",
+            target=scenario.name if scenario else None,
+            message=f"Run terminé avec erreurs",
             meta={"run_id": str(run.id)},
         )
 
