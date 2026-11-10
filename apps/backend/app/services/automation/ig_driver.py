@@ -27,12 +27,15 @@ logger = logging.getLogger("automation.ig_driver")
 
 IG_BUNDLE = "com.burbn.instagram"
 
-# Bottom navigation bar labels (FR locale)
+# Bottom navigation bar labels (FR + EN)
 _NAV_HOME = "Fil principal"
+_NAV_HOME_EN = "Main feed"
 _NAV_SEARCH = "Rechercher"
+_NAV_SEARCH_EN = "Explore"
 _NAV_REELS = "Reels"
 _NAV_SHOP = "Boutique"
 _NAV_PROFILE = "Profil"
+_NAV_PROFILE_EN = "Profile"
 
 # Screen detection markers
 _SCREEN_MARKERS = {
@@ -61,14 +64,19 @@ _SCREEN_MARKERS = {
     # ── Main app screens (checked AFTER auth) ──
     # ATTENTION : "Fil principal" et "Reels" sont dans la nav bar, visibles sur TOUS
     # les écrans → ne PAS les utiliser comme marqueurs. Utiliser des éléments de contenu.
-    "reels":       ["Reel de", "Progression de la vid", "Ouvrez l'appareil photo"],
-    "feed":        ["Fil principal d'Instagram", "Barre des stories",
-                    "Publication suggérée pour vous", "Publication de",
-                    "Photo de", "Vidéo de"],
-    "own_profile": ["Modifier le profil", "Modifier profil", "Partager le profil"],
-    "post_view":   ["Ajouter un commentaire"],
-    "explore":     ["Rechercher et explorer"],
-    "story":       ["Votre story"],
+    "reels":       ["Reel de", "Reel by", "Progression de la vid",
+                    "Ouvrez l'appareil photo", "Video progress"],
+    "feed":        ["Fil principal d'Instagram", "Instagram Main Feed",
+                    "Barre des stories", "Stories Tray",
+                    "Publication suggérée pour vous", "Suggested for you",
+                    "Publication de", "Post by",
+                    "Photo de", "Photo by",
+                    "Vidéo de", "Video by"],
+    "own_profile": ["Modifier le profil", "Modifier profil", "Edit profile",
+                    "Partager le profil", "Share profile"],
+    "post_view":   ["Ajouter un commentaire", "Add a comment"],
+    "explore":     ["Rechercher et explorer", "Search and explore"],
+    "story":       ["Votre story", "Your story"],
 }
 
 # Post markers in accessibility tree
@@ -579,11 +587,11 @@ class IGDriver:
 
     async def go_home(self) -> bool:
         """Navigate to the feed/home tab."""
-        return await self.tap_element(_NAV_HOME)
+        return await self.tap_element(_NAV_HOME) or await self.tap_element(_NAV_HOME_EN)
 
     async def go_search(self) -> bool:
         """Navigate to the search/explore tab."""
-        return await self.tap_element(_NAV_SEARCH)
+        return await self.tap_element(_NAV_SEARCH) or await self.tap_element(_NAV_SEARCH_EN)
 
     async def go_reels(self) -> bool:
         """Navigate to the reels tab."""
