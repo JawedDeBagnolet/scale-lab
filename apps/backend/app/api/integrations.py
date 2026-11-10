@@ -159,6 +159,77 @@ async def remove_gms_key(db: AsyncSession = Depends(get_db)):
     return {"ok": True}
 
 
+# ── Scrapigo ───────────────────────────────────────────
+
+@router.post("/scrapigo/test", response_model=TestResult)
+async def test_scrapigo(body: TestKeyRequest, db: AsyncSession = Depends(get_db)):
+    """Test Scrapigo API key validity."""
+    key = body.api_key
+    if not key:
+        s = await settings_svc.get_or_create(db)
+        key = s.scrapigo_api_key
+    if not key:
+        raise HTTPException(400, "Aucune cle API Scrapigo fournie")
+
+    from app.services.scrapigo import ScrapigoClient
+    client = ScrapigoClient(key)
+    bal = await client.get_balance()
+
+    ok = bal is not None
+    return TestResult(
+        ok=ok,
+        error=None if ok else "Cle refusee ou expiree",
+        details=bal if ok else None,
+    )
+
+
+@router.put("/scrapigo/key")
+async def save_scrapigo_key(body: TestKeyRequest, db: AsyncSession = Depends(get_db)):
+    """Save Scrapigo API key and test it."""
+    if not body.api_key:
+        raise HTTPException(400, "api_key requis")
+
+    from app.services.scrapigo import ScrapigoClient
+    client = ScrapigoClient(body.api_key)
+    bal = await client.get_balance()
+    ok = bal is not None
+
+    s = await settings_svc.get_or_create(db)
+    s.scrapigo_api_key = body.api_key
+    await db.commit()
+    await db.refresh(s)
+
+    return {
+        "ok": ok,
+        "error": None if ok else "Cle refusee ou expiree",
+        "key_tail": f"***{body.api_key[-4:]}",
+        "connected": ok,
+    }
+
+
+@router.delete("/scrapigo/key")
+async def remove_scrapigo_key(db: AsyncSession = Depends(get_db)):
+    """Remove Scrapigo API key."""
+    s = await settings_svc.get_or_create(db)
+    s.scrapigo_api_key = None
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/scrapigo/status", response_model=StatusResult)
+async def scrapigo_status(db: AsyncSession = Depends(get_db)):
+    """Get Scrapigo account status (balance, usage)."""
+    s = await settings_svc.get_or_create(db)
+    if not s.scrapigo_api_key:
+        return StatusResult(ok=False, error="Pas de cle API configuree")
+
+    from app.services.scrapigo import ScrapigoClient
+    client = ScrapigoClient(s.scrapigo_api_key)
+    bal = await client.get_balance()
+    if bal is None:
+        return StatusResult(ok=False, error="Cle refusee ou expiree")
+    return StatusResult(ok=True, data=bal)
+
 # ── Status ──────────────────────────────────────────────
 
 @router.get("/oc/status", response_model=StatusResult)
