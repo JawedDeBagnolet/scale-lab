@@ -10,6 +10,7 @@ from app.models.persona import Persona
 from app.models.posting import Campagne, Collection, Media, Publication, Template
 from app.models.proxy import Proxy
 from app.models.scenario import PlageHoraire, Run, Scenario
+from app.models.scraper_account import ScraperAccount
 from app.models.settings import WorkspaceSettings
 from app.models.statistique import DailyStat
 from app.models.target import Target
@@ -42,6 +43,7 @@ __all__ = [
     "Publication",
     "Run",
     "Scenario",
+    "ScraperAccount",
     "Script",
     "Snipe",
     "Target",

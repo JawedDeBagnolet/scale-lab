@@ -34,6 +34,11 @@ class WorkspaceSettings(Base):
     tg_chat_id: Mapped[str | None] = mapped_column(String(100))
     tg_connected: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Integration: Scrapigo (proxy résidentiel pour scraping API privée)
+    scrapigo_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scrapigo_product: Mapped[str] = mapped_column(String(30), default="residential")  # residential, residential_instagram
+    scrapigo_country: Mapped[str] = mapped_column(String(5), default="FR")
+
     # Integration: environment providers (GoLogin, GeeLark)
     env_providers: Mapped[dict | None] = mapped_column(JSONB, default=dict)
 

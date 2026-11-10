@@ -21,7 +21,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import (
     comptes, comportements, crm, dashboard, health, ig_proxy, iphones,
     integrations, liens, logs, personas, posting, proxies, referentiels,
-    scenarios, settings, statistiques, targets, telegram, veille,
+    scenarios, scraper_accounts, settings, statistiques, targets, telegram, veille,
 )
 from app.auth import auth_middleware
 from app.db import engine as db_engine
@@ -92,6 +92,7 @@ app.include_router(posting.router, prefix="/api/posting", tags=["posting"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
 app.include_router(ig_proxy.router, prefix="/api", tags=["ig-proxy"])
+app.include_router(scraper_accounts.router, prefix="/api/scraper-accounts", tags=["scraper-accounts"])
 
 # WebSocket (pas d'auth — le gateway proxy le WS séparément)
 app.websocket("/ws/logs")(ws_logs)
