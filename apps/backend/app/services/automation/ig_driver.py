@@ -117,6 +117,32 @@ class IGDriver:
         self._elements_cache: list[dict] = []
         self._cache_age: float = 0
 
+    # ── Delegated touch methods ─────────────────────────────────────────
+
+    async def tap_pos(self, x_frac: float, y_frac: float):
+        """Tap at relative screen position (fractions 0-1). Delegates to HumanTouch."""
+        await self.ht.tap_pos(x_frac, y_frac)
+
+    async def tap(self, x: float, y: float, **kwargs):
+        """Tap at absolute coordinates. Delegates to HumanTouch."""
+        await self.ht.tap(x, y, **kwargs)
+
+    async def scroll_down(self, config=None):
+        """Scroll down. Delegates to HumanTouch."""
+        await self.ht.scroll_down(config)
+
+    async def scroll_up(self, config=None):
+        """Scroll up. Delegates to HumanTouch."""
+        await self.ht.scroll_up(config)
+
+    async def swipe(self, sx, sy, ex, ey, **kwargs):
+        """Swipe gesture. Delegates to HumanTouch."""
+        await self.ht.swipe(sx, sy, ex, ey, **kwargs)
+
+    async def type_text(self, text, **kwargs):
+        """Type text. Delegates to HumanTouch."""
+        await self.ht.type_text(text, **kwargs)
+
     # ── Element access ───────────────────────────────────────────────────
 
     async def refresh_elements(

@@ -136,7 +136,11 @@ async def run_th_task(
     except LoginRequired as e:
         return False, f"Login requis : {e}"
     except Exception as e:
-        logger.exception("th_runner error for %s/%s", compte_id, action_type)
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("th_runner error for %s/%s\n%s", compte_id, action_type, tb)
+        log(f"[th_runner] ✗ ERREUR: {str(e)[:200]}")
+        log(tb)
         return False, f"Erreur : {str(e)[:200]}"
 
 
