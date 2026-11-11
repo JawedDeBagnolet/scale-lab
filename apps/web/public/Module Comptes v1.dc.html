@@ -45,6 +45,15 @@
   transition: left .55s cubic-bezier(.34,1.56,.64,1), width .55s cubic-bezier(.34,1.56,.64,1), transform .3s ease;
 }
 .lg-pill.moving { transform: scaleY(.86); }
+/* ── Version universelle : copie de la page + filter (et non backdrop-filter) ── */
+.lg-sheet.lg-uni .lg-glass { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: hidden; }
+.lg-sheet.lg-uni .lg-fx { position: absolute; left: -40px; top: -40px; right: -40px; bottom: -40px;
+  filter: url(#lg-filter) saturate(1.7) brightness(1.04); -webkit-filter: url(#lg-filter) saturate(1.7) brightness(1.04);
+  transform: translateZ(0); will-change: transform; overflow: hidden; }
+.lg-sheet.lg-uni .lg-clone { position: absolute; pointer-events: none; }
+.lg-sheet.lg-uni .lg-veil { position: absolute; inset: 0; background: rgba(5,6,12,.3); }
+.lg-sheet.lg-uni .lg-tint { position: absolute; inset: 0; background: linear-gradient(155deg, rgba(58,62,100,.38), rgba(16,18,34,.56)); }
+
 
 </style>
 <script>
@@ -1280,43 +1289,64 @@ class Component extends DCLogic {
     if (!sheet || sheet._lgInit) return;
     sheet._lgInit = true;
     sheet.insertAdjacentHTML('afterbegin', '<div class="lg-sheen"></div><div class="lg-rim"></div><div class="lg-glass"></div>');
-    const me = this;
-    const onMove = e => {
+    // Pointer tracking for rim + sheen
+    window.addEventListener('pointermove', e => {
       const r = sheet.getBoundingClientRect();
       sheet.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
       sheet.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    });
+    // Universal mode: works on all browsers (Safari included)
+    sheet.classList.add('lg-on', 'lg-uni');
+    const P = 40;
+    const glass = sheet.querySelector('.lg-glass');
+    glass.innerHTML = '<div class="lg-fx"><div class="lg-clone"></div><div class="lg-veil"></div></div><div class="lg-tint"></div>';
+    const fx = glass.querySelector('.lg-fx'), holder = glass.querySelector('.lg-clone');
+    const overlay = sheet.parentElement;
+    const mapEl = document.getElementById('lg-map');
+    let lastMap = '';
+    const cloneBg = () => {
+      const root = document.body.firstElementChild || document.body;
+      overlay.setAttribute('data-lg-skip', '');
+      const src = [root].concat(Array.from(root.querySelectorAll('*')));
+      const copy = root.cloneNode(true);
+      const dst = [copy].concat(Array.from(copy.querySelectorAll('*')));
+      const scrolls = [];
+      src.forEach((el, i) => { if (el.scrollTop || el.scrollLeft) scrolls.push([dst[i], el.scrollTop, el.scrollLeft]); });
+      overlay.removeAttribute('data-lg-skip');
+      copy.querySelectorAll('[data-lg-skip], script, svg[aria-hidden]').forEach(el => el.remove());
+      copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      copy.setAttribute('inert', ''); copy.setAttribute('aria-hidden', 'true');
+      copy.style.width = window.innerWidth + 'px'; copy.style.height = window.innerHeight + 'px';
+      holder.innerHTML = ''; holder.appendChild(copy);
+      scrolls.forEach(s => { s[0].scrollTop = s[1]; s[0].scrollLeft = s[2]; });
     };
-    window.addEventListener('pointermove', onMove);
-    sheet._lgClean = () => window.removeEventListener('pointermove', onMove);
-    // Chromium-only: SVG displacement map
-    const ua = navigator.userAgent;
-    const chromium = /Chrome\/|Chromium\/|Edg\//.test(ua) && !/Firefox|FxiOS|CriOS|EdgiOS/.test(ua);
-    if (chromium) {
-      sheet.classList.add('lg-on');
-      const mapEl = document.getElementById('lg-map');
-      if (mapEl) {
-        let last = '';
-        const buildMap = () => {
-          const w = Math.round(sheet.offsetWidth), h = Math.round(sheet.offsetHeight);
-          if (!w || !h || last === w + 'x' + h) return; last = w + 'x' + h;
-          const B = 60, c = document.createElement('canvas'); c.width = w; c.height = h;
-          const ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
-          const sm = t => { t = Math.min(Math.max(t, 0), 1); return t * t * (3 - 2 * t); };
-          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-            const px = x + .5 - w / 2, py = y + .5 - h / 2;
-            const kx = sm(1 - (w / 2 - Math.abs(px)) / B), ky = sm(1 - (h / 2 - Math.abs(py)) / B);
-            const nx = (Math.sign(px) || 1) * kx, ny = (Math.sign(py) || 1) * ky;
-            const i = (y * w + x) * 4;
-            d[i] = 128 - 127 * nx; d[i + 1] = 128 - 127 * ny; d[i + 2] = 128; d[i + 3] = 255;
-          }
-          ctx.putImageData(img, 0, 0);
-          mapEl.setAttribute('width', w); mapEl.setAttribute('height', h);
-          mapEl.setAttribute('href', c.toDataURL());
-        };
-        buildMap();
-        this._lgBuildMap = buildMap;
+    const buildMap = (w, h) => {
+      if (!mapEl) return;
+      const W = w + 2 * P, H = h + 2 * P;
+      if (lastMap === W + 'x' + H) return; lastMap = W + 'x' + H;
+      const B = 60, c = document.createElement('canvas'); c.width = W; c.height = H;
+      const ctx = c.getContext('2d'), img = ctx.createImageData(W, H), d = img.data;
+      const sm = t => { t = Math.min(Math.max(t, 0), 1); return t * t * (3 - 2 * t); };
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const px = x + .5 - W / 2, py = y + .5 - H / 2;
+        const kx = sm(1 - (w / 2 - Math.abs(px)) / B), ky = sm(1 - (h / 2 - Math.abs(py)) / B);
+        const i = (y * W + x) * 4;
+        d[i] = 128 - 127 * (Math.sign(px) || 1) * kx; d[i + 1] = 128 - 127 * (Math.sign(py) || 1) * ky; d[i + 2] = 128; d[i + 3] = 255;
       }
-    }
+      ctx.putImageData(img, 0, 0);
+      mapEl.setAttribute('width', W); mapEl.setAttribute('height', H);
+      mapEl.setAttribute('href', c.toDataURL());
+    };
+    const sync = () => {
+      const r = glass.getBoundingClientRect();
+      holder.style.left = (P - r.left) + 'px'; holder.style.top = (P - r.top) + 'px';
+      buildMap(Math.round(r.width), Math.round(r.height));
+    };
+    cloneBg(); sync();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { cloneBg(); sync(); });
+    if (window.ResizeObserver) new ResizeObserver(sync).observe(sheet);
+    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { cloneBg(); sync(); }, 150); });
+    this._lgSync = sync; this._lgClone = cloneBg;
   }
   seg(items, cur, go) { return items.map(it => {
     if (it.v === '_sep') return { isSep: true, active: false, idle: false, hasIcon: false, go: () => {} };
