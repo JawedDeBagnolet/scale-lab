@@ -109,6 +109,8 @@ a:hover { color: #b9d0ff; }
 <div style="padding:16px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.022);display:flex;flex-direction:column;gap:14px;min-width:0">
 <div style="display:flex;align-items:flex-start;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#cfd3ff;background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.3)"><i class="ph ph-globe-simple" style="font-size:19px"></i></span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600;color:#f2f3fa">Scrapigo</span><span style="{{ sg.pill }}">{{ sg.statusLabel }}</span></div><div style="font-size:12px;color:#8a91a8;margin-top:3px">Proxies résidentiels pour le scraping API privée IG, Threads et X</div></div><span style="font-size:11.5px;color:#6b7289;white-space:nowrap">{{ sg.meta }}</span></div>
 <div><div style="font-size:11px;font-weight:500;color:#8a91a8;margin-bottom:5px">Clé API</div><div style="display:flex;gap:8px"><input value="{{ sg.keyVal }}" onChange="{{ sg.setKey }}" type="{{ sg.inputType }}" spellCheck="false" placeholder="sk_live_..." style="flex:1;min-width:0;height:36px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;outline:none;font-size:12.5px;font-family:'Geist Mono',monospace" style-focus="border-color:rgba(148,163,184,.55);box-shadow:0 0 16px rgba(148,163,184,.16)"><span onClick="{{ sg.toggleReveal }}" title="{{ sg.revealTitle }}" style="width:36px;height:36px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="{{ sg.revealIcon }}" style="font-size:15px"></i></span><span onClick="{{ sg.copy }}" title="Copier" style="width:36px;height:36px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-copy" style="font-size:15px"></i></span><div onClick="{{ sg.test }}" style="{{ sg.testStyle }}" style-hover="background:rgba(255,255,255,.06)"><i class="{{ sg.testIcon }}" style="font-size:14px"></i>{{ sg.testLabel }}</div></div><sc-if value="{{ sg.hasErr }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#fda4af;margin-top:6px"><i class="ph ph-warning-circle" style="font-size:13px"></i>{{ sg.err }}</div></sc-if></div>
+<sc-if value="{{ sg.hasFacts }}"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px"><sc-for list="{{ sg.facts }}" as="x" hint-placeholder-count="3"><div style="padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);min-width:0"><div style="font-size:11px;color:#8a91a8">{{ x.label }}</div><div style="font-size:15px;font-weight:600;color:#f2f3fa;margin-top:3px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ x.v }}</div><sc-if value="{{ x.hasBar }}"><div style="height:4px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:7px"><div style="{{ x.bar }}"></div></div></sc-if><div style="font-size:11px;color:#6b7289;margin-top:4px">{{ x.sub }}</div></div></sc-for></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font-size:12px;color:#6b7289">Les comptes de scraping se gèrent dans le module Comptes · <a href="Module%20Comptes%20v1.dc.html#type=scraping" style="font-weight:500">Voir les {{ sg.totalComptes }} comptes</a></span><div onClick="{{ sg.sync }}" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;font-weight:600;color:#e8eaf3;cursor:pointer" style-hover="background:rgba(255,255,255,.06)"><i class="{{ sg.syncIcon }}" style="font-size:14px"></i>Synchroniser maintenant</div></div></sc-if>
 </div>
 </div>
 </sc-if>
@@ -161,7 +163,7 @@ a:hover { color: #b9d0ff; }
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { tab: 'int', navCollapsed: false, showTop: false, toast: null, toastErr: false, reveal: {}, testing: null, ready: false, cfg: null, saved: null, syncing: false, syncedAt: 4, scraperAccounts: [], scraperModal: false, scraperForm: { platform: 'ig', username: '', password: '', country: 'FR' } };
+  state = { tab: 'int', navCollapsed: false, showTop: false, toast: null, toastErr: false, reveal: {}, testing: null, ready: false, cfg: null, saved: null, syncing: false, syncedAt: 4, scraperAccounts: [], _sgBalance: {}, _sgUsage: {}, scraperModal: false, scraperForm: { platform: 'ig', username: '', password: '', country: 'FR' } };
   DEF = {
     oc: { key: '', status: 'none' },
     gm: { key: '', status: 'none' },
@@ -222,7 +224,12 @@ class Component extends DCLogic {
       var c = JSON.stringify(cfg);
       me.setState({ cfg: JSON.parse(c), saved: JSON.parse(c) });
     }
-    me._loadScraperAccounts();
+    me._loadScraperAccounts(); if (ws && ws.scrapigo && ws.scrapigo.connected) me._loadSgStats();
+  }
+  _loadSgStats() {
+    var me = this;
+    window.SCALE_DATA.apiAsync('GET', '/scraper-accounts/scrapigo/balance').then(function (b) { me.setState({ _sgBalance: b || {} }); }).catch(function () {});
+    window.SCALE_DATA.apiAsync('GET', '/scraper-accounts/scrapigo/usage').then(function (u) { me.setState({ _sgUsage: u || {} }); }).catch(function () {});
   }
   _loadScraperAccounts() {
     var me = this;
@@ -299,7 +306,27 @@ class Component extends DCLogic {
     { const API = window.SCALE_DATA && window.SCALE_DATA.api; if (API) { const sg = API.get('gms'); if (sg === 'sync') out.gm.meta = 'Synchronisation en cours…'; else if (sg !== 'ok') out.gm.meta = 'Dernière synchro réussie il y a ' + API.since('gms'); } }
     out.tg = Object.assign(this.keyCard('tg', 30, 'Bot joignable'), { meta: '@ScaleLabAlertsBot', chat: C.tg.chat, setChat: e => { const v = e.target.value.trim(); this.set(X => { X.tg.chat = v; return X; }); },
       ping: () => { if (!C.tg.chat) return this.toast('Indique un destinataire', true); if (C.tg.status !== 'ok') return this.toast('Teste d\'abord le token du bot', true); this.toast('Message test envoyé à ' + C.tg.chat); } });
-    out.sg = Object.assign(this.keyCard('sg', 10, 'Scrapigo connecté'), { meta: C.sg.status === 'ok' ? 'Connecté' : '', hasFacts: false, facts: [] });
+    out.sg = Object.assign(this.keyCard('sg', 10, 'Scrapigo connecté'), (function () {
+      var sa = s.scraperAccounts || [], bal = s._sgBalance || {}, usg = s._sgUsage || {};
+      var tot = sa.length, ok = sa.filter(function (a) { return a.status === 'ok' && a.has_session; }).length;
+      var recon = tot - ok, totB = sa.reduce(function (t, a) { return t + (a.bytes_used || 0); }, 0);
+      var totR = sa.reduce(function (t, a) { return t + (a.requests_count || 0); }, 0);
+      var solde = bal.balance != null ? '$' + Number(bal.balance).toFixed(2) : '—';
+      var dataLeft = bal.data_remaining_gb != null ? '≈ ' + Number(bal.data_remaining_gb).toFixed(0) + ' Go restants' : 'crédits Scrapigo';
+      function fmtB(b) { if (!b) return '0 o'; var u = ['o','Ko','Mo','Go','To'], i = Math.min(4, Math.floor(Math.log(b)/Math.log(1024))); return (b/Math.pow(1024,i)).toFixed(i>=3?2:0).replace('.',',') + ' ' + u[i]; }
+      function nf(n) { return n.toLocaleString('fr-FR'); }
+      var hasFacts = C.sg.status === 'ok';
+      var barPct = tot ? Math.round(ok / tot * 100) : 0;
+      var lowSolde = bal.balance != null && bal.balance < 10;
+      var facts = [
+        { label: 'Comptes scraper actifs', v: (recon > 2 ? '<span style="color:#f5c77e">' : '') + ok + ' / ' + tot + (recon > 2 ? '</span>' : ''), hasBar: true, bar: 'width:' + barPct + '%;height:100%;border-radius:99px;background:linear-gradient(90deg,#2dd4a8,#38bdf8)', sub: recon ? (recon > 2 ? '<span style="color:#f5c77e">' + recon + ' sessions à reconnecter</span>' : 'sessions valides · ' + recon + ' à reconnecter') : 'toutes les sessions valides' },
+        { label: 'Consommation', v: fmtB(totB), hasBar: false, bar: '', sub: 'ce mois-ci · ' + nf(totR) + ' requêtes' },
+        { label: 'Solde Scrapigo', v: lowSolde ? '<span style="color:#fda4af">' + solde + '</span>' : solde, hasBar: false, bar: '', sub: lowSolde ? '<span style="color:#fda4af">sous le seuil de 10 $</span>' : dataLeft }
+      ];
+      return { meta: C.sg.status === 'ok' ? 'Connecté' : '', hasFacts: hasFacts, facts: facts, totalComptes: tot,
+        sync: function () { me._loadScraperAccounts(); me._loadSgStats(); me.toast('Synchronisation Scrapigo'); },
+        syncIcon: 'ph ph-arrows-clockwise' };
+    })());
     { const PLAT = { ig: 'Instagram', threads: 'Threads', x: 'X' }; const SCOL = { active: this.pill('#86efac', 'rgba(74,222,128,.1)'), pending: this.pill('#aab0c5', 'rgba(255,255,255,.06)'), expired: this.pill('#f5c77e', 'rgba(245,199,126,.12)'), banned: this.pill('#fda4af', 'rgba(244,114,140,.12)'), rate_limited: this.pill('#f5c77e', 'rgba(245,199,126,.12)') };
     const fmtB = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB';
     const sa = s.scraperAccounts || []; const me = this;
