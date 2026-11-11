@@ -139,6 +139,12 @@ select option { background: #151827; color: #e8eaf3; }
 <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Rechercher un username" style="width:100%;height:38px;padding:0 12px 0 36px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:13px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))">
 </div>
 <div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px">
+<sc-for list="{{ typeSeg }}" as="t" hint-placeholder-count="3">
+<sc-if value="{{ t.active }}"><div onClick="{{ t.go }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;cursor:pointer"><sc-if value="{{ t.hasIcon }}"><i class="{{ t.icon }}" style="font-size:14px"></i></sc-if>{{ t.label }}</div></sc-if>
+<sc-if value="{{ t.idle }}"><div onClick="{{ t.go }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:500;color:#8a91a8;cursor:pointer" style-hover="color:#e8eaf3;background:rgba(255,255,255,.04)"><sc-if value="{{ t.hasIcon }}"><i class="{{ t.icon }}" style="font-size:14px"></i></sc-if>{{ t.label }}</div></sc-if>
+</sc-for>
+</div>
+<div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:3px">
 <sc-for list="{{ platSeg }}" as="t" hint-placeholder-count="4">
 <sc-if value="{{ t.active }}"><div onClick="{{ t.go }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;cursor:pointer"><sc-if value="{{ t.hasIcon }}"><i class="{{ t.icon }}" style="font-size:14px"></i></sc-if>{{ t.label }}</div></sc-if>
 <sc-if value="{{ t.idle }}"><div onClick="{{ t.go }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:500;color:#8a91a8;cursor:pointer" style-hover="color:#e8eaf3;background:rgba(255,255,255,.04)"><sc-if value="{{ t.hasIcon }}"><i class="{{ t.icon }}" style="font-size:14px"></i></sc-if>{{ t.label }}</div></sc-if>
@@ -167,9 +173,11 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 40%);overflow-x:auto">
 <div style="{{ headStyle }}">
 <sc-if value="{{ kill }}"><div onClick="{{ selectAll }}" style="{{ allCheckStyle }}"><sc-if value="{{ allSelected }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></div></sc-if>
-<span>Compte</span><span>Plateforme</span><span>Persona</span>
+<sc-if value="{{ isScr }}"><span>Compte</span><span>Plateforme</span><span>Proxy Scrapigo</span><span>Consommation</span><span>Session</span></sc-if>
+<sc-if value="{{ isScr }}" hint-negate="true"><span>Compte</span><span>Plateforme</span><span>Persona</span>
 <div style="display:flex;align-items:center;gap:8px">
-<span>Reach</span>
+<span>Reach</span></sc-if>
+<sc-if value="{{ isScr }}" hint-negate="true">
 <div style="display:flex;gap:1px;padding:2px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);letter-spacing:.02em">
 <sc-for list="{{ reachSeg }}" as="t" hint-placeholder-count="2">
 <sc-if value="{{ t.active }}"><span onClick="{{ t.go }}" style="padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;cursor:pointer">{{ t.label }}</span></sc-if>
@@ -178,7 +186,9 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </div>
 <span>Environnements</span>
+</sc-if>
 </div>
+<sc-if value="{{ isScr }}" hint-negate="true">
 <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
 <div onClick="{{ r.click }}" style="{{ r.rowStyle }}" style-hover="background:rgba(255,255,255,.028)">
 <sc-if value="{{ kill }}"><div style="{{ r.checkStyle }}"><sc-if value="{{ r.selected }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></div></sc-if>
@@ -207,18 +217,51 @@ select option { background: #151827; color: #e8eaf3; }
 <span onClick="{{ resetFilters }}" style="font-size:12.5px;font-weight:500;color:#8db4fd;cursor:pointer">Réinitialiser les filtres</span>
 </div>
 </sc-if>
+</sc-if>
+<sc-if value="{{ hasScrSep }}">
+<div style="display:flex;align-items:center;gap:10px;padding:14px 18px 8px;border-top:1px solid rgba(255,255,255,.06);background:linear-gradient(90deg,rgba(56,189,248,.07),transparent 45%)"><span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#7dd3fc;background:rgba(56,189,248,.14);border:1px solid rgba(56,189,248,.35)"><i class="ph ph-binoculars" style="font-size:12px"></i></span><span style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#7dd3fc">Comptes de scraping</span><span style="font-size:11.5px;color:#6b7289">{{ scrSepCount }} · veille, recherche et stats via l'API privée</span></div>
+</sc-if>
+<sc-for list="{{ scraperRows }}" as="sr" hint-placeholder-count="3">
+<div onClick="{{ sr.click }}" style="{{ sr.rowStyle }}" style-hover="background:rgba(255,255,255,.028)">
+<div style="display:flex;align-items:center;gap:11px;min-width:0">
+<span style="{{ sr.avStyle }}"><i class="ph ph-binoculars" style="font-size:16px"></i></span>
+<div style="min-width:0"><div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="font-size:13px;font-weight:500;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@{{ sr.username }}</span><span style="flex:none;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;color:#7dd3fc;background:rgba(56,189,248,.12)">Scraper</span></div><div style="font-size:11px;color:#8a91a8">{{ sr.chkLabel }}</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#c5c9d8"><i class="{{ sr.platIcon }}" style="font-size:15px;color:#aab0c5"></i>{{ sr.platLabel }}</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#e8eaf3"><i class="ph ph-globe-simple" style="font-size:15px;color:#7dd3fc"></i>{{ sr.country }}<span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289">{{ sr.countryCode }}</span></div>
+<div style="display:flex;align-items:baseline;gap:8px;min-width:0"><span style="font-size:13px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ sr.bytesF }}</span><span style="font-size:11px;color:#8a91a8;white-space:nowrap">{{ sr.reqsF }}</span></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="{{ sr.sessPill }}"><span style="{{ sr.sessDot }}"></span>{{ sr.sessLabel }}</span><span onClick="{{ sr.verify }}" title="Vérifier la session" style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#8a91a8;border:1px solid rgba(255,255,255,.08);cursor:pointer" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-arrows-clockwise" style="font-size:12px"></i></span></div>
+</div>
+</sc-for>
 <div style="display:flex;align-items:center;gap:18px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.05);font-size:11px;color:#8a91a8">
 <span style="color:#aab0c5;font-weight:500">{{ countLabel }}</span>
 <sc-if value="{{ hasFilters }}"><span onClick="{{ resetFilters }}" style="font-weight:500;color:#8db4fd;cursor:pointer">Réinitialiser</span></sc-if>
 <span style="width:1px;height:12px;background:rgba(255,255,255,.1)"></span>
+<sc-if value="{{ isScr }}" hint-negate="true">
 <span style="color:#5b6175">Environnements</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(45,212,168,.3);border:1px solid rgba(45,212,168,.7)"></span>En session</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(244,114,140,.3);border:1px solid rgba(244,114,140,.75)"></span>Checkpoint</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(124,108,246,.3);border:1px solid rgba(124,108,246,.7)"></span>Actif</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px solid rgba(255,255,255,.25)"></span>Configuré</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px dashed rgba(255,255,255,.12)"></span>Non configuré</span>
+</sc-if>
+<sc-if value="{{ isAll }}">
+<span style="width:1px;height:12px;background:rgba(255,255,255,.1)"></span>
+<span style="color:#5b6175">Scraping</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(45,212,168,.3);border:1px solid rgba(45,212,168,.7)"></span>Session valide</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(244,114,140,.3);border:1px solid rgba(244,114,140,.75)"></span>À reconnecter</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(245,199,126,.3);border:1px solid rgba(245,199,126,.7)"></span>Login en attente</span>
+</sc-if>
+<sc-if value="{{ isScr }}">
+<span style="color:#5b6175">Scraping</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(45,212,168,.3);border:1px solid rgba(45,212,168,.7)"></span>Session valide</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(244,114,140,.3);border:1px solid rgba(244,114,140,.75)"></span>À reconnecter</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(245,199,126,.3);border:1px solid rgba(245,199,126,.7)"></span>Login en attente</span>
+</sc-if>
 <span style="flex:1"></span>
+<sc-if value="{{ isScr }}" hint-negate="true">
 <span style="display:flex;align-items:center;gap:12px"><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-globe" style="font-size:13px"></i>Web · GoLogin</span><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-device-mobile" style="font-size:13px"></i>Phone · GeeLark</span><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-apple-logo" style="font-size:13px"></i>iPhone</span></span>
+</sc-if>
 </div>
 </div></div>
 
@@ -867,7 +910,7 @@ select option { background: #151827; color: #e8eaf3; }
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
   static _sdLoad = (() => { if (!window.SCALE_DATA) { try { const x = new XMLHttpRequest(); x.open('GET', 'api-data.js', false); x.send(); if (x.status < 300) (0, eval)(x.responseText); } catch (e) {} } return true; })();
-  state = { view: 'list', q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', menu: null, kill: false, sel: {}, confirm: null, toast: null, accounts: this.seed(), draft: null, tab: 'settings', pplat: 'ig', showPw: false, showTok: false, tagInput: '' };
+  state = { view: 'list', q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', type: (location.hash.match(/type=(\w+)/) || [])[1] || 'all', scraperAccounts: [], scraperCountry: 'all', menu: null, kill: false, sel: {}, confirm: null, toast: null, accounts: this.seed(), draft: null, tab: 'settings', pplat: 'ig', showPw: false, showTok: false, tagInput: '' };
 
   pers() {
     const EXTRA = [
@@ -950,6 +993,8 @@ class Component extends DCLogic {
     return out;
   }
 
+  _loadScrapers() { const SD = window.SCALE_DATA; if (!SD) return; SD.apiAsync('GET', '/scraper-accounts/').then(list => this.setState({ scraperAccounts: list || [] })).catch(() => {}); }
+  _fmtBytes(b) { if (!b) return '0 o'; const u = ['o','Ko','Mo','Go','To']; const i = Math.min(4, Math.floor(Math.log(b)/Math.log(1024))); return (b/Math.pow(1024,i)).toFixed(i>=3?2:0).replace('.',',') + ' ' + u[i]; }
   fmt(n) { return Number(n).toLocaleString('fr-FR'); }
   ini(u) { const parts = String(u || '').replace(/^@/, '').split(/[._]/).filter(Boolean); if (!parts.length) return '·'; const a = parts[0][0] || ''; const b = parts[1] ? parts[1][0] : (parts[0][1] || ''); return (a + b).toUpperCase(); }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'Twitter'; }
@@ -1006,7 +1051,7 @@ class Component extends DCLogic {
   }
   stopDrift() { const d = this._drift; if (!d) return; cancelAnimationFrame(d.raf); d.blobs.forEach(b => b.el.remove()); d.dots.remove(); this._drift = null; }
   applyFont() { const m = { Manrope: "'Manrope'", Geist: "'Geist'", 'Instrument Sans': "'Instrument Sans'", Onest: "'Onest'" }; const v = m['Manrope'] || "'Manrope'"; if (this._font !== v) { this._font = v; document.documentElement.style.setProperty('--app-font', v); } }
-  componentDidMount() { this.applyFont(); this.syncFx(); this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const acc = (H.get('acc') || '').replace(/^@/, ''); const per = H.get('persona'); if (acc) { const a = this.state.accounts.find(x => x.username === acc); if (a) return this.open(a); this.setState({ q: acc }); } else if (per) this.setState({ view: 'list', persona: per }); }; setTimeout(this._hash, 0); window.addEventListener('hashchange', this._hash); }
+  componentDidMount() { this.applyFont(); this.syncFx(); this._loadScrapers(); this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const ht = H.get('type'); if (ht && ['all','posting','scraping'].indexOf(ht) >= 0 && ht !== this.state.type) this.setState({ type: ht, status: 'all', market: 'all', persona: 'all', scraperCountry: 'all' }); const acc = (H.get('acc') || '').replace(/^@/, ''); const per = H.get('persona'); if (acc) { const a = this.state.accounts.find(x => x.username === acc); if (a) return this.open(a); this.setState({ q: acc }); } else if (per) this.setState({ view: 'list', persona: per }); }; setTimeout(this._hash, 0); window.addEventListener('hashchange', this._hash); }
   componentDidUpdate() { this.applyFont(); this.syncFx(); }
 
   mkDraft(a) {
@@ -1170,15 +1215,24 @@ class Component extends DCLogic {
     const list = accs.filter(a => (!q || a.username.toLowerCase().indexOf(q) >= 0) && (s.plat === 'all' || a.platform === s.plat) && (s.market === 'all' || a.market === s.market) && (s.persona === 'all' || a.persona === s.persona) && (s.workflow === 'all' || a.workflow === s.workflow) && (s.status === 'all' || a.status === s.status));
     const per = s.reachP || '1d'; const srt = s.sort || 'all';
     if (srt !== 'all') { const rc = {}; list.forEach(a => { rc[a.id] = this.reach(a, per); }); const k = srt.indexOf('reach') === 0 ? 'cur' : 'delta'; const dir = srt.slice(-4) === 'desc' ? -1 : 1; list.sort((a, b) => (rc[a.id][k] - rc[b.id][k]) * dir); }
-    const hasFilters = srt !== 'all' || !!q || s.plat !== 'all' || s.market !== 'all' || s.persona !== 'all' || s.workflow !== 'all' || s.status !== 'all';
+    const hasFilters = srt !== 'all' || !!q || s.plat !== 'all' || s.market !== 'all' || s.persona !== 'all' || s.workflow !== 'all' || s.status !== 'all' || s.scraperCountry !== 'all';
     const cols = (kill ? '21px ' : '') + 'repeat(5,minmax(0,1fr))';
     const rowPad = compact ? '7px 18px' : '11px 18px';
 
     const nMarkets = new Set(accs.map(a => a.market)).size;
     const active = accs.filter(a => a.workflow === 'Actif').length;
     const cnt = st => accs.filter(a => a.status === st).length;
-    const cardDefs = [
-      { k: 'all', label: 'Tous les comptes', value: accs.length, sub: 'sur ' + this.pers().length + ' personas', g: '124,108,246', lc: '#a5a0f5' },
+    const SKY = '56,189,248';
+    const scr = s.type === 'scraping'; const post = s.type === 'posting';
+    const sa = s.scraperAccounts || [];
+    const cntS = k => sa.filter(a => a.status === k).length;
+    const cardDefs = scr ? [
+      { k: 'all', label: 'Comptes de scraping', value: sa.length, sub: 'sur ' + new Set(sa.map(a => a.proxy_country)).size + ' pays de proxy', g: SKY, lc: '#7dd3fc', ic: 'ph ph-binoculars' },
+      { k: 'ok', label: 'Session valide', value: sa.filter(a => a.status === 'ok' && a.has_session).length, sub: 'utilisables pour la veille', g: '45,212,168', lc: '#74dfc0' },
+      { k: 'session', label: 'À reconnecter', value: cntS('session') + cntS('error'), sub: 'session expirée ou erreur', g: '244,114,140', lc: '#fda4af' },
+      { k: 'pending', label: 'Login en attente', value: sa.filter(a => !a.has_session).length, sub: 'en file sur un iPhone', g: '245,176,76', lc: '#f5c77e' }
+    ] : [
+      { k: 'all', label: 'Tous les comptes', value: post ? accs.length : accs.length + sa.length, sub: post ? 'sur ' + this.pers().length + ' personas' : 'dont ' + sa.length + ' de scraping', g: '124,108,246', lc: '#a5a0f5' },
       { k: 'session', label: 'En session', value: cnt('session'), sub: 'en cours d\'exécution', g: '45,212,168', lc: '#74dfc0' },
       { k: 'error', label: 'Checkpoint', value: cnt('error'), sub: 'à débloquer', g: '244,114,140', lc: '#fda4af' },
       { k: 'idle', label: 'Idle', value: cnt('idle'), sub: 'prêts pour une session', g: '80,130,250', lc: '#8db4fd' }
@@ -1204,11 +1258,14 @@ class Component extends DCLogic {
         options: opts.map(o => ({ label: o.l, on: o.v === sv, hasDot: !!o.c, dotStyle: o.c ? this.dot(o.c, 8) : {}, pick: () => this.setState({ [key]: o.v, menu: null }) }))
       };
     };
-    const dropdowns = [
+    const dropdowns = scr ? [
+      mk('scraperCountry', 'Proxy', [{ v: 'all', l: 'Tous' }, { v: 'FR', l: 'France' }, { v: 'US', l: 'USA' }, { v: 'GB', l: 'UK' }, { v: 'DE', l: 'Allemagne' }])
+    ] : [
       mk('market', 'Marché', [{ v: 'all', l: 'Tous' }, { v: 'FR', l: 'FR' }, { v: 'US', l: 'US' }, { v: 'ES', l: 'ES' }, { v: 'UK', l: 'UK' }]),
       mk('persona', 'Persona', [{ v: 'all', l: 'Toutes' }].concat(this.pers().map(p => ({ v: p.id, l: p.name, c: p.color })))),
       mk('sort', 'Trier', [{ v: 'all', l: 'Par défaut' }, { v: 'reach_desc', l: 'Reach ↓' }, { v: 'reach_asc', l: 'Reach ↑' }, { v: 'delta_desc', l: 'Progression ↓' }, { v: 'delta_asc', l: 'Progression ↑' }])
     ];
+    const typeSeg = this.seg([{ v: 'all', label: 'Tous' }, { v: 'posting', label: 'Posting', icon: 'ph ph-paper-plane-tilt' }, { v: 'scraping', label: 'Scraping', icon: 'ph ph-binoculars' }], s.type, v => this.setState({ type: v, status: 'all', market: 'all', persona: 'all', scraperCountry: 'all', workflow: 'all' }));
     const platSeg = this.seg([{ v: 'all', label: 'Toutes' }, { v: 'ig', label: 'Instagram', icon: 'ph ph-instagram-logo' }, { v: 'th', label: 'Threads', icon: 'ph ph-threads-logo' }, { v: 'x', label: 'Twitter', icon: 'ph ph-x-logo' }], s.plat, v => this.setState({ plat: v }));
 
     const envMeta = { web: ['ph ph-globe', 'Web · GoLogin'], phone: ['ph ph-device-mobile', 'Phone · GeeLark'], iphone: ['ph ph-apple-logo', 'iPhone physique'] };
@@ -1259,13 +1316,13 @@ class Component extends DCLogic {
       collapseBtn: { flex: 'none', display: 'flex', alignItems: 'center', justifyContent: s.navCollapsed ? 'center' : 'flex-start', gap: 10, height: 34, marginTop: 10, padding: s.navCollapsed ? 0 : '0 10px', borderRadius: 10, color: '#8a91a8', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,.06)' }, isEdit: s.view === 'edit', notModal: !s.modal,
       editOuter: { position: 'fixed', inset: 0, zIndex: 60, overscrollBehavior: 'contain', background: glass ? 'rgba(5,6,12,.3)' : 'rgba(5,6,12,.62)', backdropFilter: glass ? 'none' : 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
       editInner: true ? { width: s.modal ? 'min(1180px,100%)' : 'min(1040px,100%)', maxHeight: 'calc(100vh - 48px)', height: s.modal ? 'calc(100vh - 48px)' : 'auto', overflow: s.modal ? 'hidden' : 'auto', padding: '22px 26px 26px', display: 'flex', flexDirection: 'column', gap: 18, overscrollBehavior: 'contain', borderRadius: glass ? 22 : 20, ...(glass ? { '--mbar': 'transparent', '--mbarf': 'blur(20px)', '--mbarb': 'transparent', '--mfield': 'rgba(255,255,255,.03)', background: 'linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34))', backdropFilter: 'blur(26px) saturate(160%)', WebkitBackdropFilter: 'blur(26px) saturate(160%)', border: '1px solid rgba(255,255,255,.14)', boxShadow: '0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)' } : { background: '#0f1220', border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }) } : { padding: '22px 32px 60px', display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1480 }, kill, notKill: !kill, showCards,
-      subtitle: accs.length + ' comptes · ' + active + ' actifs · ' + nMarkets + ' marchés',
+      subtitle: accs.length + ' comptes de posting · ' + sa.length + ' comptes de scraping · ' + nMarkets + ' marchés',
       toggleKill: () => this.setState({ kill: !kill, sel: {} }), newAccount: () => this.open(null),
-      statCards, dropdowns, platSeg,
+      statCards, dropdowns, platSeg, typeSeg, isScr: scr, isPost: post, isAll: s.type === 'all',
       reachSeg: this.seg([{ v: '1d', label: '1D' }, { v: '1w', label: '1W' }], s.reachP || '1d', v => this.setState({ reachP: v })), menuOpen: !!s.menu, closeMenu: () => this.setState({ menu: null }),
       q: s.q, setQ: e => this.setState({ q: e.target.value }),
-      countLabel: list.length + ' compte' + (list.length > 1 ? 's' : '') + ' affiché' + (list.length > 1 ? 's' : ''),
-      hasFilters, resetFilters: () => this.setState({ q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', sort: 'all', menu: null }),
+      countLabel: (() => { const sr = scr ? sa.length : list.length + (s.type === 'all' ? sa.length : 0); return sr + ' compte' + (sr > 1 ? 's' : '') + ' affiché' + (sr > 1 ? 's' : ''); })(),
+      hasFilters, resetFilters: () => this.setState({ q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', sort: 'all', scraperCountry: 'all', menu: null }),
       killBtnClick: () => { if (!kill) this.setState({ kill: true, sel: {} }); else if (selIds.length) this.setState({ confirm: { ids: selIds } }); else this.setState({ kill: false, sel: {} }); },
       killBtnLabel: !kill ? 'Kill mode' : selIds.length ? 'Kill (' + selIds.length + ')' : 'Annuler',
       killBtnIcon: kill && !selIds.length ? 'ph ph-x' : 'ph ph-skull',
@@ -1276,7 +1333,38 @@ class Component extends DCLogic {
       confirmText: cf ? 'Tu es sur le point de supprimer ' + cf.ids.length + ' compte' + (cf.ids.length > 1 ? 's' : '') + '. Cette action est irréversible.' : '',
       headStyle: { display: 'grid', gridTemplateColumns: cols, gap: 10, alignItems: 'center', padding: '11px 18px', fontSize: 10.5, fontWeight: 500, letterSpacing: '.08em', textTransform: 'uppercase', color: '#5b6175' },
       allSelected, selectAll, allCheckStyle: { width: 21, height: 21, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d16', cursor: 'pointer', background: allSelected ? 'linear-gradient(135deg,#ffffff,#d6e3ff)' : 'transparent', border: '1.5px solid ' + (allSelected ? '#e6eeff' : 'rgba(255,255,255,.3)'), boxShadow: allSelected ? '0 0 10px rgba(205,222,255,.6)' : 'none' },
-      rows, isEmpty: rows.length === 0,
+      rows, isEmpty: rows.length === 0 && !(s.type === 'all' && sa.length),
+      scraperRows: (() => {
+        if (post) return [];
+        const SESS = { ok: ['Session valide','#2dd4a8','45,212,168','#6ee7c5'], session: ['Session expirée','#f4728c','244,114,140','#fda4af'], error: ['Erreur','#f4728c','244,114,140','#fda4af'] };
+        const COUNTRY = { FR: 'France', US: 'USA', GB: 'UK', DE: 'Allemagne' };
+        let filtered = sa;
+        if (q) filtered = filtered.filter(a => a.handle.toLowerCase().indexOf(q) >= 0);
+        if (s.plat !== 'all') filtered = filtered.filter(a => a.plateforme === s.plat);
+        if (scr && s.scraperCountry !== 'all') filtered = filtered.filter(a => a.proxy_country === s.scraperCountry);
+        if (scr && s.status !== 'all') filtered = filtered.filter(a => { if (s.status === 'session') return a.status === 'session' || a.status === 'error'; if (s.status === 'pending') return !a.has_session; if (s.status === 'ok') return a.status === 'ok' && a.has_session; return false; });
+        if (!scr && (s.market !== 'all' || s.persona !== 'all')) return [];
+        return filtered.map((a, i) => {
+          const se = SESS[a.status] || ['Login en attente','#f5c77e','245,199,126','#f5c77e'];
+          const hasSess = a.has_session;
+          if (!hasSess) { se[0] = 'Login en attente'; se[1] = '#f5c77e'; se[2] = '245,199,126'; se[3] = '#f5c77e'; }
+          return {
+            id: a.id, username: a.handle, isScraper: true,
+            avStyle: { width: 32, height: 32, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7dd3fc', background: 'repeating-linear-gradient(135deg,rgba(' + SKY + ',.16) 0 4px,rgba(' + SKY + ',.07) 4px 8px)', boxShadow: 'inset 0 0 0 1px rgba(' + SKY + ',.45)' },
+            platIcon: this.platIcon(a.plateforme), platLabel: this.platLabel(a.plateforme),
+            country: COUNTRY[a.proxy_country] || a.proxy_country, countryCode: a.proxy_country,
+            bytesF: this._fmtBytes(a.bytes_used), reqsF: this.fmt(a.requests_count) + ' req.',
+            sessLabel: se[0], sessDot: this.dot(se[1], 6),
+            sessPill: { display: 'inline-flex', alignItems: 'center', gap: 6, height: 24, padding: '0 9px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, color: se[3], background: 'rgba(' + se[2] + ',.12)', border: '1px solid rgba(' + se[2] + ',.35)', whiteSpace: 'nowrap' },
+            chkLabel: a.has_session ? 'Vérifiée' : 'Jamais vérifiée',
+            rowStyle: { display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: 10, alignItems: 'center', padding: '11px 18px', borderTop: '1px solid rgba(255,255,255,.045)', cursor: 'pointer', background: 'linear-gradient(90deg,rgba(' + SKY + ',.045),transparent 40%)' },
+            click: () => {},
+            verify: e => { if (e && e.stopPropagation) e.stopPropagation(); const SD = window.SCALE_DATA; if (!SD || !a.has_session) { this.toastMsg('Pas de session : login iPhone en attente'); return; } SD.apiAsync('POST', '/scraper-accounts/' + a.id + '/verify').then(r => { this.toastMsg(r && r.ok ? 'Session valide' : 'Session invalide', !(r && r.ok)); this._loadScrapers(); }).catch(() => this.toastMsg('Erreur', true)); }
+          };
+        });
+      })(),
+      hasScrSep: s.type === 'all' && !(s.market !== 'all' || s.persona !== 'all'),
+      scrSepCount: (() => { let f = sa; if (q) f = f.filter(a => a.handle.toLowerCase().indexOf(q) >= 0); if (s.plat !== 'all') f = f.filter(a => a.plateforme === s.plat); return f.length; })(),
       selCount: selIds.length, selectAllLabel: allSelected ? 'Tout désélectionner' : 'Tout sélectionner (' + list.length + ')',
       bulkBtnStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 36, padding: '0 16px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: selIds.length ? 'pointer' : 'default', opacity: selIds.length ? 1 : .45, background: 'rgba(244,114,140,.18)', border: '1px solid rgba(244,114,140,.5)', color: '#fecdd3' },
       askBulkDelete: () => { if (selIds.length) this.setState({ confirm: { ids: selIds } }); },
