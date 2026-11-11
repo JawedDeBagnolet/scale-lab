@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 Plateforme = Literal["ig", "th", "x"]
 Workflow = Literal["Onboarding", "Warmup", "Actif", "Pause"]
@@ -24,6 +24,7 @@ class CompteBase(BaseModel):
 
 class CompteCreate(CompteBase):
     creds_encrypted: dict | None = None  # {password, two_fa, token}
+    is_scraper: bool = False
 
 
 class CompteUpdate(BaseModel):
@@ -38,6 +39,7 @@ class CompteUpdate(BaseModel):
     sessions: int | None = Field(default=None, ge=0)
     follows: int | None = Field(default=None, ge=0)
     creds_encrypted: dict | None = None  # {password, two_fa, token}
+    is_scraper: bool | None = None
 
 
 class CompteOut(BaseModel):
@@ -52,6 +54,19 @@ class CompteOut(BaseModel):
     env: dict | None
     sessions: int
     follows: int
+    is_scraper: bool = False
+    has_session: bool = False
+    scraper_bytes_used: int = 0
+    scraper_requests_count: int = 0
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def compute_has_session(cls, data):
+        if hasattr(data, "__dict__"):  # ORM model
+            data = {k: getattr(data, k) for k in data.__dict__ if not k.startswith("_")}
+        if "has_session" not in data or data.get("has_session") is None:
+            data["has_session"] = bool(data.get("session_data"))
+        return data
