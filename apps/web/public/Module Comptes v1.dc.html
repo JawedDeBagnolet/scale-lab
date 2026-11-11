@@ -47,12 +47,18 @@
 .lg-pill.moving { transform: scaleY(.86); }
 /* ── Version universelle : copie de la page + filter (et non backdrop-filter) ── */
 .lg-sheet.lg-uni .lg-glass { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: hidden; }
-.lg-sheet.lg-uni .lg-fx { position: absolute; left: -40px; top: -40px; right: -40px; bottom: -40px;
-  filter: url(#lg-filter) saturate(1.7) brightness(1.04); -webkit-filter: url(#lg-filter) saturate(1.7) brightness(1.04);
-  transform: translateZ(0); will-change: transform; overflow: hidden; }
+/* Calque extérieur : flou et saturation en fonctions CSS standard, comprises par tous les navigateurs.
+   Pas de transform / will-change ici : WebKit n'applique pas les filtres SVG aux calques composités. */
+.lg-sheet.lg-uni .lg-fx { position: absolute; left: -40px; top: -40px; right: -40px; bottom: -40px; overflow: hidden;
+  filter: blur(6px) saturate(1.7) brightness(1.04); -webkit-filter: blur(6px) saturate(1.7) brightness(1.04); }
+/* Calque intérieur : uniquement la déformation SVG */
+.lg-sheet.lg-uni .lg-warp { position: absolute; inset: 0; filter: url(#lg-warp); -webkit-filter: url(#lg-warp); }
 .lg-sheet.lg-uni .lg-clone { position: absolute; pointer-events: none; }
 .lg-sheet.lg-uni .lg-veil { position: absolute; inset: 0; background: rgba(5,6,12,.3); }
-.lg-sheet.lg-uni .lg-tint { position: absolute; inset: 0; background: linear-gradient(155deg, rgba(58,62,100,.38), rgba(16,18,34,.56)); }
+.lg-sheet.lg-uni .lg-tint { position: absolute; inset: 0; background: linear-gradient(155deg, rgba(52,56,92,.30), rgba(14,16,30,.48)); }
+/* Filet de sécurité Safari : si le calque filtré ne s'affiche pas, le verre dépoli reste dessous */
+.lg-sheet.lg-uni.lg-webkit { backdrop-filter: blur(26px) saturate(160%) !important; -webkit-backdrop-filter: blur(26px) saturate(160%) !important; }
+.lg-sheet.lg-uni .lg-tint { background: linear-gradient(155deg, rgba(58,62,100,.38), rgba(16,18,34,.56)); }
 
 
 </style>
@@ -1297,12 +1303,14 @@ class Component extends DCLogic {
     });
     // Universal mode: works on all browsers (Safari included)
     sheet.classList.add('lg-on', 'lg-uni');
+    const ua = navigator.userAgent;
+    if (/AppleWebKit/.test(ua) && !/Chrome\/|Chromium\/|Edg\//.test(ua)) sheet.classList.add('lg-webkit');
     const P = 40;
     const glass = sheet.querySelector('.lg-glass');
-    glass.innerHTML = '<div class="lg-fx"><div class="lg-clone"></div><div class="lg-veil"></div></div><div class="lg-tint"></div>';
+    glass.innerHTML = '<div class="lg-fx"><div class="lg-warp"><div class="lg-clone"></div><div class="lg-veil"></div></div></div><div class="lg-tint"></div>';
     const fx = glass.querySelector('.lg-fx'), holder = glass.querySelector('.lg-clone');
     const overlay = sheet.parentElement;
-    const mapEl = document.getElementById('lg-map');
+    const mapEl = document.getElementById('lg-map-warp');
     let lastMap = '';
     const cloneBg = () => {
       const root = document.body.firstElementChild || document.body;
@@ -1335,7 +1343,9 @@ class Component extends DCLogic {
       }
       ctx.putImageData(img, 0, 0);
       mapEl.setAttribute('width', W); mapEl.setAttribute('height', H);
-      mapEl.setAttribute('href', c.toDataURL());
+      const url = c.toDataURL();
+      mapEl.setAttribute('href', url);
+      mapEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
     };
     const sync = () => {
       const r = glass.getBoundingClientRect();
@@ -1801,6 +1811,6 @@ class Component extends DCLogic {
   }
 }
 </script>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="lg-filter" color-interpolation-filters="sRGB"><feImage id="lg-map" x="0" y="0" width="1040" height="800" preserveAspectRatio="none" result="map" href=""/><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="soft"/><feDisplacementMap in="soft" in2="map" scale="98" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><filter id="lg-warp" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage id="lg-map-warp" x="0" y="0" width="1120" height="880" preserveAspectRatio="none" result="map" href="" xlink:href=""/><feDisplacementMap in="SourceGraphic" in2="map" scale="98" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="lg-filter" color-interpolation-filters="sRGB"><feImage id="lg-map" x="0" y="0" width="1040" height="800" preserveAspectRatio="none" result="map" href=""/><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="soft"/><feDisplacementMap in="soft" in2="map" scale="98" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 </body>
 </html>
