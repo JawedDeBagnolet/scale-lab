@@ -1223,6 +1223,35 @@ class Component extends DCLogic {
     } else if (ct === 'bulkConnect') {
       list = this.parseBulk().filter(r => r.st === 'ok').map((r, i) => mk(r.u, i, null, r.pw, r.tt));
       if (!list.length) { this.toastMsg('Aucun compte prêt à connecter'); return; }
+    } else if (ct === 'scrape') {
+      const u = (d.scrapeUser || '').trim().replace(/^@/, '');
+      if (!u) { this.toastMsg('Renseigne un username'); return; }
+      if (!(d.scrapePw || '').trim()) { this.toastMsg('Renseigne un mot de passe'); return; }
+      const creds = { password: d.scrapePw, ...(d.scrapeTotp ? { two_fa: d.scrapeTotp.replace(/\s/g, '') } : {}) };
+      const SD2 = window.SCALE_DATA;
+      if (SD2 && SD2._live) {
+        try {
+          const res = SD2.apiPost('/comptes', { handle: u, plateforme: s.scrapePlat || 'ig', is_scraper: true, workflow: 'Onboarding', status: 'ok', device_id: (s.scrapeDevice && s.scrapeDevice !== 'auto') ? s.scrapeDevice : null, env: { proxy_country: s.scrapeCountry || 'FR' }, creds_encrypted: creds });
+          if (res && res.id) { const mapped = SD2.x.compte(res); SD2.accounts.unshift(mapped); }
+          this.toastMsg('Compte de scraping @' + u + ' créé · login iPhone en file');
+        } catch(e) { this.toastMsg('Erreur: ' + (e.message || e)); return; }
+      }
+      this.setState({ view: 'list', draft: null, modal: false, fmenu: null }); this._loadScrapers();
+      return;
+    } else if (ct === 'scrapeBulk') {
+      const lines = String(s.scrapeBulkText || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const items = lines.map(l => { const p = l.split(/[:;,\t]/).map(x => x.trim()); return { u: (p[0]||'').replace(/^@/,''), pw: p[1]||'', tt: p.slice(2).join('').replace(/\s/g,'') }; }).filter(r => /^[a-z0-9._]{3,30}$/i.test(r.u) && r.pw);
+      if (!items.length) { this.toastMsg('Aucun compte prêt'); return; }
+      const SD3 = window.SCALE_DATA;
+      if (SD3 && SD3._live) {
+        try {
+          const res = SD3.apiAsync ? SD3.apiAsync('POST', '/comptes/bulk-scraper', { accounts: items.map(r => ({ username: r.u, password: r.pw, totp: r.tt || null })), plateforme: s.scrapePlat || 'ig', proxy_country: s.scrapeCountry || 'FR', device_id: (s.scrapeDevice && s.scrapeDevice !== 'auto') ? s.scrapeDevice : null }) : null;
+          if (res && res.then) res.then(r => { this.toastMsg((r.created || items.length) + ' comptes de scraping en file de connexion'); this._loadScrapers(); });
+          else this.toastMsg(items.length + ' comptes de scraping en file');
+        } catch(e) { this.toastMsg('Erreur: ' + (e.message || e)); return; }
+      }
+      this.setState({ view: 'list', draft: null, modal: false, fmenu: null });
+      return;
     } else {
       if (this._lowBal) { this.toastMsg(this._lowBal); return; }
       list = this.genNames().map((u, i) => mk(u, i));
