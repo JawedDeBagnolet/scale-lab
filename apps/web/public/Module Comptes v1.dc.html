@@ -379,6 +379,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 
+<sc-if value="{{ notScrape }}">
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(80,130,250,.06),rgba(255,255,255,.012) 55%)">
 <div style="font-size:14px;font-weight:600;color:#f2f3fa">Classification</div>
 <div style="font-size:12px;color:#8a91a8;margin:3px 0 16px">{{ classDesc }}</div>
@@ -418,6 +419,8 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </div>
 
+</sc-if>
+<sc-if value="{{ notScrape }}">
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(45,212,168,.06),rgba(255,255,255,.012) 55%)">
 <div style="font-size:14px;font-weight:600;color:#f2f3fa">Environnement</div>
 <div style="font-size:12px;color:#8a91a8;margin:3px 0 16px">L'environnement est créé et assigné automatiquement auprès du fournisseur</div>
@@ -506,6 +509,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 
+</sc-if>
 <sc-if value="{{ notScrape }}">
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(245,176,76,.06),rgba(255,255,255,.012) 55%)">
 <div style="font-size:14px;font-weight:600;color:#f2f3fa">Proxy & scénario</div>
