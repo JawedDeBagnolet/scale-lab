@@ -176,10 +176,10 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="{{ headStyle }}">
 <sc-if value="{{ kill }}"><div onClick="{{ selectAll }}" style="{{ allCheckStyle }}"><sc-if value="{{ allSelected }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></div></sc-if>
 <sc-if value="{{ isScr }}"><span>Compte</span><span>Plateforme</span><span>Proxy Scrapigo</span><span>Consommation</span><span>Session</span></sc-if>
-<sc-if value="{{ isScr }}" hint-negate="true"><span>Compte</span><span>Plateforme</span><span>Persona</span>
+<sc-if value="{{ notScr }}"><span>Compte</span><span>Plateforme</span><span>Persona</span>
 <div style="display:flex;align-items:center;gap:8px">
 <span>Reach</span></sc-if>
-<sc-if value="{{ isScr }}" hint-negate="true">
+<sc-if value="{{ notScr }}">
 <div style="display:flex;gap:1px;padding:2px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);letter-spacing:.02em">
 <sc-for list="{{ reachSeg }}" as="t" hint-placeholder-count="2">
 <sc-if value="{{ t.active }}"><span onClick="{{ t.go }}" style="padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;cursor:pointer">{{ t.label }}</span></sc-if>
@@ -190,7 +190,7 @@ select option { background: #151827; color: #e8eaf3; }
 <span>Environnements</span>
 </sc-if>
 </div>
-<sc-if value="{{ isScr }}" hint-negate="true">
+<sc-if value="{{ notScr }}">
 <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
 <div onClick="{{ r.click }}" style="{{ r.rowStyle }}" style-hover="background:rgba(255,255,255,.028)">
 <sc-if value="{{ kill }}"><div style="{{ r.checkStyle }}"><sc-if value="{{ r.selected }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></div></sc-if>
@@ -239,7 +239,7 @@ select option { background: #151827; color: #e8eaf3; }
 <span style="color:#aab0c5;font-weight:500">{{ countLabel }}</span>
 <sc-if value="{{ hasFilters }}"><span onClick="{{ resetFilters }}" style="font-weight:500;color:#8db4fd;cursor:pointer">Réinitialiser</span></sc-if>
 <span style="width:1px;height:12px;background:rgba(255,255,255,.1)"></span>
-<sc-if value="{{ isScr }}" hint-negate="true">
+<sc-if value="{{ notScr }}">
 <span style="color:#5b6175">Environnements</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(45,212,168,.3);border:1px solid rgba(45,212,168,.7)"></span>En session</span>
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(244,114,140,.3);border:1px solid rgba(244,114,140,.75)"></span>Checkpoint</span>
@@ -261,7 +261,7 @@ select option { background: #151827; color: #e8eaf3; }
 <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(245,199,126,.3);border:1px solid rgba(245,199,126,.7)"></span>Login en attente</span>
 </sc-if>
 <span style="flex:1"></span>
-<sc-if value="{{ isScr }}" hint-negate="true">
+<sc-if value="{{ notScr }}">
 <span style="display:flex;align-items:center;gap:12px"><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-globe" style="font-size:13px"></i>Web · GoLogin</span><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-device-mobile" style="font-size:13px"></i>Phone · GeeLark</span><span style="display:flex;align-items:center;gap:5px"><i class="ph ph-apple-logo" style="font-size:13px"></i>iPhone</span></span>
 </sc-if>
 </div>
@@ -1391,7 +1391,7 @@ class Component extends DCLogic {
       editInner: true ? { width: s.modal ? 'min(1180px,100%)' : 'min(1040px,100%)', maxHeight: 'calc(100vh - 48px)', height: s.modal ? 'calc(100vh - 48px)' : 'auto', overflow: s.modal ? 'hidden' : 'auto', padding: '22px 26px 26px', display: 'flex', flexDirection: 'column', gap: 18, overscrollBehavior: 'contain', borderRadius: glass ? 22 : 20, ...(glass ? { '--mbar': 'transparent', '--mbarf': 'blur(20px)', '--mbarb': 'transparent', '--mfield': 'rgba(255,255,255,.03)', background: 'linear-gradient(155deg,rgba(48,52,84,.42),rgba(18,20,34,.34))', backdropFilter: 'blur(26px) saturate(160%)', WebkitBackdropFilter: 'blur(26px) saturate(160%)', border: '1px solid rgba(255,255,255,.14)', boxShadow: '0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14)' } : { background: '#0f1220', border: '1px solid rgba(255,255,255,.09)', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }) } : { padding: '22px 32px 60px', display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1480 }, kill, notKill: !kill, showCards,
       subtitle: accs.length + ' comptes de posting · ' + sa.length + ' comptes de scraping · ' + nMarkets + ' marchés',
       toggleKill: () => this.setState({ kill: !kill, sel: {} }), newAccount: () => this.open(null),
-      statCards, dropdowns, platSeg, typeSeg, isScr: scr, isPost: post, isAll: s.type === 'all',
+      statCards, dropdowns, platSeg, typeSeg, isScr: scr, notScr: !scr, isPost: post, isAll: s.type === 'all',
       reachSeg: this.seg([{ v: '1d', label: '1D' }, { v: '1w', label: '1W' }], s.reachP || '1d', v => this.setState({ reachP: v })), menuOpen: !!s.menu, closeMenu: () => this.setState({ menu: null }),
       q: s.q, setQ: e => this.setState({ q: e.target.value }),
       countLabel: (() => { const sr = scr ? sa.length : list.length + (s.type === 'all' ? sa.length : 0); return sr + ' compte' + (sr > 1 ? 's' : '') + ' affiché' + (sr > 1 ? 's' : ''); })(),
