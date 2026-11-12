@@ -568,6 +568,12 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Following</div><div style="font-size:18px;font-weight:700;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ liveFollowing }}</div></div>
 <div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Posts</div><div style="font-size:18px;font-weight:700;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ livePosts }}</div></div>
 <div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Statut</div><div style="font-size:13px;font-weight:600;color:{{ liveStatusColor }}">{{ liveStatusLabel }}</div></div>
+</div>
+<div style="display:flex;gap:16px;margin-bottom:14px">
+<sc-if value="{{ hasLivePic }}"><div style="flex:none;text-align:center"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Photo de profil</div><img src="{{ livePicUrl }}" style="width:80px;height:80px;border-radius:99px;object-fit:cover;border:2px solid rgba(56,189,248,.3)" crossorigin="anonymous" referrerpolicy="no-referrer"></div></sc-if>
+<sc-if value="{{ hasLiveHighlights }}"><div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Stories à la une · {{ liveHighlightsCount }}</div><div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px">
+<sc-for list="{{ liveHighlights }}" as="hl"><div style="flex:none;text-align:center;width:68px"><sc-if value="{{ hl.hasCover }}"><img src="{{ hl.coverUrl }}" style="width:56px;height:56px;border-radius:99px;object-fit:cover;border:2px solid rgba(56,189,248,.25)" crossorigin="anonymous" referrerpolicy="no-referrer"></sc-if><sc-if value="{{ hl.noCover }}"><div style="width:56px;height:56px;border-radius:99px;background:rgba(56,189,248,.1);border:2px solid rgba(56,189,248,.25);display:flex;align-items:center;justify-content:center"><i class="ph ph-star" style="font-size:18px;color:#7dd3fc"></i></div></sc-if><div style="font-size:10.5px;color:#aab0c5;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ hl.title }}</div></div></sc-for>
+</div></div></sc-if>
 </div></sc-if>
 <sc-if value="{{ liveError }}"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;border:1px solid rgba(244,114,140,.2);background:rgba(244,114,140,.06);margin-bottom:14px;font-size:12px;color:#fda4af"><i class="ph ph-warning" style="font-size:15px"></i>{{ liveError }}</div></sc-if>
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.06),rgba(255,255,255,.012) 55%)">
@@ -1717,6 +1723,17 @@ const lp = s.liveProfile || {};
       livePosts: _fmtN(lp.media_count),
       liveStatusLabel: lp.is_private ? 'Privé' : lp.is_verified ? 'Vérifié' : 'Public',
       liveStatusColor: lp.is_private ? '#f5c77e' : lp.is_verified ? '#7dd3fc' : '#2dd4a8',
+      livePicUrl: lp.hd_profile_pic_url || lp.profile_pic_url || '',
+      hasLivePic: !!(lp.hd_profile_pic_url || lp.profile_pic_url),
+      liveBio: lp.biography || '',
+      hasLiveBio: !!lp.biography,
+      liveHighlights: (lp.highlights || []).map(function(h) { return { title: h.title || 'Sans titre', coverUrl: h.cover_url || '', hasCover: !!h.cover_url, noCover: !h.cover_url, count: h.media_count || 0 }; }),
+      hasLiveHighlights: (lp.highlights || []).length > 0,
+      liveHighlightsCount: (lp.highlights || []).length,
+      liveCategory: lp.category || '',
+      hasLiveCategory: !!lp.category,
+      liveLink: lp.external_url || '',
+      hasLiveLink: !!lp.external_url,
       ed: {
         title: s.modal ? 'Profil de @' + handle : 'Ajouter des comptes', ini: this.ini(handle), exists: !!d.id, showDupDel: !!d.id && !s.modal,
         avStyle: this.avStyle(p.color, 52, 16), platIcon: this.platIcon(d.platform), platLabel: this.platLabel(d.platform),
