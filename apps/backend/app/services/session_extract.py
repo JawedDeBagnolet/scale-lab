@@ -95,12 +95,17 @@ async def verify_session(
             from app.services.scrapigo import get_scrapigo_client
             sg = await get_scrapigo_client()
             if sg:
+                logger.info("verify_session: Scrapigo client OK, generating proxy...")
                 proxy_obj = await sg.get_proxy_for_account(ds_user_id or "verify", country="FR")
                 if proxy_obj:
                     proxy_url = proxy_obj.url
-                    logger.info("verify_session: using Scrapigo proxy for verification")
+                    logger.info("verify_session: using Scrapigo proxy %s:%s", proxy_obj.host, proxy_obj.port)
+                else:
+                    logger.warning("verify_session: Scrapigo proxy generation returned None")
+            else:
+                logger.warning("verify_session: no Scrapigo client (key missing?)")
         except Exception as e:
-            logger.debug("verify_session: no Scrapigo proxy available: %s", e)
+            logger.warning("verify_session: Scrapigo proxy error: %s", e)
 
     cookie_parts = []
     if sessionid:
@@ -121,9 +126,11 @@ async def verify_session(
         headers["Authorization"] = authorization
 
     try:
+        logger.info("verify_session: proxy=%s", proxy_url[:30] if proxy_url else "NONE (direct)")
         async with httpx.AsyncClient(timeout=15, verify=False, proxy=proxy_url) as client:
             url = "https://i.instagram.com/api/v1/feed/timeline/"
             resp = await client.get(url, headers=headers)
+            logger.info("verify_session: HTTP %s (via %s)", resp.status_code, "proxy" if proxy_url else "direct")
 
             # Extract csrftoken from response cookies or headers
             extracted_csrf = None
