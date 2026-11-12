@@ -562,8 +562,16 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 
+<sc-if value="{{ liveLoading }}"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;border:1px solid rgba(56,189,248,.2);background:rgba(56,189,248,.06);margin-bottom:14px"><i class="ph ph-circle-notch" style="font-size:16px;color:#7dd3fc;animation:spin 1s linear infinite"></i><span style="font-size:12.5px;color:#7dd3fc;font-weight:500">Chargement du profil via l'API privée…</span></div></sc-if>
+<sc-if value="{{ hasLiveProfile }}"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">
+<div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Followers</div><div style="font-size:18px;font-weight:700;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ liveFollowers }}</div></div>
+<div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Following</div><div style="font-size:18px;font-weight:700;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ liveFollowing }}</div></div>
+<div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Posts</div><div style="font-size:18px;font-weight:700;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ livePosts }}</div></div>
+<div style="border-radius:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.15);background:rgba(56,189,248,.05)"><div style="font-size:10.5px;font-weight:500;color:#7dd3fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Statut</div><div style="font-size:13px;font-weight:600;color:{{ liveStatusColor }}">{{ liveStatusLabel }}</div></div>
+</div></sc-if>
+<sc-if value="{{ liveError }}"><div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;border:1px solid rgba(244,114,140,.2);background:rgba(244,114,140,.06);margin-bottom:14px;font-size:12px;color:#fda4af"><i class="ph ph-warning" style="font-size:15px"></i>{{ liveError }}</div></sc-if>
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.06),rgba(255,255,255,.012) 55%)">
-<div style="font-size:14px;font-weight:600;color:#f2f3fa;margin-bottom:16px">Informations du profil</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:#f2f3fa">Informations du profil</div><sc-if value="{{ hasLiveProfile }}"><span style="font-size:10.5px;font-weight:500;color:#7dd3fc;display:flex;align-items:center;gap:5px"><i class="ph ph-lightning" style="font-size:12px"></i>Données live via API privée</span></sc-if></div>
 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
 <label style="display:block"><span style="display:block;font-size:11.5px;font-weight:500;color:#8a91a8;margin-bottom:6px">Username</span>
 <div style="position:relative"><span style="position:absolute;left:12px;top:10px;font-size:13px;color:#5b6175">@</span>
@@ -1142,7 +1150,37 @@ class Component extends DCLogic {
     return { displayName: p.name, bio: (p.bios[2] || p.bios[0]).slice(0, 160), location: city, link: hd ? 'linktr.ee/' + hd.replace(/[._]/g, '') : '', photo: (n + 5) % 8, banner: n % 6, interests: [] };
   }
   upd(fn) { this.setState(s => { const d = JSON.parse(JSON.stringify(s.draft)); fn(d); return { draft: d }; }); }
-  openProfile(a) {  const dr = this.mkDraft(a); if (!dr.profile.x) dr.profile.x = this.xDefault(this.P(a.persona), a.n || 0, a.username, a.market); this.setState({ view: 'edit', modal: true, draft: dr, tab: 'profile', pplat: a.platform === 'x' ? 'x' : a.platform === 'th' ? 'th' : 'ig', menu: null, fmenu: null }); }
+  openProfile(a) {
+    const dr = this.mkDraft(a);
+    if (!dr.profile.x) dr.profile.x = this.xDefault(this.P(a.persona), a.n || 0, a.username, a.market);
+    this.setState({ view: 'edit', modal: true, draft: dr, tab: 'profile', pplat: a.platform === 'x' ? 'x' : a.platform === 'th' ? 'th' : 'ig', menu: null, fmenu: null, liveLoading: false, liveError: null });
+    // Fetch live profile data via scraper API
+    if (a.platform === 'ig' || a.platform === 'th') {
+      const SD = window.SCALE_DATA;
+      if (SD && SD._live) {
+        const realAcc = SD.accounts.find(x => x.handle === a.username);
+        const cid = realAcc ? realAcc.id : null;
+        if (cid) {
+          this.setState({ liveLoading: true });
+          SD.apiAsync('GET', '/comptes/' + cid + '/profile-live').then(p => {
+            if (!p || !p.username) { this.setState({ liveLoading: false }); return; }
+            this.upd(d => {
+              const pk = a.platform === 'th' ? 'th' : 'ig';
+              d.profile[pk].displayName = p.full_name || d.profile[pk].displayName;
+              d.profile[pk].bio = p.biography || d.profile[pk].bio;
+              d.profile[pk].link = p.external_url || d.profile[pk].link;
+              if (p.category) d.profile[pk].category = p.category;
+              if (p.highlights && p.highlights.length) d.profile[pk].highlights = p.highlights.map(h => h.title || h);
+            });
+            this.setState({ liveLoading: false, liveProfile: p });
+          }).catch(e => {
+            console.warn('[profile-live]', e);
+            this.setState({ liveLoading: false, liveError: e.message || 'Erreur API' });
+          });
+        }
+      }
+    }
+  }
   open(a) { this.setState({ view: 'edit', modal: false, ctab: 'single', fmenu: null, draft: this.mkDraft(a), tab: 'settings', pplat: a && a.platform === 'th' ? 'th' : 'ig', showPw: false, showTok: false, tagInput: '', menu: null }); }
   dup(a) {
     const copy = { ...a, env: { ...a.env }, id: 'a' + Date.now(), username: a.username + '_copy', sessions: 0, follows: 0, status: 'idle', workflow: 'Onboarding' };
@@ -1666,8 +1704,19 @@ class Component extends DCLogic {
       thPosts: [0, 1, 2].map(i => ({ l1: { width: (92 - i * 9) + '%', height: 8, borderRadius: 5, background: '#1f222c' }, l2: { width: (64 + i * 11) + '%', height: 8, borderRadius: 5, background: '#1f222c' } }))
     };
 
+const lp = s.liveProfile || {};
+    const _fmtN = n => n == null ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+    const _hasLive = !!lp.username;
     return {
       ...base, ...profExtra, d, on, prof, pv, tagInput: s.tagInput,
+      liveLoading: !!s.liveLoading,
+      liveError: s.liveError || null,
+      hasLiveProfile: _hasLive,
+      liveFollowers: _fmtN(lp.follower_count),
+      liveFollowing: _fmtN(lp.following_count),
+      livePosts: _fmtN(lp.media_count),
+      liveStatusLabel: lp.is_private ? 'Privé' : lp.is_verified ? 'Vérifié' : 'Public',
+      liveStatusColor: lp.is_private ? '#f5c77e' : lp.is_verified ? '#7dd3fc' : '#2dd4a8',
       ed: {
         title: s.modal ? 'Profil de @' + handle : 'Ajouter des comptes', ini: this.ini(handle), exists: !!d.id, showDupDel: !!d.id && !s.modal,
         avStyle: this.avStyle(p.color, 52, 16), platIcon: this.platIcon(d.platform), platLabel: this.platLabel(d.platform),

@@ -161,3 +161,39 @@ async def bulk_create_scrapers(body: ScraperBulkRequest, db: AsyncSession = Depe
 
     logger.info("bulk-scraper: created %d scraper accounts (%s)", len(created), body.plateforme)
     return {"created": len(created), "compte_ids": created}
+
+
+
+# ── Profile live (via scraper API) ─────────────────────────────────────
+
+@router.get("/{compte_id}/profile-live")
+async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Fetch real-time profile data for a compte via the IG private API.
+
+    Uses a scraper account's session + Scrapigo proxy to fetch profile
+    info, stats, bio, highlights etc. for the given account's handle.
+    """
+    compte = await service.get_compte(db, compte_id)
+    if not compte:
+        raise HTTPException(404, "compte not found")
+
+    if compte.plateforme != "ig":
+        raise HTTPException(400, "profile-live only supports Instagram for now")
+
+    try:
+        from app.services.ig_api_scraper import IGScraperClient
+        client = await IGScraperClient.from_db()
+        if not client:
+            raise HTTPException(503, "Aucun compte scraper avec session valide")
+
+        profile = await client.get_user_profile_full(compte.handle)
+        if not profile:
+            raise HTTPException(404, f"Profil @{compte.handle} introuvable via l'API privée")
+
+        return profile
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("profile-live error for %s", compte.handle)
+        raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
