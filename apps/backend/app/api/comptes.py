@@ -293,19 +293,47 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
 
 
 async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, changes: dict):
-    """Background task: edit profile on iPhone via automation script."""
+    """Background task: edit profile on iPhone via automation script.
+
+    Maps frontend field names to configure_profile() expected keys:
+    full_name -> name, biography -> bio, external_url -> link, is_private -> private
+    """
+    # Map API field names to script config keys
+    config = {}
+    if "full_name" in changes:
+        config["name"] = changes["full_name"]
+    if "biography" in changes:
+        config["bio"] = changes["biography"]
+    if "external_url" in changes:
+        config["link"] = {"url": changes["external_url"]} if changes["external_url"] else ""
+    if "is_private" in changes:
+        config["private"] = changes["is_private"]
+    if "is_business" in changes:
+        config["pro"] = changes["is_business"]
+
+    if not config:
+        return
+
     try:
         if plateforme == "ig":
             from app.services.automation.ig_runner import run_ig_task
-            ok, msg = await run_ig_task(compte_id, "ig_edit_profile", values=changes)
+            ok, msg = await run_ig_task(compte_id, "ig_config", values={"config": config})
         else:
             logger.info("profile_edit: plateforme %s not yet supported", plateforme)
             return
 
         from app.services.comptes import _log as emit_log
         if ok:
-            await emit_log("comptes", "profile", "success", str(compte_id), f"Profil modifié — {msg}")
+            await emit_log("comptes", "profile", "success", str(compte_id),
+                f"Profil modifié sur iPhone — {', '.join(config.keys())} — {msg}")
         else:
-            await emit_log("comptes", "profile", "error", str(compte_id), f"Échec modification profil — {msg}")
+            await emit_log("comptes", "profile", "error", str(compte_id),
+                f"Échec modification profil — {msg}", code="PROFILE_EDIT_FAILED")
     except Exception:
         logger.exception("profile_edit error for %s", compte_id)
+        try:
+            from app.services.comptes import _log as emit_log
+            await emit_log("comptes", "profile", "error", str(compte_id),
+                f"Erreur technique lors de la modification profil", code="PROFILE_EDIT_ERROR")
+        except Exception:
+            pass
