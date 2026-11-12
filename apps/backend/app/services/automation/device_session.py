@@ -181,9 +181,10 @@ async def resolve_account_device(
 
         # Container UUID from env JSONB
         env = compte.env or {}
+        iphone_env = env.get("iphone")
         container_uuid = (
             env.get("container_uuid")
-            or env.get("iphone", {}).get("id")
+            or (iphone_env.get("id") if isinstance(iphone_env, dict) else None)
             or env.get("env_id")
             or ""
         )
