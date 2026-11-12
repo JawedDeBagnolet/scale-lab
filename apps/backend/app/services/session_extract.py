@@ -69,10 +69,12 @@ async def verify_session(
     session: dict,
     *,
     platform: str = "ig",
+    proxy_url: str | None = None,
 ) -> dict:
     """Verify a session is still valid via the IG/Threads private API.
 
     Also extracts csrftoken from the API response if not already present.
+    Uses Scrapigo proxy if available to avoid datacenter IP blocks.
 
     Returns: {"valid": bool, "status": str, "username": str|None, "csrftoken": str|None}
     """
@@ -86,6 +88,19 @@ async def verify_session(
 
     if not sessionid and not authorization:
         return {"valid": False, "status": "no_session", "username": None, "csrftoken": None}
+
+    # Auto-resolve proxy via Scrapigo if not provided
+    if not proxy_url:
+        try:
+            from app.services.scrapigo import get_scrapigo_client
+            sg = await get_scrapigo_client()
+            if sg:
+                proxy_obj = await sg.get_proxy_for_account(ds_user_id or "verify", country="FR")
+                if proxy_obj:
+                    proxy_url = proxy_obj.url
+                    logger.info("verify_session: using Scrapigo proxy for verification")
+        except Exception as e:
+            logger.debug("verify_session: no Scrapigo proxy available: %s", e)
 
     cookie_parts = []
     if sessionid:
@@ -106,7 +121,7 @@ async def verify_session(
         headers["Authorization"] = authorization
 
     try:
-        async with httpx.AsyncClient(timeout=15, verify=False) as client:
+        async with httpx.AsyncClient(timeout=15, verify=False, proxy=proxy_url) as client:
             url = "https://i.instagram.com/api/v1/feed/timeline/"
             resp = await client.get(url, headers=headers)
 
