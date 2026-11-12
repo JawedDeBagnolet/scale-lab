@@ -117,18 +117,25 @@ async def verify_session(
     if mid:
         cookie_parts.append(f"mid={mid}")
 
+    # Use iOS User-Agent (sessions are extracted from iPhones)
     headers = {
         "Cookie": "; ".join(cookie_parts),
-        "User-Agent": "Barcelona 341.0.0.36.109 Android" if platform == "th" else "Instagram 321.0.0.39.109 Android",
-        "X-IG-App-ID": "238260118697367" if platform == "th" else "936619743392459",
+        "User-Agent": "Barcelona 345.0.0.24.109 iOS" if platform == "th" else "Instagram 345.1.0.36.109 (iPhone14,5; iOS 17_5_1; fr_FR; fr; scale=3.00; 1170x2532; 617931868) AppleWebKit/420+",
+        "X-IG-App-ID": "238260118697367" if platform == "th" else "124024574287414",
+        "X-IG-App-Locale": "fr_FR",
+        "X-IG-Device-Locale": "fr_FR",
+        "Accept-Language": "fr-FR,fr;q=0.9",
     }
+    if csrftoken:
+        headers["X-CSRFToken"] = csrftoken
     if authorization:
         headers["Authorization"] = authorization
 
     try:
         logger.info("verify_session: proxy=%s", proxy_url[:30] if proxy_url else "NONE (direct)")
         async with httpx.AsyncClient(timeout=15, verify=False, proxy=proxy_url) as client:
-            url = "https://i.instagram.com/api/v1/feed/timeline/"
+            # Use /accounts/current_user/ — lighter and more reliable for session check
+            url = "https://i.instagram.com/api/v1/accounts/current_user/?edit=true"
             resp = await client.get(url, headers=headers)
             logger.info("verify_session: HTTP %s (via %s)", resp.status_code, "proxy" if proxy_url else "direct")
 
