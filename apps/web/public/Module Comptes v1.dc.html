@@ -954,7 +954,7 @@ select option { background: #151827; color: #e8eaf3; }
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
   static _sdLoad = (() => { if (!window.SCALE_DATA) { try { const x = new XMLHttpRequest(); x.open('GET', 'api-data.js', false); x.send(); if (x.status < 300) (0, eval)(x.responseText); } catch (e) {} } return true; })();
-  state = { view: 'list', q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', type: (location.hash.match(/type=(\w+)/) || [])[1] || 'all', scraperAccounts: [], scraperCountry: 'all', menu: null, kill: false, sel: {}, confirm: null, toast: null, accounts: this.seed(), draft: null, tab: 'settings', pplat: 'ig', showPw: false, showTok: false, tagInput: '', scrapeCountry: 'FR', scrapePlat: 'ig', scrapeDevice: 'auto', scrapeBulkText: '' };
+  state = { view: 'list', q: '', plat: 'all', market: 'all', persona: 'all', workflow: 'all', status: 'all', type: (location.hash.match(/type=(\w+)/) || [])[1] || 'all', scraperAccounts: [], scraperCountry: 'all', menu: null, kill: false, sel: {}, confirm: null, toast: null, accounts: this.seed(), draft: null, tab: 'settings', pplat: 'ig', showPw: false, showTok: false, tagInput: '', scrapeCountry: 'FR', scrapePlat: 'ig', scrapeDevice: 'auto', scrapeBulkText: '', scrapeUser: '', scrapePw: '', scrapeTotp: '' };
 
   pers() {
     const EXTRA = [
@@ -1228,10 +1228,10 @@ class Component extends DCLogic {
       list = this.parseBulk().filter(r => r.st === 'ok').map((r, i) => mk(r.u, i, null, r.pw, r.tt));
       if (!list.length) { this.toastMsg('Aucun compte prêt à connecter'); return; }
     } else if (ct === 'scrape') {
-      const u = (d.scrapeUser || '').trim().replace(/^@/, '');
+      const u = (s.scrapeUser || '').trim().replace(/^@/, '');
       if (!u) { this.toastMsg('Renseigne un username'); return; }
-      if (!(d.scrapePw || '').trim()) { this.toastMsg('Renseigne un mot de passe'); return; }
-      const creds = { password: d.scrapePw, ...(d.scrapeTotp ? { two_fa: d.scrapeTotp.replace(/\s/g, '') } : {}) };
+      if (!(s.scrapePw || '').trim()) { this.toastMsg('Renseigne un mot de passe'); return; }
+      const creds = { password: s.scrapePw, ...(s.scrapeTotp ? { two_fa: s.scrapeTotp.replace(/\s/g, '') } : {}) };
       const SD2 = window.SCALE_DATA;
       if (SD2 && SD2._live) {
         try {
@@ -1678,9 +1678,9 @@ class Component extends DCLogic {
       scrapePlatSeg: this.seg([{ v: 'ig', label: 'Instagram', icon: 'ph ph-instagram-logo' }, { v: 'th', label: 'Threads', icon: 'ph ph-threads-logo' }, { v: 'x', label: 'Twitter', icon: 'ph ph-x-logo' }], s.scrapePlat || 'ig', v => this.setState({ scrapePlat: v })),
       scrapeDevices: (function () { var devs = [{ id: 'auto', name: 'Automatique', sub: 'Premier iPhone libre du parc', icon: 'ph ph-shuffle', tag: 'Recommandé' }]; var SD = window.SCALE_DATA; if (SD && SD.devices) { SD.devices.forEach(function (d) { devs.push({ id: d.id, name: d.name, sub: d.online ? 'Libre' : 'Hors ligne', icon: 'ph ph-device-mobile' }); }); } return devs.map(function (d) { var on = (s.scrapeDevice || 'auto') === d.id; return { name: d.name, sub: d.sub, icon: d.icon, tag: d.tag || '', hasTag: !!d.tag, on: on, radio: on ? { width: 18, height: 18, borderRadius: 99, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width: 18, height: 18, borderRadius: 99, border: '1.5px solid rgba(255,255,255,.25)' }, radioDot: on, iconWrap: { width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: on ? '#6ee7c5' : '#aab0c5', background: on ? 'rgba(45,212,168,.14)' : 'rgba(255,255,255,.05)' }, cardStyle: { borderRadius: 14, padding: '14px 16px', cursor: 'pointer', border: '1px solid ' + (on ? 'rgba(45,212,168,.5)' : 'rgba(255,255,255,.08)'), background: on ? 'rgba(45,212,168,.07)' : 'rgba(255,255,255,.02)' }, pick: function () { me.setState({ scrapeDevice: d.id }); } }; }); })(),
       scrapeFootNote: (ct === 'scrape' || ct === 'scrapeBulk') ? true : false, scrapeFootIcon: 'ph ph-binoculars', scrapeFootText: 'Apparaîtra dans Comptes avec le filtre Scraping',
-      scrapeUser: d.scrapeUser || '', setScrapeUser: e => this.upd(x => { x.scrapeUser = e.target.value.trim(); }),
-      scrapePw: d.scrapePw || '', setScrapePw: e => this.upd(x => { x.scrapePw = e.target.value; }),
-      scrapeTotp: d.scrapeTotp || '', setScrapeTotp: e => this.upd(x => { x.scrapeTotp = e.target.value; }),
+      scrapeUser: s.scrapeUser || '', setScrapeUser: e => this.setState({ scrapeUser: e.target.value }),
+      scrapePw: s.scrapePw || '', setScrapePw: e => this.setState({ scrapePw: e.target.value }),
+      scrapeTotp: s.scrapeTotp || '', setScrapeTotp: e => this.setState({ scrapeTotp: e.target.value }),
       scrapePwType: s.showPw ? 'text' : 'password', scrapePwIcon: s.showPw ? 'ph ph-eye-slash' : 'ph ph-eye', toggleScrapePw: () => this.setState({ showPw: !s.showPw }),
       scrapeBulkText: s.scrapeBulkText || '', setScrapeBulkText: e => this.setState({ scrapeBulkText: e.target.value }),
       createSub: ct === 'single' ? 'Connecte un compte existant avec ses identifiants' : ct === 'bulkConnect' ? 'Colle une liste de comptes existants, les paramètres ci-dessous s\'appliquent à tous' : ct === 'scrape' ? 'Connecte un compte dédié au scraping : il alimente la Veille, la recherche et les Statistiques, sans persona et sans jamais publier' : ct === 'scrapeBulk' ? 'Colle une liste de comptes de scraping, la plateforme et le proxy ci-dessous s\'appliquent à tous' : 'Génère de nouveaux comptes à partir d\'un modèle de username',
