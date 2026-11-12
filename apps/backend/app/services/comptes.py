@@ -173,6 +173,21 @@ async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
         await _log("comptes", "login", "error", str(compte_id), f"Erreur inattendue lors du login: {traceback.format_exc()[-200:]}", code="LOGIN_EXCEPTION")
 
 
+async def _pick_free_iphone(db: AsyncSession):
+    """Pick the iPhone with the fewest assigned accounts (load balancing)."""
+    from sqlalchemy import func
+    stmt = (
+        select(IPhone)
+        .where(IPhone.status == "online")
+        .outerjoin(Compte, Compte.device_id == IPhone.id)
+        .group_by(IPhone.id)
+        .order_by(func.count(Compte.id).asc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     await _check_persona(db, data.persona_id)
     dump = data.model_dump()
@@ -180,6 +195,12 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     if dump.get("creds_encrypted"):
         dump["creds_encrypted"] = encrypt_creds(dump["creds_encrypted"])
     compte = Compte(**dump)
+    # Auto-assign iPhone for scraper accounts without a specific device
+    if compte.is_scraper and not compte.device_id:
+        free_iphone = await _pick_free_iphone(db)
+        if free_iphone:
+            compte.device_id = free_iphone.id
+            logger.info("create_compte: auto-assigned scraper @%s to iPhone %s", compte.handle, free_iphone.name)
     # Auto-assign container if device_id provided at creation
     if compte.device_id:
         await _ensure_container_on_assign(db, compte, compte.device_id)
