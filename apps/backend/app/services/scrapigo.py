@@ -121,7 +121,7 @@ class ScrapigoClient:
 
         logger.info("generate_proxy: API response keys=%s", list(data.keys()))
         lines = []
-        proxy_list = data.get("proxies", data.get("lines", []))
+        proxy_list = data.get("proxies", data.get("lines", data.get("data", [])))
         logger.info("generate_proxy: found %d proxy entries (type=%s)", len(proxy_list), type(proxy_list[0]).__name__ if proxy_list else "empty")
         if proxy_list:
             logger.info("generate_proxy: first entry sample: %s", str(proxy_list[0])[:120])
