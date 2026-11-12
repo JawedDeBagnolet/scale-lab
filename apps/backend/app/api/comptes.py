@@ -199,7 +199,16 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
         await emit_log("comptes", "scrape", "success", compte.handle,
             f"Profil @{compte.handle} récupéré — {profile.get('follower_count', 0)} followers, {profile.get('media_count', 0)} posts, {hl_count} highlights")
 
-        return profile
+        # Persist live profile data in DB
+        compte.profile_data = profile
+        await db.commit()
+
+        # Merge with internal config (age_limit, pro_type, etc. — not from API)
+        config = compte.profile_config or {}
+        result = {**profile}
+        result["_config"] = config  # internal fields the frontend should preserve
+
+        return result
 
     except HTTPException:
         raise
@@ -207,3 +216,94 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
         logger.exception("profile-live error for %s", compte.handle)
         await emit_log("comptes", "scrape", "error", compte.handle, f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
         raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
+
+
+
+# ── Profile update (diff-based, dispatches to iPhone) ──────────────────
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str | None = None
+    biography: str | None = None
+    external_url: str | None = None
+    is_private: bool | None = None
+    is_business: bool | None = None
+    # Internal-only config (not pushed to IG, stored locally)
+    age_limit: str | None = None      # "18+", "21+", or null
+    pro_type: str | None = None        # "creator", "business"
+    pro_category: str | None = None
+
+@router.post("/{compte_id}/profile-update")
+async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """Update profile config. Only changed fields (vs profile_data) are dispatched to iPhone.
+
+    Internal fields (age_limit, pro_type) are stored in profile_config only.
+    IG fields (bio, name, link, privacy) are diffed against last known profile_data
+    and dispatched as an automation task on the assigned iPhone.
+    """
+    from app.services.comptes import _log as emit_log
+
+    compte = await service.get_compte(db, compte_id)
+    if not compte:
+        raise HTTPException(404, "compte not found")
+
+    changes = body.model_dump(exclude_unset=True)
+    live = compte.profile_data or {}
+    config = compte.profile_config or {}
+
+    # Separate internal config vs IG-pushable fields
+    INTERNAL_KEYS = {"age_limit", "pro_type", "pro_category"}
+    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business"}
+
+    # Update internal config
+    config_changed = False
+    for k in INTERNAL_KEYS:
+        if k in changes:
+            config[k] = changes[k]
+            config_changed = True
+
+    if config_changed:
+        compte.profile_config = config
+
+    # Diff IG fields against live data
+    ig_diff = {}
+    for k in IG_KEYS:
+        if k in changes and changes[k] != live.get(k):
+            ig_diff[k] = changes[k]
+
+    if ig_diff:
+        await emit_log("comptes", "profile", "info", compte.handle,
+            f"Modification profil demandée : {', '.join(ig_diff.keys())}")
+
+        # Dispatch to iPhone automation
+        if compte.device_id and (compte.env or {}).get("container_uuid"):
+            import asyncio
+            asyncio.create_task(
+                _dispatch_profile_edit(compte.id, compte.plateforme, ig_diff),
+                name=f"profile_edit_{compte.handle}",
+            )
+            logger.info("profile-update: dispatched %s changes for @%s", list(ig_diff.keys()), compte.handle)
+        else:
+            await emit_log("comptes", "profile", "warning", compte.handle,
+                "Pas de device/container — modifications enregistrées mais non appliquées")
+
+    await db.commit()
+    return {"ok": True, "ig_changes": ig_diff, "config_changes": {k: config[k] for k in INTERNAL_KEYS if k in changes}}
+
+
+async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, changes: dict):
+    """Background task: edit profile on iPhone via automation script."""
+    try:
+        if plateforme == "ig":
+            from app.services.automation.ig_runner import run_ig_task
+            ok, msg = await run_ig_task(compte_id, "ig_edit_profile", values=changes)
+        else:
+            logger.info("profile_edit: plateforme %s not yet supported", plateforme)
+            return
+
+        from app.services.comptes import _log as emit_log
+        if ok:
+            await emit_log("comptes", "profile", "success", str(compte_id), f"Profil modifié — {msg}")
+        else:
+            await emit_log("comptes", "profile", "error", str(compte_id), f"Échec modification profil — {msg}")
+    except Exception:
+        logger.exception("profile_edit error for %s", compte_id)

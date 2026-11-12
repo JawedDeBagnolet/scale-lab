@@ -1209,6 +1209,25 @@ class Component extends DCLogic {
         const patchData = { handle: u, plateforme: d.platform, workflow: d.workflow, status: d.status || 'ok', persona_id: d.persona || null, env: env }; if (d.password) { patchData.creds_encrypted = { password: d.password, ...(d.totp ? { two_fa: d.totp.replace(/\s/g, '') } : {}) }; } SD.apiPatch('/comptes/' + real.id, patchData);
         real.handle = u; real.plat = d.platform; real.workflow = d.workflow; real.persona = d.persona;
       }
+      // Profile update (diff-based) — only in modal (profile edit) mode
+      if (this.state.modal && real) {
+        const pk = d.platform === 'x' ? 'x' : d.platform === 'th' ? 'th' : 'ig';
+        const prof = d.profile[pk] || {};
+        const profilePayload = {};
+        if (prof.displayName != null) profilePayload.full_name = prof.displayName;
+        if (prof.bio != null) profilePayload.biography = prof.bio;
+        if (prof.link != null) profilePayload.external_url = prof.link;
+        if (prof.privacy) profilePayload.is_private = prof.privacy === 'private';
+        if (prof.pro != null) profilePayload.is_business = prof.pro;
+        if (prof.ageLimit != null) profilePayload.age_limit = prof.ageLimit ? (prof.ageMin || '18+') : null;
+        if (prof.proType) profilePayload.pro_type = prof.proType;
+        if (prof.proCat) profilePayload.pro_category = prof.proCat;
+        SD.apiAsync('POST', '/comptes/' + real.id + '/profile-update', profilePayload).then(r => {
+          if (r && r.ig_changes && Object.keys(r.ig_changes).length) {
+            this.toastMsg('Modification du profil en cours sur l\'iPhone...');
+          }
+        }).catch(e => console.warn('[profile-update]', e));
+      }
     }
     this.setState(s => d.id
       ? { accounts: s.accounts.map(a => a.id === d.id ? { ...a, ...base, extra } : a), view: 'list', draft: null, modal: false }

@@ -32,6 +32,10 @@ class Compte(Base):
     follows: Mapped[int] = mapped_column(Integer, default=0)
     creds_encrypted: Mapped[dict | None] = mapped_column(JSONB)              # {password, two_fa, token} chiffre
 
+    # ── Profile data (live from API + internal config) ──────────────────
+    profile_data: Mapped[dict | None] = mapped_column(JSONB)               # last known profile state from API
+    profile_config: Mapped[dict | None] = mapped_column(JSONB)             # internal settings (age_limit, pro_type, etc.)
+
     # ── Scraper fields ──────────────────────────────────────────────────
     is_scraper: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     session_data: Mapped[dict | None] = mapped_column(JSONB)                 # cookies/tokens API privée (extrait par ScaleTweak)
