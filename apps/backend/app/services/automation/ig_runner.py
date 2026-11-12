@@ -107,10 +107,26 @@ async def _maybe_extract_session(sess, log):
         )
         if session:
             log(f"   [scraper] ✓ session extraite et stockée (ds_user_id={session.get('ds_user_id', '?')})")
+            from app.services.comptes import _log as emit_log
+            await emit_log("comptes", "session", "success", compte.handle, f"Session scraper extraite — ds_user_id={session.get('ds_user_id', '?')}")
         else:
             log("   [scraper] ⚠ extraction de session échouée — le compte sera réessayé au prochain login")
+            from app.services.comptes import _log as emit_log
+            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée — le compte est connecté mais inutilisable pour le scraping", code="SESSION_EXTRACT_FAILED")
+            # Update status to reflect the account needs reconnection
+            async with AsyncSessionLocal() as db2:
+                c = await db2.get(Compte, sess.compte_id)
+                if c:
+                    c.status = "session"
+                    await db2.commit()
+                    log(f"   [scraper] statut mis à jour → session (à reconnecter)")
     except Exception as e:
         log(f"   [scraper] ⚠ erreur extraction session: {str(e)[:150]}")
+        try:
+            from app.services.comptes import _log as emit_log
+            await emit_log("comptes", "session", "error", str(sess.compte_id), f"Erreur extraction session: {str(e)[:150]}", code="SESSION_EXTRACT_ERROR")
+        except Exception:
+            pass
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
