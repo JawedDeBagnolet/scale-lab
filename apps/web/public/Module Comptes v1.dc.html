@@ -4,62 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;background:#0b0d16}@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.2s;animation-timing-function:ease-in-out}
-/* ── Liquid Glass ─────────────────────────────────────────── */
-.lg-sheet { position: relative; }
-.lg-sheet .lg-glass { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; display: none; }
-.lg-sheet.lg-on { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-  border-color: rgba(255,255,255,.10) !important;
-  box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.30), inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.05), inset 0 0 40px rgba(255,255,255,.035) !important; }
-.lg-sheet.lg-on .lg-glass { display: block;
-  background: linear-gradient(155deg, rgba(58,62,100,.38), rgba(16,18,34,.56));
-  backdrop-filter: url(#lg-filter) saturate(170%) brightness(1.04);
-  -webkit-backdrop-filter: url(#lg-filter) saturate(170%) brightness(1.04);
-  transform: translateZ(0); will-change: transform; }
-.lg-sheet .lg-scroll { will-change: transform; contain: paint; }
-.lg-sheet .lg-rim {
-  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
-  padding: 1.5px;
-  background:
-    radial-gradient(420px circle at var(--mx, 20%) var(--my, 0%), rgba(255,255,255,.75), rgba(255,255,255,0) 60%),
-    linear-gradient(155deg, rgba(255,255,255,.45), rgba(255,255,255,.04) 35%, rgba(255,255,255,.02) 65%, rgba(255,255,255,.22));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: .9;
-}
-.lg-sheet .lg-sheen {
-  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
-  background: radial-gradient(700px 260px at var(--mx, 20%) -10%, rgba(255,255,255,.07), transparent 70%);
-}
-.lg-sheet > :not(.lg-rim):not(.lg-sheen):not(.lg-glass) { position: relative; z-index: 1; }
-.lg-sheet.lg-on .lg-scroll > div { background-color: rgba(13,15,28,.66) !important; }
-.lg-sheet.lg-on textarea { background: rgba(8,10,20,.45) !important; }
-/* Variante claire */
-.lg-sheet .lg-scroll > div { background-color: rgba(255,255,255,.045) !important; border-color: rgba(255,255,255,.11) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 24px rgba(255,255,255,.025); }
-.lg-sheet input, .lg-sheet textarea { background: rgba(255,255,255,.065) !important; border-color: rgba(255,255,255,.13) !important; }
-/* Pill onglet glissant */
-.lg-pill {
-  position: absolute; height: 34px; border-radius: 99px; pointer-events: none; z-index: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.08), 0 6px 18px rgba(0,0,0,.25);
-  backdrop-filter: blur(6px) saturate(180%); -webkit-backdrop-filter: blur(6px) saturate(180%);
-  transition: left .55s cubic-bezier(.34,1.56,.64,1), width .55s cubic-bezier(.34,1.56,.64,1), transform .3s ease;
-}
-.lg-pill.moving { transform: scaleY(.86); }
-/* ── Version universelle : copie de la page + filter (et non backdrop-filter) ── */
-.lg-sheet.lg-uni .lg-glass { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: hidden; }
-/* Calque extérieur : flou et saturation en fonctions CSS standard, comprises par tous les navigateurs.
-   Pas de transform / will-change ici : WebKit n'applique pas les filtres SVG aux calques composités. */
-.lg-sheet.lg-uni .lg-fx { position: absolute; left: -40px; top: -40px; right: -40px; bottom: -40px; overflow: hidden;
-  filter: blur(6px) saturate(1.7) brightness(1.04); -webkit-filter: blur(6px) saturate(1.7) brightness(1.04); }
-/* Calque intérieur : uniquement la déformation SVG */
-.lg-sheet.lg-uni .lg-warp { position: absolute; inset: 0; filter: url(#lg-warp); -webkit-filter: url(#lg-warp); }
-.lg-sheet.lg-uni .lg-clone { position: absolute; pointer-events: none; }
-.lg-sheet.lg-uni .lg-veil { position: absolute; inset: 0; background: rgba(5,6,12,.3); }
-.lg-sheet.lg-uni .lg-tint { position: absolute; inset: 0; background: linear-gradient(155deg, rgba(52,56,92,.30), rgba(14,16,30,.48)); }
-/* Filet de sécurité Safari : si le calque filtré ne s'affiche pas, le verre dépoli reste dessous */
-.lg-sheet.lg-uni.lg-webkit { backdrop-filter: blur(26px) saturate(160%) !important; -webkit-backdrop-filter: blur(26px) saturate(160%) !important; }
-.lg-sheet.lg-uni .lg-tint { background: linear-gradient(155deg, rgba(58,62,100,.38), rgba(16,18,34,.56)); }
-
 
 </style>
 <script>
@@ -328,7 +272,7 @@ select option { background: #151827; color: #e8eaf3; }
 
 <sc-if value="{{ isEdit }}">
 <div onClick="{{ backToList }}" style="{{ editOuter }}">
-<div onClick="{{ stopProp }}" data-modal-scroll="1" class="lg-sheet" style="{{ editInner }}">
+<div onClick="{{ stopProp }}" data-modal-scroll="1" style="{{ editInner }}">
 
 
 
@@ -1194,8 +1138,8 @@ class Component extends DCLogic {
     return { displayName: p.name, bio: (p.bios[2] || p.bios[0]).slice(0, 160), location: city, link: hd ? 'linktr.ee/' + hd.replace(/[._]/g, '') : '', photo: (n + 5) % 8, banner: n % 6, interests: [] };
   }
   upd(fn) { this.setState(s => { const d = JSON.parse(JSON.stringify(s.draft)); fn(d); return { draft: d }; }); }
-  openProfile(a) { const _me2 = this; setTimeout(() => { _me2._initLiquidGlass(); if (_me2._lgBuildMap) _me2._lgBuildMap(); }, 100); const dr = this.mkDraft(a); if (!dr.profile.x) dr.profile.x = this.xDefault(this.P(a.persona), a.n || 0, a.username, a.market); this.setState({ view: 'edit', modal: true, draft: dr, tab: 'profile', pplat: a.platform === 'x' ? 'x' : a.platform === 'th' ? 'th' : 'ig', menu: null, fmenu: null }); }
-  open(a) { const _me = this; setTimeout(() => { _me._initLiquidGlass(); if (_me._lgBuildMap) _me._lgBuildMap(); }, 100); this.setState({ view: 'edit', modal: false, ctab: 'single', fmenu: null, draft: this.mkDraft(a), tab: 'settings', pplat: a && a.platform === 'th' ? 'th' : 'ig', showPw: false, showTok: false, tagInput: '', menu: null }); }
+  openProfile(a) {  const dr = this.mkDraft(a); if (!dr.profile.x) dr.profile.x = this.xDefault(this.P(a.persona), a.n || 0, a.username, a.market); this.setState({ view: 'edit', modal: true, draft: dr, tab: 'profile', pplat: a.platform === 'x' ? 'x' : a.platform === 'th' ? 'th' : 'ig', menu: null, fmenu: null }); }
+  open(a) { this.setState({ view: 'edit', modal: false, ctab: 'single', fmenu: null, draft: this.mkDraft(a), tab: 'settings', pplat: a && a.platform === 'th' ? 'th' : 'ig', showPw: false, showTok: false, tagInput: '', menu: null }); }
   dup(a) {
     const copy = { ...a, env: { ...a.env }, id: 'a' + Date.now(), username: a.username + '_copy', sessions: 0, follows: 0, status: 'idle', workflow: 'Onboarding' };
     if (a.extra) copy.extra = JSON.parse(JSON.stringify(a.extra));
@@ -1290,74 +1234,6 @@ class Component extends DCLogic {
     this.toastMsg((list.length > 1 ? list.length + ' comptes ajoutés' : '@' + list[0].username + ' ajouté') + where);
   }
   
-  _initLiquidGlass() {
-    const sheet = document.querySelector('.lg-sheet');
-    if (!sheet || sheet._lgInit) return;
-    sheet._lgInit = true;
-    sheet.insertAdjacentHTML('afterbegin', '<div class="lg-sheen"></div><div class="lg-rim"></div><div class="lg-glass"></div>');
-    // Pointer tracking for rim + sheen
-    window.addEventListener('pointermove', e => {
-      const r = sheet.getBoundingClientRect();
-      sheet.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      sheet.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
-    });
-    // Universal mode: works on all browsers (Safari included)
-    sheet.classList.add('lg-on', 'lg-uni');
-    const ua = navigator.userAgent;
-    if (/AppleWebKit/.test(ua) && !/Chrome\/|Chromium\/|Edg\//.test(ua)) sheet.classList.add('lg-webkit');
-    const P = 40;
-    const glass = sheet.querySelector('.lg-glass');
-    glass.innerHTML = '<div class="lg-fx"><div class="lg-warp"><div class="lg-clone"></div><div class="lg-veil"></div></div></div><div class="lg-tint"></div>';
-    const fx = glass.querySelector('.lg-fx'), holder = glass.querySelector('.lg-clone');
-    const overlay = sheet.parentElement;
-    const mapEl = document.getElementById('lg-map-warp');
-    let lastMap = '';
-    const cloneBg = () => {
-      const root = document.body.firstElementChild || document.body;
-      overlay.setAttribute('data-lg-skip', '');
-      const src = [root].concat(Array.from(root.querySelectorAll('*')));
-      const copy = root.cloneNode(true);
-      const dst = [copy].concat(Array.from(copy.querySelectorAll('*')));
-      const scrolls = [];
-      src.forEach((el, i) => { if (el.scrollTop || el.scrollLeft) scrolls.push([dst[i], el.scrollTop, el.scrollLeft]); });
-      overlay.removeAttribute('data-lg-skip');
-      copy.querySelectorAll('[data-lg-skip], script, svg[aria-hidden]').forEach(el => el.remove());
-      copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-      copy.setAttribute('inert', ''); copy.setAttribute('aria-hidden', 'true');
-      copy.style.width = window.innerWidth + 'px'; copy.style.height = window.innerHeight + 'px';
-      holder.innerHTML = ''; holder.appendChild(copy);
-      scrolls.forEach(s => { s[0].scrollTop = s[1]; s[0].scrollLeft = s[2]; });
-    };
-    const buildMap = (w, h) => {
-      if (!mapEl) return;
-      const W = w + 2 * P, H = h + 2 * P;
-      if (lastMap === W + 'x' + H) return; lastMap = W + 'x' + H;
-      const B = 60, c = document.createElement('canvas'); c.width = W; c.height = H;
-      const ctx = c.getContext('2d'), img = ctx.createImageData(W, H), d = img.data;
-      const sm = t => { t = Math.min(Math.max(t, 0), 1); return t * t * (3 - 2 * t); };
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const px = x + .5 - W / 2, py = y + .5 - H / 2;
-        const kx = sm(1 - (w / 2 - Math.abs(px)) / B), ky = sm(1 - (h / 2 - Math.abs(py)) / B);
-        const i = (y * W + x) * 4;
-        d[i] = 128 - 127 * (Math.sign(px) || 1) * kx; d[i + 1] = 128 - 127 * (Math.sign(py) || 1) * ky; d[i + 2] = 128; d[i + 3] = 255;
-      }
-      ctx.putImageData(img, 0, 0);
-      mapEl.setAttribute('width', W); mapEl.setAttribute('height', H);
-      const url = c.toDataURL();
-      mapEl.setAttribute('href', url);
-      mapEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
-    };
-    const sync = () => {
-      const r = glass.getBoundingClientRect();
-      holder.style.left = (P - r.left) + 'px'; holder.style.top = (P - r.top) + 'px';
-      buildMap(Math.round(r.width), Math.round(r.height));
-    };
-    cloneBg(); sync();
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { cloneBg(); sync(); });
-    if (window.ResizeObserver) new ResizeObserver(sync).observe(sheet);
-    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { cloneBg(); sync(); }, 150); });
-    this._lgSync = sync; this._lgClone = cloneBg;
-  }
   seg(items, cur, go) { return items.map(it => {
     if (it.v === '_sep') return { isSep: true, active: false, idle: false, hasIcon: false, go: () => {} };
     return { ...it, isSep: false, active: it.v === cur, idle: it.v !== cur, hasIcon: !!it.icon, sky: !!it.sky, go: () => go(it.v) };
@@ -1373,7 +1249,7 @@ class Component extends DCLogic {
     if (SD.envs && !SD.envs.ready()) m.push({ icon: 'ph ph-cube', label: 'Un environnement', sub: 'Un fournisseur connecté (GoLogin, GeeLark) ou un iPhone du parc.', href: 'Module%20Parametres%20v1.dc.html#tab=int', cta: 'Connecter un fournisseur', alt: true, altHref: 'Module%20Parc%20iPhone%20v1.dc.html', altCta: 'Ajouter un iPhone' });
     return m.map(x => Object.assign({ alt: false, altHref: '', altCta: '' }, x)); }
   _rvE() {
-    const glass = false; // Liquid Glass désactivé
+    const glass = false;
     const s = this.state;
     const kill = s.kill;
     const compact = 'Confortable' === 'Compacte';
@@ -1811,6 +1687,6 @@ class Component extends DCLogic {
   }
 }
 </script>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><filter id="lg-warp" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage id="lg-map-warp" x="0" y="0" width="1120" height="880" preserveAspectRatio="none" result="map" href="" xlink:href=""/><feDisplacementMap in="SourceGraphic" in2="map" scale="98" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="lg-filter" color-interpolation-filters="sRGB"><feImage id="lg-map" x="0" y="0" width="1040" height="800" preserveAspectRatio="none" result="map" href=""/><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="soft"/><feDisplacementMap in="soft" in2="map" scale="98" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+
 </body>
 </html>
