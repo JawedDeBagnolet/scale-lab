@@ -260,7 +260,12 @@ async def update_compte(db: AsyncSession, compte: Compte, data: CompteUpdate) ->
     )
 
     for key, value in changes.items():
-        setattr(compte, key, value)
+        if key == "env" and value is not None:
+            # Merge env instead of overwriting — preserve container_uuid, proxy_country etc.
+            merged = {**(compte.env or {}), **(value or {})}
+            compte.env = merged
+        else:
+            setattr(compte, key, value)
 
     # Auto-create container when assigning to a new iPhone
     if device_changed:
