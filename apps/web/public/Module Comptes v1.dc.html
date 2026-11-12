@@ -1692,6 +1692,9 @@ class Component extends DCLogic {
       ageSeg: this.seg([{ v: '18+', label: '18+' }, { v: '21+', label: '21+' }], prof.ageMin || '18+', v => this.upd(x => { x.profile[pk].ageMin = v; })),
       ageSub: pro ? 'Seuls les utilisateurs au-dessus de cet âge peuvent voir le profil' : 'Nécessite un compte professionnel'
     };
+    const lp = s.liveProfile || {};
+    const _fmtN = n => n == null ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+    const _hasLive = !!lp.username;
     const followersN = acc ? Math.round(acc.follows * .34 + 120) : 0;
     const pv = {
       platIcon: this.platIcon(pk), platLabel: this.platLabel(pk),
@@ -1711,9 +1714,7 @@ class Component extends DCLogic {
       thPosts: [0, 1, 2].map(i => ({ l1: { width: (92 - i * 9) + '%', height: 8, borderRadius: 5, background: '#1f222c' }, l2: { width: (64 + i * 11) + '%', height: 8, borderRadius: 5, background: '#1f222c' } }))
     };
 
-const lp = s.liveProfile || {};
-    const _fmtN = n => n == null ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
-    const _hasLive = !!lp.username;
+
     return {
       ...base, ...profExtra, d, on, prof, pv, tagInput: s.tagInput,
       liveLoading: !!s.liveLoading,
