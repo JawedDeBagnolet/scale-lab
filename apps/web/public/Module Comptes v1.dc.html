@@ -1172,11 +1172,12 @@ class Component extends DCLogic {
             if (!p || !p.username) { this.setState({ liveLoading: false }); return; }
             this.upd(d => {
               const pk = a.platform === 'th' ? 'th' : 'ig';
-              d.profile[pk].displayName = p.full_name || d.profile[pk].displayName;
-              d.profile[pk].bio = p.biography || d.profile[pk].bio;
-              d.profile[pk].link = p.external_url || d.profile[pk].link;
-              if (p.category) d.profile[pk].category = p.category;
-              if (p.highlights && p.highlights.length) d.profile[pk].highlights = p.highlights.map(h => h.title || h);
+              d.profile[pk].displayName = p.full_name || '';
+              d.profile[pk].bio = p.biography || '';
+              d.profile[pk].link = p.external_url || '';
+              d.profile[pk].category = p.category || '';
+              // Replace highlights with live data (empty array if none on real profile)
+              d.profile[pk].highlights = (p.highlights || []).map(h => h.title || 'Sans titre');
             });
             this.setState({ liveLoading: false, liveProfile: p });
           }).catch(e => {
@@ -1703,9 +1704,9 @@ class Component extends DCLogic {
       bannerStyle: { width: '100%', aspectRatio: '3', background: this.photo(p.color, ((prof.banner ?? 0) * 3 + 1) % 8) },
       xAvStyle: { width: '100%', height: '100%', borderRadius: 99, background: pool[prof.photo] ? pool[prof.photo].bg : '#23252e' },
       xMediaStyle: { width: '100%', height: 150, borderRadius: 14, border: '1px solid #2f3336', background: this.photo(p.color, ((prof.photo || 0) + 2) % 8), opacity: .85 },
-      avStyle: { width: '100%', height: '100%', borderRadius: 99, background: pool[prof.photo] ? pool[prof.photo].bg : '#23252e', border: '2px solid #07080e' },
-      posts: acc ? 6 + (acc.n || 0) % 30 : 0, followers: this.fmt(followersN), following: this.fmt(acc ? Math.round(acc.follows * .6 + 80) : 0),
-      hls: hlArr.map((h, i) => ({ name: h || 'Sans titre', style: { width: '100%', height: '100%', borderRadius: 99, background: this.photo(p.color, (i * 3 + 1) % 8), opacity: .85 } })),
+      avStyle: _hasLive && lp.hd_profile_pic_url ? { width: '100%', height: '100%', borderRadius: 99, background: 'url(' + (lp.hd_profile_pic_url || lp.profile_pic_url) + ') center/cover', border: '2px solid #07080e' } : { width: '100%', height: '100%', borderRadius: 99, background: pool[prof.photo] ? pool[prof.photo].bg : '#23252e', border: '2px solid #07080e' },
+      posts: _hasLive ? lp.media_count : (acc ? 6 + (acc.n || 0) % 30 : 0), followers: _hasLive ? _fmtN(lp.follower_count) : this.fmt(followersN), following: _hasLive ? _fmtN(lp.following_count) : this.fmt(acc ? Math.round(acc.follows * .6 + 80) : 0),
+      hls: (_hasLive ? (lp.highlights || []) : hlArr.map(h => ({ title: h }))).map((h, i) => ({ name: (typeof h === 'string' ? h : h.title) || 'Sans titre', hasCoverImg: !!(h && h.cover_url), coverImg: h && h.cover_url ? h.cover_url : '', style: { width: '100%', height: '100%', borderRadius: 99, background: h && h.cover_url ? 'url(' + h.cover_url + ') center/cover' : this.photo(p.color, (i * 3 + 1) % 8), opacity: h && h.cover_url ? 1 : .85 } })),
       grid: [0, 1, 2, 3, 4, 5].map(i => ({ style: { aspectRatio: '1', background: this.photo(p.color, (i * 5 + 2) % 8), opacity: .55 } })),
       thPosts: [0, 1, 2].map(i => ({ l1: { width: (92 - i * 9) + '%', height: 8, borderRadius: 5, background: '#1f222c' }, l2: { width: (64 + i * 11) + '%', height: 8, borderRadius: 5, background: '#1f222c' } }))
     };

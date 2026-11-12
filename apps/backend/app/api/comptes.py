@@ -180,15 +180,24 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
     if compte.plateforme != "ig":
         raise HTTPException(400, "profile-live only supports Instagram for now")
 
+    from app.services.comptes import _log as emit_log
+    await emit_log("comptes", "scrape", "info", compte.handle, f"Lecture profil live @{compte.handle} via API privée")
+
     try:
         from app.services.ig_api_scraper import IGScraperClient
         client = await IGScraperClient.from_db(db)
         if not client:
+            await emit_log("comptes", "scrape", "error", compte.handle, "Aucun compte scraper avec session valide", code="NO_SCRAPER")
             raise HTTPException(503, "Aucun compte scraper avec session valide")
 
         profile = await client.get_user_profile_full(compte.handle)
         if not profile:
+            await emit_log("comptes", "scrape", "warning", compte.handle, f"Profil @{compte.handle} introuvable via l'API privée")
             raise HTTPException(404, f"Profil @{compte.handle} introuvable via l'API privée")
+
+        hl_count = len(profile.get("highlights", []))
+        await emit_log("comptes", "scrape", "success", compte.handle,
+            f"Profil @{compte.handle} récupéré — {profile.get('follower_count', 0)} followers, {profile.get('media_count', 0)} posts, {hl_count} highlights")
 
         return profile
 
@@ -196,4 +205,5 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
         raise
     except Exception as e:
         logger.exception("profile-live error for %s", compte.handle)
+        await emit_log("comptes", "scrape", "error", compte.handle, f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
         raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
