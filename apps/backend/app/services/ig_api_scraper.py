@@ -168,27 +168,35 @@ class IGScraperClient:
                 h[k] = v
         return h
 
-    async def _get(self, path: str, params: dict | None = None) -> dict:
-        """GET request through Scrapigo proxy."""
+    async def _get(self, path: str, params: dict | None = None, retries: int = 2) -> dict:
+        """GET request through Scrapigo proxy with retry on 429."""
+        import asyncio
         proxy = self.proxy_url
-        async with httpx.AsyncClient(
-            timeout=20,
-            verify=False,
-            proxy=proxy,
-        ) as client:
-            resp = await client.get(
-                f"{IG_BASE}{path}",
-                headers=self._headers(),
-                params=params,
-            )
-            # Track usage
-            await self._track(len(resp.content))
-            if resp.status_code == 401:
-                await self._mark_expired("session expired (401)")
-            elif resp.status_code == 429:
-                await self._mark_rate_limited()
-            resp.raise_for_status()
-            return resp.json()
+        for attempt in range(retries + 1):
+            async with httpx.AsyncClient(
+                timeout=20,
+                verify=False,
+                proxy=proxy,
+            ) as client:
+                resp = await client.get(
+                    f"{IG_BASE}{path}",
+                    headers=self._headers(),
+                    params=params,
+                )
+                # Track usage
+                await self._track(len(resp.content))
+                if resp.status_code == 401:
+                    await self._mark_expired("session expired (401)")
+                    resp.raise_for_status()
+                elif resp.status_code == 429:
+                    if attempt < retries:
+                        wait = int(resp.headers.get("Retry-After", 3 + attempt * 2))
+                        logger.info("ig_scraper: 429 on %s, retry %d/%d in %ds", path, attempt + 1, retries, wait)
+                        await asyncio.sleep(wait)
+                        continue
+                    await self._mark_rate_limited()
+                resp.raise_for_status()
+                return resp.json()
 
     async def _post(self, path: str, data: dict | None = None) -> dict:
         """POST request through Scrapigo proxy."""
