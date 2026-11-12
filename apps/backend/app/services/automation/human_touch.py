@@ -241,8 +241,8 @@ class HumanTouch:
         start_y: float,
         end_x: float,
         end_y: float,
-        *,
         duration: int = 800,
+        *,
         steps: int = 40,
     ):
         """Swipe from start to end with realistic curve."""

@@ -97,7 +97,7 @@ class IGNavigator:
         await self.d.ht.swipe(
             5, y,                                          # depart = bord gauche
             self.d.ht.screen_w * 0.6, y + random.gauss(0, 5),  # arrivee = milieu
-            random.randint(200, 350)
+            duration=random.randint(200, 350)
         )
         await self.d.wait('transition')
 
