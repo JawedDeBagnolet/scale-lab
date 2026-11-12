@@ -175,11 +175,11 @@ async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
 
 async def _pick_free_iphone(db: AsyncSession):
     """Pick the iPhone with the fewest assigned accounts (load balancing)."""
-    from sqlalchemy import func
+    from sqlalchemy import func, cast, String
     stmt = (
         select(IPhone)
         .where(IPhone.status == "online")
-        .outerjoin(Compte, Compte.device_id == IPhone.id)
+        .outerjoin(Compte, Compte.device_id == cast(IPhone.id, String))
         .group_by(IPhone.id)
         .order_by(func.count(Compte.id).asc())
         .limit(1)
@@ -195,12 +195,22 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     if dump.get("creds_encrypted"):
         dump["creds_encrypted"] = encrypt_creds(dump["creds_encrypted"])
     compte = Compte(**dump)
+
+    # ── Log creation ─────────────────────────────────────────────────────
+    kind = "scraper" if compte.is_scraper else "posting"
+    await _log("comptes", "create", "info", compte.handle, f"Création compte {kind} @{compte.handle} ({compte.plateforme})")
+
     # Auto-assign iPhone for scraper accounts without a specific device
     if compte.is_scraper and not compte.device_id:
         free_iphone = await _pick_free_iphone(db)
         if free_iphone:
-            compte.device_id = free_iphone.id
+            compte.device_id = str(free_iphone.id)
             logger.info("create_compte: auto-assigned scraper @%s to iPhone %s", compte.handle, free_iphone.name)
+            await _log("comptes", "device", "info", compte.handle, f"iPhone auto-assigné : {free_iphone.name}")
+        else:
+            logger.warning("create_compte: no free iPhone for scraper @%s", compte.handle)
+            await _log("comptes", "device", "warning", compte.handle, "Aucun iPhone libre dans le parc — compte créé sans device")
+
     # Auto-assign container if device_id provided at creation
     if compte.device_id:
         await _ensure_container_on_assign(db, compte, compte.device_id)
@@ -220,6 +230,8 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
             compte.handle, compte.device_id, compte.env["container_uuid"][:8],
         )
         await _log("comptes", "login", "info", compte.handle, f"Login auto lancé sur container {compte.env['container_uuid'][:8]}")
+    elif compte.device_id and not (compte.env or {}).get("container_uuid"):
+        await _log("comptes", "container", "warning", compte.handle, f"Device assigné mais container non créé — login en attente")
 
     return compte
 
