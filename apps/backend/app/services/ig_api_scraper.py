@@ -343,18 +343,22 @@ class IGScraperClient:
     async def get_user_profile_full(self, username: str) -> dict | None:
         """Get full profile data: info + highlights. One call for the modal.
 
-        Uses web profile endpoint to resolve username → pk, then fetches
-        detailed info and highlights in parallel.
+        Uses search endpoint to resolve username → pk (less rate-limited
+        than web_profile_info), then fetches detailed info and highlights.
         """
         import asyncio
 
-        # Resolve username to pk via search
-        data = await self._get(
-            "/api/v1/users/web_profile_info/",
-            params={"username": username},
-        )
-        user = (data.get("data", {}) or {}).get("user") or data.get("user")
+        # Resolve username to pk via search (less rate-limited)
+        results = await self.search_users(username, count=1)
+        user = None
+        for r in results:
+            if r.get("username", "").lower() == username.lower():
+                user = r
+                break
+        if not user and results:
+            user = results[0]  # best match fallback
         if not user:
+            logger.warning("get_user_profile_full: user %s not found via search", username)
             return None
 
         pk = str(user.get("pk", user.get("id", "")))
