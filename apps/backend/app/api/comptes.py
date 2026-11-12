@@ -182,7 +182,7 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
 
     try:
         from app.services.ig_api_scraper import IGScraperClient
-        client = await IGScraperClient.from_db()
+        client = await IGScraperClient.from_db(db)
         if not client:
             raise HTTPException(503, "Aucun compte scraper avec session valide")
 
