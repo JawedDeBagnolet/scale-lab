@@ -1373,7 +1373,7 @@ class Component extends DCLogic {
     if (SD.envs && !SD.envs.ready()) m.push({ icon: 'ph ph-cube', label: 'Un environnement', sub: 'Un fournisseur connecté (GoLogin, GeeLark) ou un iPhone du parc.', href: 'Module%20Parametres%20v1.dc.html#tab=int', cta: 'Connecter un fournisseur', alt: true, altHref: 'Module%20Parc%20iPhone%20v1.dc.html', altCta: 'Ajouter un iPhone' });
     return m.map(x => Object.assign({ alt: false, altHref: '', altCta: '' }, x)); }
   _rvE() {
-    const glass = true; // Liquid Glass modale
+    const glass = false; // Liquid Glass désactivé
     const s = this.state;
     const kill = s.kill;
     const compact = 'Confortable' === 'Compacte';
