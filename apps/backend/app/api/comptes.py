@@ -275,16 +275,18 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
             f"Modification profil demandée : {', '.join(ig_diff.keys())}")
 
         # Dispatch to iPhone automation
-        if compte.device_id and (compte.env or {}).get("container_uuid"):
+        if compte.device_id:
             import asyncio
             asyncio.create_task(
                 _dispatch_profile_edit(compte.id, compte.plateforme, ig_diff),
                 name=f"profile_edit_{compte.handle}",
             )
             logger.info("profile-update: dispatched %s changes for @%s", list(ig_diff.keys()), compte.handle)
+            await emit_log("comptes", "profile", "info", compte.handle,
+                f"Ordre de configuration envoyé à l'iPhone — {', '.join(ig_diff.keys())}")
         else:
             await emit_log("comptes", "profile", "warning", compte.handle,
-                "Pas de device/container — modifications enregistrées mais non appliquées")
+                "Pas d'iPhone assigné — modifications enregistrées mais non appliquées sur IG")
 
     await db.commit()
     return {"ok": True, "ig_changes": ig_diff, "config_changes": {k: config[k] for k in INTERNAL_KEYS if k in changes}}
