@@ -1186,7 +1186,7 @@ if ('serviceWorker' in navigator) {
 
       // Transformer et peupler les core arrays
       populate(personas,    safe(rawPersonas).map(xPersona));
-      populate(accounts,    safe(rawComptes).map(xCompte));
+      populate(accounts,    safe(rawComptes).filter(function(c) { return !c.is_scraper; }).map(xCompte));
       populate(devices,     safe(rawIphones).map(function (d) { return xDevice(d, proxiesMap); }));
       populate(behaviors,   safe(rawPresets).map(xPreset));
       populate(scenarios,   safe(rawScenarios).map(xScenario));
