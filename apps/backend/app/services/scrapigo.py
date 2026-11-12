@@ -109,7 +109,6 @@ class ScrapigoClient:
             "country": country,
             "session": session,
             "protocol": protocol,
-            "count": count,
             "format": "user_pass_host_port",
         }
         if session == "sticky":
