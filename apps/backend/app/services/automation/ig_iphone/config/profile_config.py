@@ -135,7 +135,7 @@ async def _tap_done(driver, log) -> bool:
         el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
     if el:
         tap = el.get('tap', {})
-        log("   -> Termine")
+        log("   -> '%s' (y=%d)" % (el.get('text', '?')[:30], tap.get('y', 0)))
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(random.uniform(1.0, 2.0))
         await asyncio.sleep(1)
@@ -488,8 +488,9 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "bio" in edit_fields:
             log("   [3] bio -> '%s'" % str(edit_fields["bio"])[:40])
-            best = None
+            # Tap on Bio field (the larger one, not the label)
             bio_els = await driver.find_elements(text="Bio", clickable=True, refresh=True)
+            best = None
             for e in bio_els:
                 w = e.get('rect', {}).get('width', 0)
                 if not best or w > best.get('rect', {}).get('width', 0):
@@ -497,15 +498,15 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
             if best:
                 tap = best.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(random.uniform(1.0, 2.0))
-                await asyncio.sleep(1)
-                # Select all existing text via backspaces then type new text
-                # First try "Tout sélectionner" if available, else backspaces
-                for _ in range(200):
-                    await driver.ht._call("press_key", {"key": "backspace"})
+                await asyncio.sleep(1.5)
+                # Clear: select all text then delete
+                await driver.ht._call("select_all", {})
                 await asyncio.sleep(0.3)
+                await driver.ht._call("press_key", {"key": "backspace"})
+                await asyncio.sleep(0.3)
+                # Type new bio
                 log("   saisie bio: '%s'" % edit_fields["bio"][:40])
-                await driver.ht._call("type_text", {"text": edit_fields["bio"], "interval": 55})
+                await driver.ht._call("input_text", {"text": edit_fields["bio"]})
                 await asyncio.sleep(0.5)
                 await _tap_done(driver, log)
                 await _dismiss_popup(driver, log)
