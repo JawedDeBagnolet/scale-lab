@@ -70,6 +70,9 @@ async def _clear_and_type(driver, log, text, current_text=""):
         tap = clear_btn.get('tap', {})
         log("   efface texte (bouton X)")
         await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(0.5)
+        # Re-tap the text field area to restore focus after clearing
+        # The clear button may dismiss the keyboard
         await asyncio.sleep(0.3)
     elif current_text:
         # Methode 2 : backspaces
@@ -79,8 +82,9 @@ async def _clear_and_type(driver, log, text, current_text=""):
             await driver.ht._call("press_key", {"key": "backspace"})
         await asyncio.sleep(0.3)
 
-    # Taper le nouveau texte naturellement
-    await driver.type_text(text, method="natural")
+    # Taper le nouveau texte via input_text (direct insertion, more reliable)
+    log("   saisie texte: '%s'" % text[:40])
+    await driver.ht._call("input_text", {"text": text})
     await asyncio.sleep(0.5)
 
 
