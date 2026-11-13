@@ -128,11 +128,7 @@ async def _verify_on_edit_screen(driver, log) -> bool:
 
 async def _tap_done(driver, log) -> bool:
     """Tape sur 'C'est fait' ou 'Terminé' pour sauvegarder le champ."""
-    el = await driver.find_element(text="C'est fait", clickable=True, refresh=True)
-    if not el:
-        el = await driver.find_element(text="C\u2019est fait", clickable=True, refresh=True)
-    if not el:
-        el = await driver.find_element(text="Terminé", clickable=True, refresh=True)
+    el = await driver.find_element(contains="fait", clickable=True, refresh=True)
     if not el:
         el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
     if el:
@@ -508,6 +504,14 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     log("   efface bio existante")
                     await driver.ht.tap(ct['x'], ct['y'])
                     await asyncio.sleep(0.5)
+                    # Re-tap bio field to restore keyboard focus
+                    bio_field = await driver.find_element(contains="crivez une bio", clickable=True, refresh=True)
+                    if not bio_field:
+                        bio_field = await driver.find_element(text="Bio", clickable=True, refresh=True)
+                    if bio_field:
+                        bt = bio_field.get('tap', {})
+                        await driver.ht.tap(bt['x'], bt['y'])
+                        await asyncio.sleep(0.8)
                 # Type new bio char by char with variable speed
                 log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                 await driver.ht.type_text(edit_fields["bio"])
