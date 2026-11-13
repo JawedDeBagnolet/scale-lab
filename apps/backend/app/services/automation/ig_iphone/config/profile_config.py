@@ -128,7 +128,9 @@ async def _verify_on_edit_screen(driver, log) -> bool:
 
 async def _tap_done(driver, log) -> bool:
     """Tape sur 'C'est fait' ou 'Terminé' pour sauvegarder le champ."""
-    el = await driver.find_element(contains="est fait", clickable=True, refresh=True)
+    el = await driver.find_element(text="C'est fait", clickable=True, refresh=True)
+    if not el:
+        el = await driver.find_element(text="C\u2019est fait", clickable=True, refresh=True)
     if not el:
         el = await driver.find_element(text="Terminé", clickable=True, refresh=True)
     if not el:
@@ -499,16 +501,19 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 tap = best.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
                 await asyncio.sleep(1.5)
-                # Clear: select all text then delete
-                await driver.ht._call("select_all", {})
-                await asyncio.sleep(0.3)
-                await driver.ht._call("press_key", {"key": "backspace"})
-                await asyncio.sleep(0.3)
-                # Type new bio
+                # Clear existing text via X button if present
+                clear_btn = await driver.find_element(contains="Effacer", clickable=True, refresh=True)
+                if clear_btn:
+                    ct = clear_btn.get('tap', {})
+                    log("   efface bio existante")
+                    await driver.ht.tap(ct['x'], ct['y'])
+                    await asyncio.sleep(0.5)
+                # Type new bio char by char with variable speed
                 log("   saisie bio: '%s'" % edit_fields["bio"][:40])
-                await driver.ht._call("input_text", {"text": edit_fields["bio"]})
-                await asyncio.sleep(0.5)
+                await driver.ht.type_text(edit_fields["bio"])
+                await asyncio.sleep(1.0)
                 await _tap_done(driver, log)
+                await asyncio.sleep(2.5)  # wait for IG loading after save
                 await _dismiss_popup(driver, log)
                 await _verify_on_edit_screen(driver, log)
                 results["bio"] = True
