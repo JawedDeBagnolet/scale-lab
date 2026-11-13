@@ -127,10 +127,20 @@ async def _verify_on_edit_screen(driver, log) -> bool:
 
 
 async def _tap_done(driver, log) -> bool:
-    """Tape sur 'C'est fait' ou 'Terminé' pour sauvegarder le champ."""
-    el = await driver.find_element(contains="fait", clickable=True, refresh=True)
-    if not el:
-        el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+    """Tape sur 'C'est fait' ou 'Terminé' pour sauvegarder."""
+    # Search all clickable elements and find the save button in top-right area
+    els = await driver.find_elements(refresh=True, clickable=True)
+    el = None
+    for e in els:
+        t = (e.get('text', '') or '')
+        r = e.get('rect', {})
+        x = r.get('x', 0)
+        y = r.get('y', 0)
+        # "C'est fait" or "Terminé" should be in the top-right (x > 200, y < 100)
+        if y < 100 and x > 200:
+            if 'fait' in t.lower() or 'termin' in t.lower():
+                el = e
+                break
     if el:
         tap = el.get('tap', {})
         log("   -> '%s' (y=%d)" % (el.get('text', '?')[:30], tap.get('y', 0)))
