@@ -141,6 +141,8 @@ class IGDriver:
 
     async def type_text(self, text, **kwargs):
         """Type text. Delegates to HumanTouch."""
+        # Filter out unsupported kwargs (e.g. method from profile_config)
+        kwargs.pop("method", None)
         await self.ht.type_text(text, **kwargs)
 
     # ── Element access ───────────────────────────────────────────────────
