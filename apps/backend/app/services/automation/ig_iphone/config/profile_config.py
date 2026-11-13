@@ -507,27 +507,19 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 tap = best.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
                 await asyncio.sleep(1.5)
-                # Clear existing text via X button if present
-                clear_btn = await driver.find_element(contains="Effacer", clickable=True, refresh=True)
-                if clear_btn:
-                    ct = clear_btn.get('tap', {})
-                    log("   efface bio existante")
-                    await driver.ht.tap(ct['x'], ct['y'])
-                    await asyncio.sleep(0.5)
-                    # Re-tap bio field to restore keyboard focus
-                    bio_field = await driver.find_element(contains="crivez une bio", clickable=True, refresh=True)
-                    if not bio_field:
-                        bio_field = await driver.find_element(text="Bio", clickable=True, refresh=True)
-                    if bio_field:
-                        bt = bio_field.get('tap', {})
-                        await driver.ht.tap(bt['x'], bt['y'])
-                        await asyncio.sleep(0.8)
-                # Type new bio char by char with variable speed
+                # Triple-tap to select all existing text in field
+                tx = tap.get('x', 180)
+                ty = tap.get('y', 140)
+                for _ in range(3):
+                    await driver.ht.tap(tx, ty)
+                    await asyncio.sleep(0.08)
+                await asyncio.sleep(0.5)
+                # Type new bio (replaces selection if any)
                 log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                 await driver.ht.type_text(edit_fields["bio"])
                 await asyncio.sleep(1.0)
                 await _tap_done(driver, log)
-                await asyncio.sleep(2.5)  # wait for IG loading after save
+                await asyncio.sleep(2.5)
                 await _dismiss_popup(driver, log)
                 await _verify_on_edit_screen(driver, log)
                 results["bio"] = True
