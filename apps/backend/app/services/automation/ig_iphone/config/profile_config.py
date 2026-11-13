@@ -497,7 +497,23 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 await driver.ht.tap(tap['x'], tap['y'])
                 await asyncio.sleep(random.uniform(1.0, 2.0))
                 await asyncio.sleep(1)
-                await _clear_and_type(driver, log, edit_fields["bio"])
+                # Clear existing text
+                clear_btn = await driver.find_element(contains="Effacer le texte", clickable=True, refresh=True)
+                if clear_btn:
+                    ct = clear_btn.get('tap', {})
+                    log("   efface bio (bouton X)")
+                    await driver.ht.tap(ct['x'], ct['y'])
+                    await asyncio.sleep(0.5)
+                    # Re-tap the bio field to restore focus after clearing
+                    bio_again = await driver.find_element(text="Bio", clickable=True, refresh=True)
+                    if bio_again:
+                        bt = bio_again.get('tap', {})
+                        await driver.ht.tap(bt['x'], bt['y'])
+                        await asyncio.sleep(0.5)
+                # Type new bio text
+                log("   saisie bio: '%s'" % edit_fields["bio"][:40])
+                await driver.ht._call("type_text", {"text": edit_fields["bio"], "interval": 55})
+                await asyncio.sleep(0.5)
                 await _tap_done(driver, log)
                 await _dismiss_popup(driver, log)
                 await _verify_on_edit_screen(driver, log)
