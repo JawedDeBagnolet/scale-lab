@@ -17,11 +17,11 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
     """Ouvre l'ecran Modifier le profil."""
     await navigator.go_profile()
     await asyncio.sleep(1)
-    el = await driver.find_element(text="Modifier", clickable=True, refresh=True)
+    el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Modifier", clickable=True, refresh=True)
+        el = await driver.find_element(contains="Modifier le profil", clickable=True, refresh=True)
     if not el:
-        log("   ! bouton Modifier non trouve")
+        log("   ! bouton 'Modifier le profil' non trouve")
         return False
     tap = el.get('tap', {})
     log("   ouvre edition profil")
