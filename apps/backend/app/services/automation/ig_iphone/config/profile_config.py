@@ -129,28 +129,26 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 
 async def _clear_and_type(driver, log, text, current_text=""):
-    """Efface le texte existant puis tape le nouveau naturellement."""
-    # Methode 1 : bouton "Effacer le texte"
-    clear_btn = await driver.find_element(contains="Effacer le texte", clickable=True, refresh=True)
-    if clear_btn:
-        tap = clear_btn.get('tap', {})
-        log("   efface texte (bouton X)")
-        await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(0.5)
-        # Re-tap the text field area to restore focus after clearing
-        # The clear button may dismiss the keyboard
-        await asyncio.sleep(0.3)
-    elif current_text:
-        # Methode 2 : backspaces
-        n = len(current_text) + 5
-        log("   efface texte (%d backspaces)" % n)
-        for _ in range(n):
-            await driver.ht._call("press_key", {"key": "backspace"})
-        await asyncio.sleep(0.3)
-
-    # Taper le nouveau texte via input_text (direct insertion, more reliable)
+    """Efface le texte existant via triple-tap + type (reste dans le champ)."""
+    # Triple-tap to select all text in the focused field
+    screen = await driver.ht._call("get_screen_info", timeout=3)
+    cx = (screen or {}).get("width", 375) / 2
+    cy = (screen or {}).get("height", 812) * 0.15  # text field area
+    # Find the text field to tap on
+    field = await driver.find_element(contains="Champ de texte", refresh=True)
+    if field:
+        ft = field.get('tap', {})
+        cx, cy = ft.get('x', cx), ft.get('y', cy)
+    for _ in range(3):
+        await driver.ht.tap(cx, cy)
+        await asyncio.sleep(0.08)
+    await asyncio.sleep(0.4)
+    # Delete selected text
+    await driver.ht._call("press_key", {"key": "backspace"})
+    await asyncio.sleep(0.3)
+    # Type new text with humanized speed
     log("   saisie texte: '%s'" % text[:40])
-    await driver.ht._call("input_text", {"text": text})
+    await driver.ht.type_text(text)
     await asyncio.sleep(0.5)
 
 
