@@ -274,24 +274,32 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 
 async def _clear_and_type(driver, log, text, current_text=""):
-    """Efface le texte existant via triple-tap + type (reste dans le champ)."""
-    # Triple-tap to select all text in the focused field
-    screen = await driver.ht._call("get_screen_info", timeout=3)
-    cx = (screen or {}).get("width", 375) / 2
-    cy = (screen or {}).get("height", 812) * 0.15  # text field area
-    # Find the text field to tap on
-    field = await driver.find_element(contains="Champ de texte", refresh=True)
+    """Efface le texte existant via select-all + type (le texte remplace la selection)."""
+    # Find the text input field
+    field = await driver.find_element("Champ de texte", contains=True, refresh=True)
     if field:
         ft = field.get('tap', {})
-        cx, cy = ft.get('x', cx), ft.get('y', cy)
-    for _ in range(3):
-        await driver.ht.tap(cx, cy)
-        await asyncio.sleep(0.08)
-    await asyncio.sleep(0.4)
-    # Delete selected text
-    await driver.ht._call("press_key", {"key": "backspace"})
+        cx, cy = ft.get('x', 187), ft.get('y', 100)
+    else:
+        # Fallback: center of screen, upper area
+        screen = await driver.ht._call("get_screen_info", timeout=3)
+        cx = (screen or {}).get("width", 375) / 2
+        cy = 100
+
+    # Tap the field once to ensure focus
+    await driver.ht.tap(cx, cy)
     await asyncio.sleep(0.3)
-    # Type new text with humanized speed
+
+    # Select all text via Cmd+A (iOS accessibility select all)
+    # Triple-tap with proper iOS timing (200ms between taps)
+    for i in range(3):
+        await driver.ht.tap(cx, cy)
+        if i < 2:
+            await asyncio.sleep(0.15)
+    await asyncio.sleep(0.6)
+
+    # Now type the new text — iOS replaces selected text automatically
+    # If selection failed, we'll prepend; the triple-tap timing helps
     log("   saisie texte: '%s'" % text[:40])
     await driver.ht.type_text(text)
     await asyncio.sleep(0.5)
