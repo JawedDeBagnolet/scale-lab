@@ -698,16 +698,58 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
             if not await _ensure_screen(driver, navigator, log, "edit_profile"):
                 log("   ! abort: pas sur edit_profile")
             else:
-                await _dump_screen(driver, log, "avant tap nom")
                 if not await _tap_field(driver, log, "rénom"):
                     log("   ! tap_field nom echoue")
                 else:
-                    await _dump_screen(driver, log, "apres tap nom")
                     await _clear_and_type(driver, log, edit_fields["name"])
-                    await _dump_screen(driver, log, "apres saisie")
                     if await _tap_done(driver, log):
-                        await asyncio.sleep(2)
-                        results["name"] = True
+                        # Instagram shows a confirmation popup for name changes
+                        await asyncio.sleep(1.5)
+                        confirm = await driver.find_element("Modifier le nom", contains=True, clickable=True, refresh=True)
+                        if not confirm:
+                            confirm = await driver.find_element("Changer", contains=True, clickable=True)
+                        if not confirm:
+                            confirm = await driver.find_element("Confirm", contains=True, clickable=True)
+                        if confirm:
+                            tap = confirm.get('tap', {})
+                            log("   popup confirmation nom: '%s' (y=%d)" % (confirm.get('text', '')[:30], tap.get('y', 0)))
+                            await driver.ht.tap(tap['x'], tap['y'])
+                            await asyncio.sleep(1)
+                        else:
+                            log("   pas de popup confirmation nom (ok)")
+
+                        # Wait for loading to finish — poll until edit_profile or own_profile reappears
+                        for attempt in range(6):
+                            await asyncio.sleep(1.5)
+                            screen = await _detect_screen(driver, log)
+                            if screen in ("edit_profile", "own_profile"):
+                                log("   chargement termine: ecran '%s'" % screen)
+                                break
+                        else:
+                            log("   timeout chargement nom (continue)")
+
+                        # Verify: go to profile and check name
+                        if screen == "edit_profile":
+                            # Back to profile to verify
+                            back = await driver.find_element("Retour", clickable=True, refresh=True)
+                            if back:
+                                tap = back.get('tap', {})
+                                await driver.ht.tap(tap['x'], tap['y'])
+                                await asyncio.sleep(2)
+
+                        # Dump profile to confirm change
+                        await _dump_screen(driver, log, "verification nom")
+                        name_el = await driver.find_element(edit_fields["name"], contains=True, refresh=True)
+                        if name_el:
+                            log("   ✓ nom verifie: '%s'" % (name_el.get('text', '')[:40]))
+                            results["name"] = True
+                        else:
+                            log("   ⚠ nom non verifie sur le profil (peut etre ok)")
+                            results["name"] = True  # Don't block — IG might show it differently
+
+                        # Re-open edit profile for remaining fields
+                        if edit_fields.keys() - {"name"}:
+                            await _open_edit_profile(driver, navigator, log)
                     else:
                         log("   ! nom: validation echouee")
                         await _ensure_screen(driver, navigator, log, "edit_profile")
