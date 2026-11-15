@@ -823,44 +823,58 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         await _ensure_screen(driver, navigator, log, "edit_profile")
 
         if "link" in edit_fields:
-            link = edit_fields["link"]
-            if link and link != "":
-                url = link.get("url", link) if isinstance(link, dict) else str(link)
-                title = link.get("title") if isinstance(link, dict) else None
-                log("   [4] lien -> '%s'" % url[:40])
+            if not await _ensure_screen(driver, navigator, log, "edit_profile"):
+                log("   ! abort lien: pas sur edit_profile")
             else:
-                url = ""
-                title = None
-                log("   [4] lien -> (supprimer)")
+                link = edit_fields["link"]
+                if link and link != "":
+                    url = link.get("url", link) if isinstance(link, dict) else str(link)
+                    title = link.get("title") if isinstance(link, dict) else None
+                    log("   [4] lien -> '%s'" % url[:40])
+                else:
+                    url = ""
+                    title = None
+                    log("   [4] lien -> (supprimer)")
 
-            if await _tap_field(driver, log, "Ajouter des liens"):
-                if url:
-                    el = await driver.find_element(contains="Ajouter un lien", clickable=True, refresh=True)
-                    if el:
-                        tap = el.get('tap', {})
-                        await driver.ht.tap(tap['x'], tap['y'])
-                        await asyncio.sleep(random.uniform(1.0, 2.0))
-                        await asyncio.sleep(1)
-                        url_f = await driver.find_element(text="URL", clickable=True, refresh=True)
-                        if url_f:
-                            tap = url_f.get('tap', {})
+                if await _tap_field(driver, log, "Ajouter des liens"):
+                    if url:
+                        el = await driver.find_element("Ajouter un lien", contains=True, clickable=True, refresh=True)
+                        if not el:
+                            el = await driver.find_element("lien externe", contains=True, clickable=True)
+                        if el:
+                            tap = el.get('tap', {})
+                            log("   tap '%s' (y=%d)" % (el.get('text', '')[:30], tap.get('y', 0)))
                             await driver.ht.tap(tap['x'], tap['y'])
-                            await asyncio.sleep(0.3)
-                            await driver.type_text(url, method="fast")
-                            await asyncio.sleep(0.5)
-                        if title:
-                            title_f = await driver.find_element(text="Titre", clickable=True, refresh=True)
-                            if title_f:
-                                tap = title_f.get('tap', {})
+                            await asyncio.sleep(random.uniform(1.5, 2.5))
+                            # Find and fill URL field
+                            url_f = await driver.find_element("URL", clickable=True, refresh=True)
+                            if url_f:
+                                tap = url_f.get('tap', {})
                                 await driver.ht.tap(tap['x'], tap['y'])
                                 await asyncio.sleep(0.3)
-                                await driver.type_text(title, method="natural")
+                                await driver.type_text(url)
                                 await asyncio.sleep(0.5)
-                        await _tap_done(driver, log)
-                        await asyncio.sleep(1)
+                                log("   URL saisie: '%s'" % url[:40])
+                            else:
+                                log("   ! champ URL non trouve")
+                            # Fill title if provided
+                            if title:
+                                title_f = await driver.find_element("Titre", clickable=True, refresh=True)
+                                if title_f:
+                                    tap = title_f.get('tap', {})
+                                    await driver.ht.tap(tap['x'], tap['y'])
+                                    await asyncio.sleep(0.3)
+                                    await driver.type_text(title)
+                                    await asyncio.sleep(0.5)
+                                    log("   titre saisi: '%s'" % title[:30])
+                            await _tap_done(driver, log)
+                            await asyncio.sleep(1.5)
+                        else:
+                            log("   ! bouton 'Ajouter un lien' non trouve")
 
-                await _go_back(driver, navigator, log)
-                results["link"] = True
+                    await _go_back(driver, navigator, log)
+                    results["link"] = True
+                    log("   ✓ lien configure")
 
         if "gender" in edit_fields:
             log("   [5] genre -> '%s'" % edit_fields["gender"])
