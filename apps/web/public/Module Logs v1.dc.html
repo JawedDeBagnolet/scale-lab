@@ -499,7 +499,7 @@ class Component extends DCLogic {
   resVals() {
     const s = this.state; const R0 = s.resolve; const inc = R0 && s.incs[R0.key]; if (!inc) return { resOpen: false };
     const L = this.LV[inc.lvl] || this.LV.info; const m = this.mod(inc.mod); const d = this.diag(inc); const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status] || ['Inconnu', '#8a91a8'];
-    const occ = inc.events.slice(0, 10).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
+    const allEvs = s.events.concat(s.buffer).concat((window.SCALE_DATA || {}).logEvents || []); const occ = inc.events.slice(0, 10).map(id => allEvs.find(e => e.id === id)).filter(Boolean);
     const tgt = ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.match(/^[a-z0-9._]+$/) ? '@' + inc.target : inc.target;
     const impact = inc.mod === 'posting' ? inc.count + ' publication' + (inc.count > 1 ? 's' : '') + ' non envoyée' + (inc.count > 1 ? 's' : '') : inc.mod === 'planner' ? inc.count + ' stor' + (inc.count > 1 ? 'ies' : 'y') + ' non publiée' + (inc.count > 1 ? 's' : '') : inc.mod === 'comptes' ? 'Publications de ' + tgt + ' suspendues' : inc.mod === 'infra' ? (inc.type === 'device' ? '4 comptes' : '6 comptes') + ' dépendent de ' + tgt : 'Veilles ralenties sur ce scraper';
     const base = inc.mod + '.' + inc.type + '.' + (d ? d.c[0] : ''); const rate = fx => { const S = s.fixStats[base + '.' + fx[0]] || { ok: 0, fail: 0 }; const n = S.ok + S.fail; return { n, r: n ? S.ok / n : fx[4], S }; };
@@ -526,7 +526,7 @@ class Component extends DCLogic {
   incRow(inc, full) {
     const s = this.state; const L = this.LV[inc.lvl] || this.LV.info; const m = this.mod(inc.mod); const open = s.openInc === inc.key;
     const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status] || ['Inconnu', '#8a91a8'];
-    const occ = inc.events.slice(0, 8).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
+    const allEvs2 = s.events.concat(s.buffer).concat((window.SCALE_DATA || {}).logEvents || []); const occ = inc.events.slice(0, 8).map(id => allEvs2.find(e => e.id === id)).filter(Boolean);
     const res = inc.resolution; const par = this.parentOf(inc); const kids = this.kidsOf(inc); const sel = !!s.sel[inc.key]; return { hasParent: !!par && inc.status !== 'resolved', parentLabel: par ? 'Probablement causé par ' + par.target + ' · ' + par.title.toLowerCase() : '', hasKids: kids.length > 0, kidsLabel: kids.length + ' incident' + (kids.length > 1 ? 's' : '') + ' lié' + (kids.length > 1 ? 's' : '') + ' · ' + kids.reduce((a, k) => a + k.count, 0) + ' ordres bloqués',
       selectable: !!full, sel, toggleSel: e => { e.stopPropagation(); this.setState(x => { const o = { ...x.sel }; if (o[inc.key]) delete o[inc.key]; else o[inc.key] = true; return { sel: o }; }); }, cb: { width: 18, height: 18, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', border: '1.5px solid ' + (sel ? '#7c6cf6' : 'rgba(255,255,255,.3)'), background: sel ? '#7c6cf6' : 'transparent' },
       key: inc.key, title: inc.title, target: (res && inc.status === 'resolved' ? 'résolu via « ' + res.label + ' » · ' : '') + ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.indexOf(' ') < 0 && inc.target.indexOf('-') < 0 && inc.target.indexOf('#') < 0 ? '@' + inc.target : inc.target, count: inc.count, mod: m[1], modIcon: m[2], since: 'depuis ' + this.ago(inc.first).replace('il y a ', ''), lastLabel: 'dernier ' + this.ago(inc.last).replace('il y a ', ''),
@@ -608,7 +608,12 @@ class Component extends DCLogic {
         d.setDate(d.getDate() + 1);
         const ds = d.toISOString().slice(0, 10);
         if (ds >= todayStr) {
-          this.setState({ dateF: null, live: true, events: (window.SCALE_DATA || {}).logEvents || [] });
+          const SD2 = window.SCALE_DATA;
+          if (SD2 && SD2._live) {
+            SD2.apiAsync('GET', '/logs/events?limit=200').then(evs => {
+              this.setState({ dateF: null, live: true, events: (evs || []).map(e => SD2.x.event(e)), buffer: [] });
+            });
+          } else { this.setState({ dateF: null, live: true }); }
         } else {
           this.setState({ dateF: ds });
           const SD = window.SCALE_DATA;
@@ -619,7 +624,14 @@ class Component extends DCLogic {
           }
         }
       };
-      out.goToday = () => { this.setState({ dateF: null, live: true, events: (window.SCALE_DATA || {}).logEvents || [] }); };
+      out.goToday = () => {
+        const SD = window.SCALE_DATA;
+        if (SD && SD._live) {
+          SD.apiAsync('GET', '/logs/events?limit=200').then(evs => {
+            this.setState({ dateF: null, live: true, events: (evs || []).map(e => SD.x.event(e)), buffer: [] });
+          });
+        } else { this.setState({ dateF: null, live: true }); }
+      };
       const groups = []; list.forEach(e => { const h = Math.floor(e.t / 36e5); let g = groups[groups.length - 1]; if (!g || g.h !== h) { g = { h, items: [] }; groups.push(g); } g.items.push(e); });
       const today = new Date(); today.setHours(0, 0, 0, 0);
       out.groups = groups.map(g => { const d = new Date(g.h * 36e5); const H = d.getHours(); const isToday = d >= today; return { label: this.pad(H) + ' h – ' + this.pad((H + 1) % 24) + ' h', sub: (isToday ? 'Aujourd\'hui' : 'Hier') + ' · ' + g.items.length + ' événement' + (g.items.length > 1 ? 's' : ''),
