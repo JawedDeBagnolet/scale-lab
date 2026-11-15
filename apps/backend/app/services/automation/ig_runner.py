@@ -430,10 +430,16 @@ async def _login(drv, nav, sess, values, log):
 async def _config(drv, nav, sess, values, log):
     """Apply profile config changes."""
     from app.services.automation.ig_iphone.config.profile_config import configure_profile
+    config = values.get("config", values)
+    requested = list(config.keys()) if isinstance(config, dict) else []
     result = await configure_profile(drv, nav, log=log, **values)
     if result:
-        return True, "Profil configuré"
-    return False, "ig_config : échec de la configuration"
+        succeeded = list(result.keys())
+        failed = [k for k in requested if k not in result]
+        if failed:
+            return False, "Profil partiellement configuré: %s OK, %s échoué" % (succeeded, failed)
+        return True, "Profil configuré: %s" % succeeded
+    return False, "ig_config: aucun champ configuré (demandés: %s)" % requested
 
 
 @_handler("ig_switch_pro")

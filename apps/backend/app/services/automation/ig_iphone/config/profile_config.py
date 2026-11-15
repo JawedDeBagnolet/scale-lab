@@ -240,16 +240,24 @@ async def _tap_field(driver, log, field_name) -> bool:
         log("   ! champ '%s' non trouve" % field_name)
         return False
     tap = el.get('tap', {})
+    found_text = (el.get('text', '') or '')[:40]
+    log("   tap champ '%s' (y=%d x=%d)" % (found_text, tap.get('y', 0), tap.get('x', 0)))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.0, 2.0))
+    await asyncio.sleep(random.uniform(1.5, 2.5))
     await asyncio.sleep(1)
-    # Verify we entered the field editing sub-screen
-    done_btn = await driver.find_element(contains="fait", clickable=True, refresh=True)
-    if not done_btn:
-        done_btn = await driver.find_element(contains="Termin", clickable=True, refresh=True)
-    if not done_btn:
-        log("   ! sous-ecran '%s' non confirme (pas de bouton valider)" % field_name)
+    # Verify we entered the field editing sub-screen (must find save button in top area)
+    els = await driver.find_elements(refresh=True, clickable=True)
+    done_el = None
+    for e in els:
+        t = (e.get('text', '') or '').lower()
+        r = e.get('rect', {})
+        if r.get('y', 999) < 100 and ('fait' in t or 'termin' in t):
+            done_el = e
+            break
+    if not done_el:
+        log("   ! sous-ecran '%s' non confirme (pas de bouton valider en haut)" % field_name)
         return False
+    log("   sous-ecran confirme (bouton '%s' y=%d)" % ((done_el.get('text', '')[:20]), done_el.get('rect', {}).get('y', 0)))
     return True
 
 
@@ -355,7 +363,7 @@ async def set_name(driver, navigator, name, log: Callable = print) -> bool:
     log("-> Config: nom -> '%s'" % name)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    if not await _tap_field(driver, log, "nom"):
+    if not await _tap_field(driver, log, "rénom"):
         await _go_back(driver, navigator, log)
         return False
     await _clear_and_type(driver, log, name)
@@ -671,7 +679,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 log("   ! abort: pas sur edit_profile")
             else:
                 await _dump_screen(driver, log, "avant tap nom")
-                if not await _tap_field(driver, log, "nom"):
+                if not await _tap_field(driver, log, "rénom"):
                     log("   ! tap_field nom echoue")
                 else:
                     await _dump_screen(driver, log, "apres tap nom")
