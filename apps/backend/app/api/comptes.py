@@ -325,15 +325,20 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, changes: dict
         from app.services.comptes import _log as emit_log
         if ok:
             await emit_log("comptes", "profile", "success", str(compte_id),
-                f"Profil modifié sur iPhone — {', '.join(config.keys())} — {msg}")
+                f"Profil modifié sur iPhone — {', '.join(config.keys())} — {msg}",
+                meta={"config": config, "result": msg})
         else:
             await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Échec modification profil — {msg}", code="PROFILE_EDIT_FAILED")
-    except Exception:
+                f"Échec modification profil — {msg}",
+                code="PROFILE_EDIT_FAILED",
+                meta={"config": config, "result": msg, "requested": list(config.keys())})
+    except Exception as exc:
         logger.exception("profile_edit error for %s", compte_id)
         try:
             from app.services.comptes import _log as emit_log
             await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Erreur technique lors de la modification profil", code="PROFILE_EDIT_ERROR")
+                f"Erreur technique: {str(exc)[:150]}",
+                code="PROFILE_EDIT_ERROR",
+                meta={"config": config, "error": str(exc)[:300]})
         except Exception:
             pass
