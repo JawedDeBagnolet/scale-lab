@@ -124,6 +124,84 @@ async def batch_login_all(body: BatchLoginAllRequest, db: AsyncSession = Depends
     return {"queued": len(queued), "skipped": len(skipped), "plateforme": body.plateforme or "all"}
 
 
+# ── Profile update (dispatch to iPhone) ───────────────────────────────────
+
+class ProfileUpdateRequest(BaseModel):
+    fields: dict  # e.g. {"full_name": "New Name", "biography": "New bio"}
+
+
+@router.post("/{compte_id}/profile-update")
+async def profile_update(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """Dispatch profile edits to the iPhone automation.
+
+    Compares requested fields with current profile_data, then dispatches
+    changed fields as an ig_config task. Returns immediately — the actual
+    edit runs as a background asyncio task.
+    """
+    c = await service.get_compte(db, compte_id)
+    if not c:
+        raise HTTPException(404, "compte not found")
+
+    if not c.device_id:
+        raise HTTPException(400, "Aucun iPhone associé — impossible de modifier le profil")
+
+    if not (c.env or {}).get("container_uuid"):
+        raise HTTPException(400,
+            f"iPhone indisponible : Compte {c.handle} sans container UUID "
+            f"— associe un container via POST /comptes/{{id}} avec env.container_uuid")
+
+    # Compute diff against current profile_data
+    current = c.profile_data or {}
+    changed = {}
+    for key, new_val in body.fields.items():
+        old_val = current.get(key)
+        if old_val != new_val:
+            changed[key] = new_val
+
+    if not changed:
+        return {"status": "noop", "message": "Aucun changement détecté"}
+
+    # Dispatch the edit as a background task
+    asyncio.create_task(
+        service._dispatch_profile_edit(c.id, c.plateforme, changed, handle=c.handle),
+        name=f"profile_edit_{c.handle}",
+    )
+
+    logger.info("profile-update: dispatched %s fields for %s", list(changed.keys()), c.handle)
+    return {"status": "dispatched", "fields": list(changed.keys())}
+
+
+# ── Profile live (read from IG API) ──────────────────────────────────────
+
+@router.get("/{compte_id}/profile-live")
+async def profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Fetch real-time profile data via IG scraper API and persist it."""
+    c = await service.get_compte(db, compte_id)
+    if not c:
+        raise HTTPException(404, "compte not found")
+
+    try:
+        from app.services.ig_api_scraper import IGScraperClient
+        client = await IGScraperClient.from_db(db)
+        if not client:
+            raise HTTPException(503, "Aucun scraper disponible")
+
+        profile = await client.get_user_profile_full(c.handle)
+        if not profile:
+            raise HTTPException(502, "Profil introuvable via l'API")
+
+        # Persist to profile_data
+        c.profile_data = profile
+        await db.commit()
+
+        return profile
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("profile-live: error for %s", c.handle)
+        raise HTTPException(502, f"Erreur lecture profil: {e}")
+
+
 # ── Scraper bulk create ────────────────────────────────────────────────────
 
 class ScraperBulkItem(BaseModel):
@@ -161,184 +239,3 @@ async def bulk_create_scrapers(body: ScraperBulkRequest, db: AsyncSession = Depe
 
     logger.info("bulk-scraper: created %d scraper accounts (%s)", len(created), body.plateforme)
     return {"created": len(created), "compte_ids": created}
-
-
-
-# ── Profile live (via scraper API) ─────────────────────────────────────
-
-@router.get("/{compte_id}/profile-live")
-async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Fetch real-time profile data for a compte via the IG private API.
-
-    Uses a scraper account's session + Scrapigo proxy to fetch profile
-    info, stats, bio, highlights etc. for the given account's handle.
-    """
-    compte = await service.get_compte(db, compte_id)
-    if not compte:
-        raise HTTPException(404, "compte not found")
-
-    if compte.plateforme != "ig":
-        raise HTTPException(400, "profile-live only supports Instagram for now")
-
-    from app.services.comptes import _log as emit_log
-    await emit_log("comptes", "scrape", "info", compte.handle, f"Lecture profil live @{compte.handle} via API privée")
-
-    try:
-        from app.services.ig_api_scraper import IGScraperClient
-        client = await IGScraperClient.from_db(db)
-        if not client:
-            await emit_log("comptes", "scrape", "error", compte.handle, "Aucun compte scraper avec session valide", code="NO_SCRAPER")
-            raise HTTPException(503, "Aucun compte scraper avec session valide")
-
-        profile = await client.get_user_profile_full(compte.handle)
-        if not profile:
-            await emit_log("comptes", "scrape", "warning", compte.handle, f"Profil @{compte.handle} introuvable via l'API privée")
-            raise HTTPException(404, f"Profil @{compte.handle} introuvable via l'API privée")
-
-        hl_count = len(profile.get("highlights", []))
-        await emit_log("comptes", "scrape", "success", compte.handle,
-            f"Profil @{compte.handle} récupéré — {profile.get('follower_count', 0)} followers, {profile.get('media_count', 0)} posts, {hl_count} highlights")
-
-        # Persist live profile data in DB
-        compte.profile_data = profile
-        await db.commit()
-
-        # Merge with internal config (age_limit, pro_type, etc. — not from API)
-        config = compte.profile_config or {}
-        result = {**profile}
-        result["_config"] = config  # internal fields the frontend should preserve
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("profile-live error for %s", compte.handle)
-        await emit_log("comptes", "scrape", "error", compte.handle, f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
-        raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
-
-
-
-# ── Profile update (diff-based, dispatches to iPhone) ──────────────────
-
-class ProfileUpdateRequest(BaseModel):
-    full_name: str | None = None
-    biography: str | None = None
-    external_url: str | None = None
-    is_private: bool | None = None
-    is_business: bool | None = None
-    # Internal-only config (not pushed to IG, stored locally)
-    age_limit: str | None = None      # "18+", "21+", or null
-    pro_type: str | None = None        # "creator", "business"
-    pro_category: str | None = None
-
-@router.post("/{compte_id}/profile-update")
-async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncSession = Depends(get_db)):
-    """Update profile config. Only changed fields (vs profile_data) are dispatched to iPhone.
-
-    Internal fields (age_limit, pro_type) are stored in profile_config only.
-    IG fields (bio, name, link, privacy) are diffed against last known profile_data
-    and dispatched as an automation task on the assigned iPhone.
-    """
-    from app.services.comptes import _log as emit_log
-
-    compte = await service.get_compte(db, compte_id)
-    if not compte:
-        raise HTTPException(404, "compte not found")
-
-    changes = body.model_dump(exclude_unset=True)
-    live = compte.profile_data or {}
-    config = compte.profile_config or {}
-
-    # Separate internal config vs IG-pushable fields
-    INTERNAL_KEYS = {"age_limit", "pro_type", "pro_category"}
-    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business"}
-
-    # Update internal config
-    config_changed = False
-    for k in INTERNAL_KEYS:
-        if k in changes:
-            config[k] = changes[k]
-            config_changed = True
-
-    if config_changed:
-        compte.profile_config = config
-
-    # Diff IG fields against live data
-    ig_diff = {}
-    for k in IG_KEYS:
-        if k in changes and changes[k] != live.get(k):
-            ig_diff[k] = changes[k]
-
-    if ig_diff:
-        await emit_log("comptes", "profile", "info", compte.handle,
-            f"Modification profil demandée : {', '.join(ig_diff.keys())}")
-
-        # Dispatch to iPhone automation
-        if compte.device_id:
-            import asyncio
-            asyncio.create_task(
-                _dispatch_profile_edit(compte.id, compte.plateforme, ig_diff),
-                name=f"profile_edit_{compte.handle}",
-            )
-            logger.info("profile-update: dispatched %s changes for @%s", list(ig_diff.keys()), compte.handle)
-            await emit_log("comptes", "profile", "info", compte.handle,
-                f"Ordre de configuration envoyé à l'iPhone — {', '.join(ig_diff.keys())}")
-        else:
-            await emit_log("comptes", "profile", "warning", compte.handle,
-                "Pas d'iPhone assigné — modifications enregistrées mais non appliquées sur IG")
-
-    await db.commit()
-    return {"ok": True, "ig_changes": ig_diff, "config_changes": {k: config[k] for k in INTERNAL_KEYS if k in changes}}
-
-
-async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, changes: dict):
-    """Background task: edit profile on iPhone via automation script.
-
-    Maps frontend field names to configure_profile() expected keys:
-    full_name -> name, biography -> bio, external_url -> link, is_private -> private
-    """
-    # Map API field names to script config keys
-    config = {}
-    if "full_name" in changes:
-        config["name"] = changes["full_name"]
-    if "biography" in changes:
-        config["bio"] = changes["biography"]
-    if "external_url" in changes:
-        config["link"] = {"url": changes["external_url"]} if changes["external_url"] else ""
-    if "is_private" in changes:
-        config["private"] = changes["is_private"]
-    if "is_business" in changes:
-        config["pro"] = changes["is_business"]
-
-    if not config:
-        return
-
-    try:
-        if plateforme == "ig":
-            from app.services.automation.ig_runner import run_ig_task
-            ok, msg = await run_ig_task(compte_id, "ig_config", values={"config": config})
-        else:
-            logger.info("profile_edit: plateforme %s not yet supported", plateforme)
-            return
-
-        from app.services.comptes import _log as emit_log
-        if ok:
-            await emit_log("comptes", "profile", "success", str(compte_id),
-                f"Profil modifié sur iPhone — {', '.join(config.keys())} — {msg}",
-                meta={"config": config, "result": msg})
-        else:
-            await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Échec modification profil — {msg}",
-                code="PROFILE_EDIT_FAILED",
-                meta={"config": config, "result": msg, "requested": list(config.keys())})
-    except Exception as exc:
-        logger.exception("profile_edit error for %s", compte_id)
-        try:
-            from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Erreur technique: {str(exc)[:150]}",
-                code="PROFILE_EDIT_ERROR",
-                meta={"config": config, "error": str(exc)[:300]})
-        except Exception:
-            pass

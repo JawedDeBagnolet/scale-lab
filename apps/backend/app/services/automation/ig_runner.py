@@ -107,26 +107,10 @@ async def _maybe_extract_session(sess, log):
         )
         if session:
             log(f"   [scraper] ✓ session extraite et stockée (ds_user_id={session.get('ds_user_id', '?')})")
-            from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "success", compte.handle, f"Session scraper extraite — ds_user_id={session.get('ds_user_id', '?')}")
         else:
             log("   [scraper] ⚠ extraction de session échouée — le compte sera réessayé au prochain login")
-            from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée — le compte est connecté mais inutilisable pour le scraping", code="SESSION_EXTRACT_FAILED")
-            # Update status to reflect the account needs reconnection
-            async with AsyncSessionLocal() as db2:
-                c = await db2.get(Compte, sess.compte_id)
-                if c:
-                    c.status = "session"
-                    await db2.commit()
-                    log(f"   [scraper] statut mis à jour → session (à reconnecter)")
     except Exception as e:
         log(f"   [scraper] ⚠ erreur extraction session: {str(e)[:150]}")
-        try:
-            from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "error", str(sess.compte_id), f"Erreur extraction session: {str(e)[:150]}", code="SESSION_EXTRACT_ERROR")
-        except Exception:
-            pass
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
@@ -430,16 +414,10 @@ async def _login(drv, nav, sess, values, log):
 async def _config(drv, nav, sess, values, log):
     """Apply profile config changes."""
     from app.services.automation.ig_iphone.config.profile_config import configure_profile
-    config = values.get("config", values)
-    requested = list(config.keys()) if isinstance(config, dict) else []
     result = await configure_profile(drv, nav, log=log, **values)
     if result:
-        succeeded = list(result.keys())
-        failed = [k for k in requested if k not in result]
-        if failed:
-            return False, "Profil partiellement configuré: %s OK, %s échoué" % (succeeded, failed)
-        return True, "Profil configuré: %s" % succeeded
-    return False, "ig_config: aucun champ configuré (demandés: %s)" % requested
+        return True, "Profil configuré"
+    return False, "ig_config : échec de la configuration"
 
 
 @_handler("ig_switch_pro")

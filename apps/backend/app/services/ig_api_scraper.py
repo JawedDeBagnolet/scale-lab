@@ -168,35 +168,27 @@ class IGScraperClient:
                 h[k] = v
         return h
 
-    async def _get(self, path: str, params: dict | None = None, retries: int = 2) -> dict:
-        """GET request through Scrapigo proxy with retry on 429."""
-        import asyncio
+    async def _get(self, path: str, params: dict | None = None) -> dict:
+        """GET request through Scrapigo proxy."""
         proxy = self.proxy_url
-        for attempt in range(retries + 1):
-            async with httpx.AsyncClient(
-                timeout=20,
-                verify=False,
-                proxy=proxy,
-            ) as client:
-                resp = await client.get(
-                    f"{IG_BASE}{path}",
-                    headers=self._headers(),
-                    params=params,
-                )
-                # Track usage
-                await self._track(len(resp.content))
-                if resp.status_code == 401:
-                    await self._mark_expired("session expired (401)")
-                    resp.raise_for_status()
-                elif resp.status_code == 429:
-                    if attempt < retries:
-                        wait = int(resp.headers.get("Retry-After", 3 + attempt * 2))
-                        logger.info("ig_scraper: 429 on %s, retry %d/%d in %ds", path, attempt + 1, retries, wait)
-                        await asyncio.sleep(wait)
-                        continue
-                    await self._mark_rate_limited()
-                resp.raise_for_status()
-                return resp.json()
+        async with httpx.AsyncClient(
+            timeout=20,
+            verify=False,
+            proxy=proxy,
+        ) as client:
+            resp = await client.get(
+                f"{IG_BASE}{path}",
+                headers=self._headers(),
+                params=params,
+            )
+            # Track usage
+            await self._track(len(resp.content))
+            if resp.status_code == 401:
+                await self._mark_expired("session expired (401)")
+            elif resp.status_code == 429:
+                await self._mark_rate_limited()
+            resp.raise_for_status()
+            return resp.json()
 
     async def _post(self, path: str, data: dict | None = None) -> dict:
         """POST request through Scrapigo proxy."""
@@ -343,22 +335,18 @@ class IGScraperClient:
     async def get_user_profile_full(self, username: str) -> dict | None:
         """Get full profile data: info + highlights. One call for the modal.
 
-        Uses search endpoint to resolve username → pk (less rate-limited
-        than web_profile_info), then fetches detailed info and highlights.
+        Uses web profile endpoint to resolve username → pk, then fetches
+        detailed info and highlights in parallel.
         """
         import asyncio
 
-        # Resolve username to pk via search (less rate-limited)
-        results = await self.search_users(username, count=1)
-        user = None
-        for r in results:
-            if r.get("username", "").lower() == username.lower():
-                user = r
-                break
-        if not user and results:
-            user = results[0]  # best match fallback
+        # Resolve username to pk via search
+        data = await self._get(
+            "/api/v1/users/web_profile_info/",
+            params={"username": username},
+        )
+        user = (data.get("data", {}) or {}).get("user") or data.get("user")
         if not user:
-            logger.warning("get_user_profile_full: user %s not found via search", username)
             return None
 
         pk = str(user.get("pk", user.get("id", "")))

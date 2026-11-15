@@ -148,38 +148,103 @@ async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
     """Fire the automatic login task after compte creation.
 
     Runs as a background asyncio task — errors are logged, not raised.
+    Uses LogCollector to capture session logs for display in alert modals.
     """
+    from app.services.engine import LogCollector
+
+    collector = LogCollector()
     try:
         if plateforme == "ig":
             from app.services.automation.ig_runner import run_ig_task
-            ok, msg = await run_ig_task(compte_id, "ig_login")
+            ok, msg = await run_ig_task(compte_id, "ig_login", log=collector)
         elif plateforme == "th":
             from app.services.automation.th_runner import run_th_task
-            ok, msg = await run_th_task(compte_id, "th_login")
+            ok, msg = await run_th_task(compte_id, "th_login", log=collector)
         else:
             logger.info("auto_login: pas de script login pour plateforme '%s'", plateforme)
             await _log("comptes", "login", "warning", str(compte_id), f"Pas de script de login pour la plateforme {plateforme}")
             return
 
+        meta = {"session_logs": collector.lines} if collector.lines else None
         if ok:
             logger.info("auto_login: compte %s connecté — %s", compte_id, msg)
-            await _log("comptes", "login", "success", str(compte_id), f"Compte connecté — {msg}")
+            await _log("comptes", "login", "success", str(compte_id), f"Compte connecté — {msg}", meta=meta)
         else:
             logger.error("auto_login: échec compte %s — %s", compte_id, msg)
-            await _log("comptes", "login", "error", str(compte_id), f"Échec connexion — {msg}", code="LOGIN_FAILED")
+            await _log("comptes", "login", "error", str(compte_id), f"Échec connexion — {msg}", code="LOGIN_FAILED", meta=meta)
     except Exception:
         logger.exception("auto_login: erreur inattendue pour compte %s", compte_id)
-        import traceback
-        await _log("comptes", "login", "error", str(compte_id), f"Erreur inattendue lors du login: {traceback.format_exc()[-200:]}", code="LOGIN_EXCEPTION")
+        meta = {"session_logs": collector.lines} if collector.lines else None
+        await _log("comptes", "login", "error", str(compte_id), f"Erreur inattendue lors du login: {traceback.format_exc()[-200:]}", code="LOGIN_EXCEPTION", meta=meta)
+
+
+async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict, handle: str = "") -> None:
+    """Dispatch profile edit to the iPhone automation.
+
+    Runs as a background asyncio task. Maps frontend field names to
+    configure_profile kwargs (bio, name, link, etc.) and captures session logs.
+    """
+    from app.services.engine import LogCollector
+
+    # Map frontend fields to configure_profile kwargs
+    FIELD_MAP = {
+        "full_name": "name",
+        "biography": "bio",
+        "external_url": "link",
+        "is_private": "private",
+        "is_business": "pro",
+    }
+
+    config_values = {}
+    requested_fields = []
+    for frontend_key, value in fields.items():
+        config_key = FIELD_MAP.get(frontend_key, frontend_key)
+        config_values[config_key] = value
+        requested_fields.append(config_key)
+
+    if not config_values:
+        await _log("comptes", "profile_edit", "warning", handle or str(compte_id),
+                    "Modification profil — aucun champ à modifier", code="PROFILE_EDIT_EMPTY")
+        return
+
+    collector = LogCollector()
+    try:
+        if plateforme == "ig":
+            from app.services.automation.ig_runner import run_ig_task
+            ok, msg = await run_ig_task(compte_id, "ig_config", values=config_values, log=collector)
+        else:
+            await _log("comptes", "profile_edit", "warning", handle or str(compte_id),
+                        f"Pas de script de config profil pour {plateforme}")
+            return
+
+        meta = {
+            "session_logs": collector.lines,
+            "fields": requested_fields,
+        }
+        if ok:
+            logger.info("profile_edit: %s configuré — %s", handle or compte_id, msg)
+            await _log("comptes", "profile_edit", "success", handle or str(compte_id),
+                        f"Profil configuré — {', '.join(requested_fields)}", meta=meta)
+        else:
+            logger.error("profile_edit: échec %s — %s", handle or compte_id, msg)
+            await _log("comptes", "profile_edit", "error", handle or str(compte_id),
+                        f"Échec modification profil — ig_config: aucun champ configuré (demandés: {requested_fields})",
+                        code="PROFILE_EDIT_FAILED", meta=meta)
+    except Exception:
+        logger.exception("profile_edit: erreur inattendue pour %s", handle or compte_id)
+        meta = {"session_logs": collector.lines, "fields": requested_fields}
+        await _log("comptes", "profile_edit", "error", handle or str(compte_id),
+                    f"Erreur inattendue modification profil: {traceback.format_exc()[-200:]}",
+                    code="PROFILE_EDIT_EXCEPTION", meta=meta)
 
 
 async def _pick_free_iphone(db: AsyncSession):
     """Pick the iPhone with the fewest assigned accounts (load balancing)."""
-    from sqlalchemy import func, cast, String
+    from sqlalchemy import func
     stmt = (
         select(IPhone)
         .where(IPhone.status == "online")
-        .outerjoin(Compte, Compte.device_id == cast(IPhone.id, String))
+        .outerjoin(Compte, Compte.device_id == IPhone.id)
         .group_by(IPhone.id)
         .order_by(func.count(Compte.id).asc())
         .limit(1)
@@ -195,22 +260,12 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
     if dump.get("creds_encrypted"):
         dump["creds_encrypted"] = encrypt_creds(dump["creds_encrypted"])
     compte = Compte(**dump)
-
-    # ── Log creation ─────────────────────────────────────────────────────
-    kind = "scraper" if compte.is_scraper else "posting"
-    await _log("comptes", "create", "info", compte.handle, f"Création compte {kind} @{compte.handle} ({compte.plateforme})")
-
     # Auto-assign iPhone for scraper accounts without a specific device
     if compte.is_scraper and not compte.device_id:
         free_iphone = await _pick_free_iphone(db)
         if free_iphone:
-            compte.device_id = str(free_iphone.id)
+            compte.device_id = free_iphone.id
             logger.info("create_compte: auto-assigned scraper @%s to iPhone %s", compte.handle, free_iphone.name)
-            await _log("comptes", "device", "info", compte.handle, f"iPhone auto-assigné : {free_iphone.name}")
-        else:
-            logger.warning("create_compte: no free iPhone for scraper @%s", compte.handle)
-            await _log("comptes", "device", "warning", compte.handle, "Aucun iPhone libre dans le parc — compte créé sans device")
-
     # Auto-assign container if device_id provided at creation
     if compte.device_id:
         await _ensure_container_on_assign(db, compte, compte.device_id)
@@ -230,8 +285,6 @@ async def create_compte(db: AsyncSession, data: CompteCreate) -> Compte:
             compte.handle, compte.device_id, compte.env["container_uuid"][:8],
         )
         await _log("comptes", "login", "info", compte.handle, f"Login auto lancé sur container {compte.env['container_uuid'][:8]}")
-    elif compte.device_id and not (compte.env or {}).get("container_uuid"):
-        await _log("comptes", "container", "warning", compte.handle, f"Device assigné mais container non créé — login en attente")
 
     return compte
 
@@ -260,12 +313,7 @@ async def update_compte(db: AsyncSession, compte: Compte, data: CompteUpdate) ->
     )
 
     for key, value in changes.items():
-        if key == "env" and value is not None:
-            # Merge env instead of overwriting — preserve container_uuid, proxy_country etc.
-            merged = {**(compte.env or {}), **(value or {})}
-            compte.env = merged
-        else:
-            setattr(compte, key, value)
+        setattr(compte, key, value)
 
     # Auto-create container when assigning to a new iPhone
     if device_changed:

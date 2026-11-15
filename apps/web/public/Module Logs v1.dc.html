@@ -111,7 +111,7 @@ input::placeholder { color: #5b6175; }
 <sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
 </div>
 </div>
-<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;cursor:pointer" style-hover="color:#f2f3fa"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;padding:4px 8px;border-radius:7px;cursor:pointer" style-hover="background:rgba(255,255,255,.04);color:#e8eaf3"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
 </div>
 </sc-for>
 <sc-if value="{{ noOpen }}"><div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-top:1px solid rgba(255,255,255,.05);font-size:12.5px;color:#86efac"><i class="ph ph-check-circle" style="font-size:16px"></i>Aucun incident en cours. Tout tourne normalement.</div></sc-if>
@@ -120,11 +120,6 @@ input::placeholder { color: #5b6175; }
 <div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.04),rgba(255,255,255,.012) 40%)">
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05)">
 <div style="font-size:14px;font-weight:600;color:#f2f3fa;margin-right:4px">Flux</div>
-<div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:2px">
-<div onClick="{{ prevDay }}" style="width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#8a91a8" style-hover="background:rgba(255,255,255,.08);color:#f2f3fa"><i class="ph ph-caret-left" style="font-size:14px"></i></div>
-<div onClick="{{ goToday }}" style="padding:0 10px;font-size:12px;font-weight:600;color:#e8eaf3;cursor:pointer;white-space:nowrap">{{ dateLabel }}</div>
-<div onClick="{{ nextDay }}" style="width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#8a91a8;opacity:{{ isToday ? 0.3 : 1 }}" style-hover="background:rgba(255,255,255,.08);color:#f2f3fa"><i class="ph ph-caret-right" style="font-size:14px"></i></div>
-</div>
 <div onClick="{{ toggleLive }}" style="{{ liveBtn }}"><span style="{{ liveDot }}"></span>{{ liveLabel }}</div>
 <div style="width:1px;height:22px;background:rgba(255,255,255,.08)"></div>
 <sc-for list="{{ lvlChips }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.go }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:13px"></i>{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div></sc-for>
@@ -174,7 +169,7 @@ input::placeholder { color: #5b6175; }
 <sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
 </div>
 </div>
-<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;cursor:pointer" style-hover="color:#f2f3fa"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;padding:4px 8px;border-radius:7px;cursor:pointer" style-hover="background:rgba(255,255,255,.04);color:#e8eaf3"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
 </div>
 </sc-for>
 <sc-if value="{{ incEmpty }}"><div style="padding:40px;text-align:center;font-size:13px;color:#8a91a8">Aucun incident dans cette catégorie</div></sc-if>
@@ -370,7 +365,7 @@ class Component extends DCLogic {
   addToInc(incs, ev) { if (!ev.key) return incs; const cur = incs[ev.key]; const ty = (this.CAT[ev.mod] || []).find(x => x[0] === ev.type) || ['unknown', ev.type || 'Inconnu', ev.lvl || 'info']; const cz = cur ? { ...(cur.causes || {}) } : {}; if (ev.cause) cz[ev.cause] = (cz[ev.cause] || 0) + 1;
     const next = cur ? { ...cur, causes: cz, count: cur.count + 1, last: Math.max(cur.last, ev.t), first: Math.min(cur.first, ev.t), status: cur.status === 'resolved' ? 'open' : cur.status, events: [ev.id].concat(cur.events).slice(0, 30) } : { key: ev.key, mod: ev.mod, type: ev.type, lvl: ev.lvl, title: ty[1], target: ev.target, count: 1, first: ev.t, last: ev.t, status: 'open', causes: cz, events: [ev.id] }; return { ...incs, [ev.key]: next }; }
   init() {
-    const SD = window.SCALE_DATA; if (SD && SD._live) { SD.loadModule('logs'); const incs = {}; SD.logIncidents.forEach(inc => { incs[inc.key] = inc; }); const rules = SD.alertRules.map(r => ({ id: r.id, mod: r.mod, type: r.type, on: r.on, th: r.th || 0 })); if (!rules.length) { const rule = (mod, type, on, th) => ({ id: mod + '_' + type, mod, type, on, th: th || 0 }); rules.push(rule('comptes', 'checkpoint', true, 0), rule('comptes', 'ban', true), rule('posting', 'fail', true, 1), rule('infra', 'slow', true, 2), rule('infra', 'down', true), rule('infra', 'device', true), rule('veille', 'cookie', true), rule('planner', 'cap', false), rule('liens', 'deadacc', true), rule('liens', 'domfull', true), rule('liens', 'domnear', false)); } return { tab: 'journal', navCollapsed: false, events: SD.logEvents.slice(), buffer: [], incs, live: true, dateF: null, lvlOn: { success: true, info: true, warn: true, error: true }, modF: 'all', q: '', incF: 'open', openInc: null, rules, fixStats: this.seedStats(), autoFix: {}, sel: {}, evView: null, bot: '@scalelab_alerts_bot', chat: 'Ops · Alertes', digest: { on: true, hour: 9, detail: 'full', secs: { inc: true, pub: true, story: true, veille: true, acc: true, infra: true, rules: true } }, addOpen: false, toast: null, toastLvl: 'success', showTop: false }; }
+    const SD = window.SCALE_DATA; if (SD && SD._live) { SD.loadModule('logs'); const incs = {}; SD.logIncidents.forEach(inc => { incs[inc.key] = inc; }); const rules = SD.alertRules.map(r => ({ id: r.id, mod: r.mod, type: r.type, on: r.on, th: r.th || 0 })); if (!rules.length) { const rule = (mod, type, on, th) => ({ id: mod + '_' + type, mod, type, on, th: th || 0 }); rules.push(rule('comptes', 'checkpoint', true, 0), rule('comptes', 'ban', true), rule('posting', 'fail', true, 1), rule('infra', 'slow', true, 2), rule('infra', 'down', true), rule('infra', 'device', true), rule('veille', 'cookie', true), rule('planner', 'cap', false), rule('liens', 'deadacc', true), rule('liens', 'domfull', true), rule('liens', 'domnear', false)); } return { tab: 'journal', navCollapsed: false, events: SD.logEvents.slice(), buffer: [], incs, live: true, lvlOn: { success: true, info: true, warn: true, error: true }, modF: 'all', q: '', incF: 'open', openInc: null, rules, fixStats: this.seedStats(), autoFix: {}, sel: {}, evView: null, bot: '@scalelab_alerts_bot', chat: 'Ops · Alertes', digest: { on: true, hour: 9, detail: 'full', secs: { inc: true, pub: true, story: true, veille: true, acc: true, infra: true, rules: true } }, addOpen: false, toast: null, toastLvl: 'success', showTop: false }; }
     const r = this.rng(20260929); const P = this.pools(); const now = Date.now(); const evs = [];
     for (let i = 0; i < 190; i++) evs.push(this.mkEvent(r, now - Math.pow(r(), 1.2) * 12 * 36e5, P));
     const SDx = window.SCALE_DATA || { accounts: [], personas: [] }; const slug = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); this._slugAcc = {};
@@ -449,10 +444,14 @@ class Component extends DCLogic {
     const ctx = [['Cible', isAcc ? '@' + e.target : e.target], ['Horodatage', new Date(e.t).toLocaleString('fr-FR')], ['Code', e.code || '—']].concat(c ? [['Cause', c[1]]].concat(c[4].map((x, k) => [k ? '' : 'Détail', x.replace('{t}', e.target).replace('{acc}', (this._slugAcc || {})[String(e.target).split('/').pop()] || String(e.target).split('/').pop())])) : []).concat(isAcc ? [['Proxy', this.proxyOf(e.target)]] : []).concat([['ID', e.id]]);
     const link = e.mod === 'comptes' || (isAcc && e.mod !== 'posting' && e.mod !== 'planner') ? ['Module%20Comptes%20v1.dc.html', 'Ouvrir le compte'] : e.mod === 'posting' || e.mod === 'planner' ? ['Module%20Posting%20v1.dc.html', 'Ouvrir dans Posting'] : e.mod === 'veille' ? ['Module%20Veille%20v1.dc.html', 'Ouvrir la Veille'] : null;
     const meta = e.meta || {}; const runId = meta.run_id;
-    const hasLogs = !!runId && e.lvl === 'error';
-    const logLines = (s.evLogs || {})[e.id] || null;
+    const inlineLogs = meta.session_logs;
+    const hasLogs = (!!runId && e.lvl === 'error') || (Array.isArray(inlineLogs) && inlineLogs.length > 0);
+    let logLines = (s.evLogs || {})[e.id] || null;
+    if (Array.isArray(inlineLogs) && inlineLogs.length > 0 && !logLines) {
+      logLines = inlineLogs;
+    }
     const logsCopied = (s.evLogsCopied || {})[e.id] || false;
-    if (hasLogs && !logLines && !((s.evLogsLoading || {})[e.id])) { this._loadRunLogs(e.id, runId); }
+    if (!!runId && e.lvl === 'error' && !logLines && !((s.evLogsLoading || {})[e.id])) { this._loadRunLogs(e.id, runId); }
     const copyLogs = logLines && logLines.length ? () => {
       const txt = logLines.join('\n');
       navigator.clipboard.writeText(txt).then(() => { this.setState(x => ({ evLogsCopied: { ...x.evLogsCopied, [e.id]: true } })); setTimeout(() => this.setState(x => ({ evLogsCopied: { ...x.evLogsCopied, [e.id]: false } })), 2000); });
@@ -499,7 +498,7 @@ class Component extends DCLogic {
   resVals() {
     const s = this.state; const R0 = s.resolve; const inc = R0 && s.incs[R0.key]; if (!inc) return { resOpen: false };
     const L = this.LV[inc.lvl] || this.LV.info; const m = this.mod(inc.mod); const d = this.diag(inc); const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status] || ['Inconnu', '#8a91a8'];
-    const allEvs = s.events.concat(s.buffer).concat((window.SCALE_DATA || {}).logEvents || []); const occ = inc.events.slice(0, 10).map(id => allEvs.find(e => e.id === id)).filter(Boolean);
+    const occ = inc.events.slice(0, 10).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
     const tgt = ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.match(/^[a-z0-9._]+$/) ? '@' + inc.target : inc.target;
     const impact = inc.mod === 'posting' ? inc.count + ' publication' + (inc.count > 1 ? 's' : '') + ' non envoyée' + (inc.count > 1 ? 's' : '') : inc.mod === 'planner' ? inc.count + ' stor' + (inc.count > 1 ? 'ies' : 'y') + ' non publiée' + (inc.count > 1 ? 's' : '') : inc.mod === 'comptes' ? 'Publications de ' + tgt + ' suspendues' : inc.mod === 'infra' ? (inc.type === 'device' ? '4 comptes' : '6 comptes') + ' dépendent de ' + tgt : 'Veilles ralenties sur ce scraper';
     const base = inc.mod + '.' + inc.type + '.' + (d ? d.c[0] : ''); const rate = fx => { const S = s.fixStats[base + '.' + fx[0]] || { ok: 0, fail: 0 }; const n = S.ok + S.fail; return { n, r: n ? S.ok / n : fx[4], S }; };
@@ -526,7 +525,7 @@ class Component extends DCLogic {
   incRow(inc, full) {
     const s = this.state; const L = this.LV[inc.lvl] || this.LV.info; const m = this.mod(inc.mod); const open = s.openInc === inc.key;
     const ST = { open: ['Ouvert', '#f4728c'], ack: ['Acquitté', '#f5c77e'], resolved: ['Résolu', '#4ade80'] }[inc.status] || ['Inconnu', '#8a91a8'];
-    const allEvs2 = s.events.concat(s.buffer).concat((window.SCALE_DATA || {}).logEvents || []); const occ = inc.events.slice(0, 8).map(id => allEvs2.find(e => e.id === id)).filter(Boolean);
+    const occ = inc.events.slice(0, 8).map(id => s.events.find(e => e.id === id) || s.buffer.find(e => e.id === id)).filter(Boolean);
     const res = inc.resolution; const par = this.parentOf(inc); const kids = this.kidsOf(inc); const sel = !!s.sel[inc.key]; return { hasParent: !!par && inc.status !== 'resolved', parentLabel: par ? 'Probablement causé par ' + par.target + ' · ' + par.title.toLowerCase() : '', hasKids: kids.length > 0, kidsLabel: kids.length + ' incident' + (kids.length > 1 ? 's' : '') + ' lié' + (kids.length > 1 ? 's' : '') + ' · ' + kids.reduce((a, k) => a + k.count, 0) + ' ordres bloqués',
       selectable: !!full, sel, toggleSel: e => { e.stopPropagation(); this.setState(x => { const o = { ...x.sel }; if (o[inc.key]) delete o[inc.key]; else o[inc.key] = true; return { sel: o }; }); }, cb: { width: 18, height: 18, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', border: '1.5px solid ' + (sel ? '#7c6cf6' : 'rgba(255,255,255,.3)'), background: sel ? '#7c6cf6' : 'transparent' },
       key: inc.key, title: inc.title, target: (res && inc.status === 'resolved' ? 'résolu via « ' + res.label + ' » · ' : '') + ['comptes', 'posting', 'planner'].indexOf(inc.mod) >= 0 && inc.target.indexOf(' ') < 0 && inc.target.indexOf('-') < 0 && inc.target.indexOf('#') < 0 ? '@' + inc.target : inc.target, count: inc.count, mod: m[1], modIcon: m[2], since: 'depuis ' + this.ago(inc.first).replace('il y a ', ''), lastLabel: 'dernier ' + this.ago(inc.last).replace('il y a ', ''),
@@ -583,55 +582,6 @@ class Component extends DCLogic {
       out.liveLabel = s.live ? 'En direct' : 'En pause'; out.liveDot = { width: 8, height: 8, borderRadius: 99, background: s.live ? '#4ade80' : '#6b7289', animation: s.live ? 'livePulse 1.8s infinite' : 'none' };
       out.liveBtn = { display: 'flex', alignItems: 'center', gap: 8, height: 30, padding: '0 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: s.live ? '#86efac' : '#aab0c5', background: s.live ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.04)', border: '1px solid ' + (s.live ? 'rgba(74,222,128,.4)' : 'rgba(255,255,255,.1)') };
       out.hasPending = !s.live && s.buffer.length > 0; out.pendingLabel = s.buffer.length + ' nouvel' + (s.buffer.length > 1 ? 's' : '') + ' événement' + (s.buffer.length > 1 ? 's' : '') + ' · reprendre le direct'; out.flushPending = out.toggleLive;
-      // Date navigation
-      const dateF = s.dateF; // null = today (live), 'YYYY-MM-DD' = past day
-      const fmtDate = d => d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const isToday = !dateF || dateF === todayStr;
-      out.dateLabel = isToday ? 'Aujourd\'hui' : fmtDate(new Date(dateF + 'T12:00:00'));
-      out.isToday = isToday;
-      out.prevDay = () => {
-        const d = dateF ? new Date(dateF + 'T12:00:00') : new Date();
-        d.setDate(d.getDate() - 1);
-        const ds = d.toISOString().slice(0, 10);
-        this.setState({ dateF: ds, live: false });
-        const SD = window.SCALE_DATA;
-        if (SD && SD._live) {
-          SD.apiAsync('GET', '/logs/events?date=' + ds + '&limit=500').then(evs => {
-            this.setState({ events: (evs || []).map(e => SD.x.event(e)) });
-          });
-        }
-      };
-      out.nextDay = () => {
-        if (isToday) return;
-        const d = new Date(dateF + 'T12:00:00');
-        d.setDate(d.getDate() + 1);
-        const ds = d.toISOString().slice(0, 10);
-        if (ds >= todayStr) {
-          const SD2 = window.SCALE_DATA;
-          if (SD2 && SD2._live) {
-            SD2.apiAsync('GET', '/logs/events?limit=200').then(evs => {
-              this.setState({ dateF: null, live: true, events: (evs || []).map(e => SD2.x.event(e)), buffer: [] });
-            });
-          } else { this.setState({ dateF: null, live: true }); }
-        } else {
-          this.setState({ dateF: ds });
-          const SD = window.SCALE_DATA;
-          if (SD && SD._live) {
-            SD.apiAsync('GET', '/logs/events?date=' + ds + '&limit=500').then(evs => {
-              this.setState({ events: (evs || []).map(e => SD.x.event(e)) });
-            });
-          }
-        }
-      };
-      out.goToday = () => {
-        const SD = window.SCALE_DATA;
-        if (SD && SD._live) {
-          SD.apiAsync('GET', '/logs/events?limit=200').then(evs => {
-            this.setState({ dateF: null, live: true, events: (evs || []).map(e => SD.x.event(e)), buffer: [] });
-          });
-        } else { this.setState({ dateF: null, live: true }); }
-      };
       const groups = []; list.forEach(e => { const h = Math.floor(e.t / 36e5); let g = groups[groups.length - 1]; if (!g || g.h !== h) { g = { h, items: [] }; groups.push(g); } g.items.push(e); });
       const today = new Date(); today.setHours(0, 0, 0, 0);
       out.groups = groups.map(g => { const d = new Date(g.h * 36e5); const H = d.getHours(); const isToday = d >= today; return { label: this.pad(H) + ' h – ' + this.pad((H + 1) % 24) + ' h', sub: (isToday ? 'Aujourd\'hui' : 'Hier') + ' · ' + g.items.length + ' événement' + (g.items.length > 1 ? 's' : ''),
