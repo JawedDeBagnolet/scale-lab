@@ -305,6 +305,42 @@ async def _clear_and_type(driver, log, text, current_text=""):
     await asyncio.sleep(0.5)
 
 
+async def _verify_profile_field(driver, log, field_label, expected_value) -> bool:
+    """Verifie qu'un champ du profil affiche la valeur attendue.
+
+    Navigue vers le profil si necessaire, puis cherche le texte EXACT
+    (pas contains) parmi les elements visibles.
+
+    Args:
+        field_label: label pour le log ("nom", "bio", "lien", etc.)
+        expected_value: texte exact attendu sur le profil
+    Returns:
+        True si verifie, False sinon
+    """
+    # Make sure we're on the profile screen
+    screen = await _detect_screen(driver, log)
+    if screen == "edit_profile":
+        back = await driver.find_element("Retour", clickable=True, refresh=True)
+        if back:
+            tap = back.get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2)
+
+    # Scan all visible elements for an EXACT match
+    all_els = await driver.find_elements(refresh=True)
+    for el in all_els:
+        el_text = (el.get('text', '') or '').strip()
+        if el_text == expected_value:
+            r = el.get('rect', {})
+            log("   ✓ %s verifie: '%s' (y=%d)" % (field_label, el_text[:40], r.get('y', 0)))
+            return True
+
+    # No exact match — log what we see for debugging
+    visible = [e.get('text', '') for e in all_els if e.get('text') and len(e.get('text', '')) > 1]
+    log("   ⚠ %s '%s' non trouve (exact). Visible: %s" % (field_label, expected_value[:30], ', '.join("'%s'" % v[:25] for v in visible[:8])))
+    return False
+
+
 async def _dismiss_popup(driver, log, wait=1.5):
     """Gere les popups de confirmation apres modification."""
     await asyncio.sleep(wait)
@@ -728,24 +764,11 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         else:
                             log("   timeout chargement nom (continue)")
 
-                        # Verify: go to profile and check name
-                        if screen == "edit_profile":
-                            # Back to profile to verify
-                            back = await driver.find_element("Retour", clickable=True, refresh=True)
-                            if back:
-                                tap = back.get('tap', {})
-                                await driver.ht.tap(tap['x'], tap['y'])
-                                await asyncio.sleep(2)
-
-                        # Dump profile to confirm change
-                        await _dump_screen(driver, log, "verification nom")
-                        name_el = await driver.find_element(edit_fields["name"], contains=True, refresh=True)
-                        if name_el:
-                            log("   ✓ nom verifie: '%s'" % (name_el.get('text', '')[:40]))
-                            results["name"] = True
-                        else:
-                            log("   ⚠ nom non verifie sur le profil (peut etre ok)")
-                            results["name"] = True  # Don't block — IG might show it differently
+                        # Verify on profile
+                        verified = await _verify_profile_field(driver, log, "nom", edit_fields["name"])
+                        results["name"] = True  # Mark done even if verify fails (IG may truncate/format)
+                        if not verified:
+                            log("   (le nom a peut-etre ete applique avec un format different)")
 
                         # Re-open edit profile for remaining fields
                         if edit_fields.keys() - {"name"}:
