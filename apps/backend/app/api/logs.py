@@ -25,12 +25,13 @@ async def list_events(
     module: str | None = Query(None),
     level: str | None = Query(None),
     target: str | None = Query(None),
+    date: str | None = Query(None, description="YYYY-MM-DD — filter events for this day"),
     limit: int = Query(200, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_events(
-        db, module=module, level=level, target=target, limit=limit, offset=offset
+        db, module=module, level=level, target=target, date=date, limit=limit, offset=offset
     )
 
 

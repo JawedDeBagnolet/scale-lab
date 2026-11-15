@@ -18,6 +18,7 @@ async def list_events(
     module: str | None = None,
     level: str | None = None,
     target: str | None = None,
+    date: str | None = None,
     limit: int = 200,
     offset: int = 0,
 ) -> Sequence[Event]:
@@ -28,6 +29,13 @@ async def list_events(
         q = q.where(Event.level == level)
     if target:
         q = q.where(Event.target.ilike(f"%{target}%"))
+    if date:
+        try:
+            from datetime import datetime as dt
+            day = dt.strptime(date, "%Y-%m-%d").replace(tzinfo=UTC)
+            q = q.where(Event.timestamp >= day, Event.timestamp < day + timedelta(days=1))
+        except ValueError:
+            pass
     result = await db.execute(q)
     return result.scalars().all()
 

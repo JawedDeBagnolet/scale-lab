@@ -111,7 +111,7 @@ input::placeholder { color: #5b6175; }
 <sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
 </div>
 </div>
-<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;cursor:pointer" style-hover="color:#f2f3fa"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
 </div>
 </sc-for>
 <sc-if value="{{ noOpen }}"><div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-top:1px solid rgba(255,255,255,.05);font-size:12.5px;color:#86efac"><i class="ph ph-check-circle" style="font-size:16px"></i>Aucun incident en cours. Tout tourne normalement.</div></sc-if>
@@ -120,6 +120,11 @@ input::placeholder { color: #5b6175; }
 <div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.04),rgba(255,255,255,.012) 40%)">
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05)">
 <div style="font-size:14px;font-weight:600;color:#f2f3fa;margin-right:4px">Flux</div>
+<div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:2px">
+<div onClick="{{ prevDay }}" style="width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#8a91a8" style-hover="background:rgba(255,255,255,.08);color:#f2f3fa"><i class="ph ph-caret-left" style="font-size:14px"></i></div>
+<div onClick="{{ goToday }}" style="padding:0 10px;font-size:12px;font-weight:600;color:#e8eaf3;cursor:pointer;white-space:nowrap">{{ dateLabel }}</div>
+<div onClick="{{ nextDay }}" style="width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:#8a91a8;opacity:{{ isToday ? 0.3 : 1 }}" style-hover="background:rgba(255,255,255,.08);color:#f2f3fa"><i class="ph ph-caret-right" style="font-size:14px"></i></div>
+</div>
 <div onClick="{{ toggleLive }}" style="{{ liveBtn }}"><span style="{{ liveDot }}"></span>{{ liveLabel }}</div>
 <div style="width:1px;height:22px;background:rgba(255,255,255,.08)"></div>
 <sc-for list="{{ lvlChips }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.go }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:13px"></i>{{ c.label }}<span style="{{ c.countStyle }}">{{ c.count }}</span></div></sc-for>
@@ -169,7 +174,7 @@ input::placeholder { color: #5b6175; }
 <sc-if value="{{ i.canReopen }}"><span onClick="{{ i.reopen }}" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#c5c9d8;border:1px solid rgba(255,255,255,.1);cursor:pointer;white-space:nowrap" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-arrow-counter-clockwise" style="font-size:13px"></i>Rouvrir</span></sc-if>
 </div>
 </div>
-<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ i.open }}"><div style="padding:4px 18px 14px 64px;display:flex;flex-direction:column;gap:4px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175;margin-bottom:4px">Dernières occurrences</div><sc-for list="{{ i.occ }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.openEv }}" style="display:flex;align-items:center;gap:10px;font-size:12px;color:#aab0c5;cursor:pointer" style-hover="color:#f2f3fa"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289;width:118px;flex:none">{{ o.time }}</span><span>{{ o.msg }}</span></div></sc-for></div></sc-if>
 </div>
 </sc-for>
 <sc-if value="{{ incEmpty }}"><div style="padding:40px;text-align:center;font-size:13px;color:#8a91a8">Aucun incident dans cette catégorie</div></sc-if>
@@ -248,7 +253,7 @@ input::placeholder { color: #5b6175; }
 <div data-modal-scroll="1" style="min-width:0;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px;border-right:1px solid rgba(255,255,255,.07)">
 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><sc-for list="{{ rs.facts }}" as="k" hint-placeholder-count="4"><div style="padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6b7289">{{ k.k }}</div><div style="font-size:13px;font-weight:600;color:#f2f3fa;margin-top:3px">{{ k.v }}</div></div></sc-for></div>
 <div><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8;margin-bottom:8px">Occurrences</div>
-<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ rs.occ }}" as="o" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:62px auto minmax(0,1fr);gap:10px;align-items:center;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.022)"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289">{{ o.time }}</span><span style="font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:5px;color:#fda4af;background:rgba(244,114,140,.1)">{{ o.code }}</span><span style="font-size:12px;color:#c5c9d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.msg }}</span></div></sc-for></div>
+<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ rs.occ }}" as="o" hint-placeholder-count="5"><div onClick="{{ o.openEv }}" style="display:grid;grid-template-columns:62px auto minmax(0,1fr);gap:10px;align-items:center;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.022);cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#6b7289">{{ o.time }}</span><span style="font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:5px;color:#fda4af;background:rgba(244,114,140,.1)">{{ o.code }}</span><span style="font-size:12px;color:#c5c9d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.msg }}</span></div></sc-for></div>
 </div>
 </div>
 <div data-modal-scroll="1" style="min-width:0;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:14px">
@@ -365,7 +370,7 @@ class Component extends DCLogic {
   addToInc(incs, ev) { if (!ev.key) return incs; const cur = incs[ev.key]; const ty = (this.CAT[ev.mod] || []).find(x => x[0] === ev.type) || ['unknown', ev.type || 'Inconnu', ev.lvl || 'info']; const cz = cur ? { ...(cur.causes || {}) } : {}; if (ev.cause) cz[ev.cause] = (cz[ev.cause] || 0) + 1;
     const next = cur ? { ...cur, causes: cz, count: cur.count + 1, last: Math.max(cur.last, ev.t), first: Math.min(cur.first, ev.t), status: cur.status === 'resolved' ? 'open' : cur.status, events: [ev.id].concat(cur.events).slice(0, 30) } : { key: ev.key, mod: ev.mod, type: ev.type, lvl: ev.lvl, title: ty[1], target: ev.target, count: 1, first: ev.t, last: ev.t, status: 'open', causes: cz, events: [ev.id] }; return { ...incs, [ev.key]: next }; }
   init() {
-    const SD = window.SCALE_DATA; if (SD && SD._live) { SD.loadModule('logs'); const incs = {}; SD.logIncidents.forEach(inc => { incs[inc.key] = inc; }); const rules = SD.alertRules.map(r => ({ id: r.id, mod: r.mod, type: r.type, on: r.on, th: r.th || 0 })); if (!rules.length) { const rule = (mod, type, on, th) => ({ id: mod + '_' + type, mod, type, on, th: th || 0 }); rules.push(rule('comptes', 'checkpoint', true, 0), rule('comptes', 'ban', true), rule('posting', 'fail', true, 1), rule('infra', 'slow', true, 2), rule('infra', 'down', true), rule('infra', 'device', true), rule('veille', 'cookie', true), rule('planner', 'cap', false), rule('liens', 'deadacc', true), rule('liens', 'domfull', true), rule('liens', 'domnear', false)); } return { tab: 'journal', navCollapsed: false, events: SD.logEvents.slice(), buffer: [], incs, live: true, lvlOn: { success: true, info: true, warn: true, error: true }, modF: 'all', q: '', incF: 'open', openInc: null, rules, fixStats: this.seedStats(), autoFix: {}, sel: {}, evView: null, bot: '@scalelab_alerts_bot', chat: 'Ops · Alertes', digest: { on: true, hour: 9, detail: 'full', secs: { inc: true, pub: true, story: true, veille: true, acc: true, infra: true, rules: true } }, addOpen: false, toast: null, toastLvl: 'success', showTop: false }; }
+    const SD = window.SCALE_DATA; if (SD && SD._live) { SD.loadModule('logs'); const incs = {}; SD.logIncidents.forEach(inc => { incs[inc.key] = inc; }); const rules = SD.alertRules.map(r => ({ id: r.id, mod: r.mod, type: r.type, on: r.on, th: r.th || 0 })); if (!rules.length) { const rule = (mod, type, on, th) => ({ id: mod + '_' + type, mod, type, on, th: th || 0 }); rules.push(rule('comptes', 'checkpoint', true, 0), rule('comptes', 'ban', true), rule('posting', 'fail', true, 1), rule('infra', 'slow', true, 2), rule('infra', 'down', true), rule('infra', 'device', true), rule('veille', 'cookie', true), rule('planner', 'cap', false), rule('liens', 'deadacc', true), rule('liens', 'domfull', true), rule('liens', 'domnear', false)); } return { tab: 'journal', navCollapsed: false, events: SD.logEvents.slice(), buffer: [], incs, live: true, dateF: null, lvlOn: { success: true, info: true, warn: true, error: true }, modF: 'all', q: '', incF: 'open', openInc: null, rules, fixStats: this.seedStats(), autoFix: {}, sel: {}, evView: null, bot: '@scalelab_alerts_bot', chat: 'Ops · Alertes', digest: { on: true, hour: 9, detail: 'full', secs: { inc: true, pub: true, story: true, veille: true, acc: true, infra: true, rules: true } }, addOpen: false, toast: null, toastLvl: 'success', showTop: false }; }
     const r = this.rng(20260929); const P = this.pools(); const now = Date.now(); const evs = [];
     for (let i = 0; i < 190; i++) evs.push(this.mkEvent(r, now - Math.pow(r(), 1.2) * 12 * 36e5, P));
     const SDx = window.SCALE_DATA || { accounts: [], personas: [] }; const slug = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); this._slugAcc = {};
@@ -503,7 +508,7 @@ class Component extends DCLogic {
     return { resOpen: true, resClose: () => { clearInterval(this._run); this.setState({ resolve: null }); },
       rs: { title: inc.title, target: tgt, mod: m[1], modIcon: m[2], lvlIcon: L[2], lvlBox: { width: 42, height: 42, flex: 'none', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: L[1], background: L[1] + '1a', border: '1px solid ' + L[1] + '44' }, stLabel: ST[0], stStyle: this.badge(ST[1]),
         facts: [['Occurrences', inc.count + '×'], ['Première', this.ago(inc.first)], ['Dernière', this.ago(inc.last)], ['Impact', impact]].map(x => ({ k: x[0], v: x[1] })),
-        occ: occ.map(e => ({ time: this.hms(e.t), code: e.code || '—', msg: e.msg })),
+        occ: occ.map(e => ({ time: this.hms(e.t), code: e.code || '—', msg: e.msg, openEv: () => this.setState({ evView: e.id }) })),
         hasDiag: !!d, cause: d ? d.c[1] : '', code: d ? d.c[3] : '', conf: d ? d.conf + ' %' : '', confBar: { width: (d ? d.conf : 0) + '%', height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#6d5ef0,#4b7bf5)' },
         evidence: d ? d.c[4].map(x => x.replace('{t}', inc.target).replace('{acc}', (this._slugAcc || {})[String(inc.target).split('/').pop()] || String(inc.target).split('/').pop())) : [], hasOthers: !!(d && d.others.length), others: d ? 'Aussi observé : ' + d.others.join(', ') : '',
         isResolved: inc.status === 'resolved', resolvedLabel: inc.resolution ? 'Résolu via « ' + inc.resolution.label + ' » ' + this.ago(inc.resolution.at) : 'Marqué résolu manuellement',
@@ -529,7 +534,7 @@ class Component extends DCLogic {
       countStyle: { fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 5, color: inc.count > 3 ? '#fda4af' : '#c5c9d8', background: inc.count > 3 ? 'rgba(244,114,140,.14)' : 'rgba(255,255,255,.06)', fontVariantNumeric: 'tabular-nums' },
       stLabel: ST[0], stStyle: this.badge(ST[1]), canAck: inc.status === 'open', canResolve: inc.status !== 'resolved', canReopen: inc.status === 'resolved',
       ack: () => this.setInc(inc.key, 'ack'), resolve: () => this.openRes(inc.key), reopen: () => this.setInc(inc.key, 'open'),
-      open: false, toggle: () => this.openRes(inc.key), occ: occ.map(e => ({ time: new Date(e.t).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + this.hms(e.t), msg: e.msg })),
+      open: false, toggle: () => this.openRes(inc.key), occ: occ.map(e => ({ time: new Date(e.t).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + this.hms(e.t), msg: e.msg, openEv: () => this.setState({ evView: e.id }) })),
       wrap: { borderTop: '1px solid rgba(255,255,255,.05)', opacity: inc.status === 'resolved' ? .7 : 1 },
       row: { display: 'grid', gridTemplateColumns: (full ? '18px ' : '') + '34px minmax(0,1fr) 120px 96px 220px', gap: 14, alignItems: 'center', padding: '12px 18px', cursor: 'pointer' } };
   }
@@ -578,6 +583,43 @@ class Component extends DCLogic {
       out.liveLabel = s.live ? 'En direct' : 'En pause'; out.liveDot = { width: 8, height: 8, borderRadius: 99, background: s.live ? '#4ade80' : '#6b7289', animation: s.live ? 'livePulse 1.8s infinite' : 'none' };
       out.liveBtn = { display: 'flex', alignItems: 'center', gap: 8, height: 30, padding: '0 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: s.live ? '#86efac' : '#aab0c5', background: s.live ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.04)', border: '1px solid ' + (s.live ? 'rgba(74,222,128,.4)' : 'rgba(255,255,255,.1)') };
       out.hasPending = !s.live && s.buffer.length > 0; out.pendingLabel = s.buffer.length + ' nouvel' + (s.buffer.length > 1 ? 's' : '') + ' événement' + (s.buffer.length > 1 ? 's' : '') + ' · reprendre le direct'; out.flushPending = out.toggleLive;
+      // Date navigation
+      const dateF = s.dateF; // null = today (live), 'YYYY-MM-DD' = past day
+      const fmtDate = d => d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const isToday = !dateF || dateF === todayStr;
+      out.dateLabel = isToday ? 'Aujourd\'hui' : fmtDate(new Date(dateF + 'T12:00:00'));
+      out.isToday = isToday;
+      out.prevDay = () => {
+        const d = dateF ? new Date(dateF + 'T12:00:00') : new Date();
+        d.setDate(d.getDate() - 1);
+        const ds = d.toISOString().slice(0, 10);
+        this.setState({ dateF: ds, live: false });
+        const SD = window.SCALE_DATA;
+        if (SD && SD._live) {
+          SD.apiAsync('GET', '/logs/events?date=' + ds + '&limit=500').then(evs => {
+            this.setState({ events: (evs || []).map(e => SD.x.event(e)) });
+          });
+        }
+      };
+      out.nextDay = () => {
+        if (isToday) return;
+        const d = new Date(dateF + 'T12:00:00');
+        d.setDate(d.getDate() + 1);
+        const ds = d.toISOString().slice(0, 10);
+        if (ds >= todayStr) {
+          this.setState({ dateF: null, live: true, events: (window.SCALE_DATA || {}).logEvents || [] });
+        } else {
+          this.setState({ dateF: ds });
+          const SD = window.SCALE_DATA;
+          if (SD && SD._live) {
+            SD.apiAsync('GET', '/logs/events?date=' + ds + '&limit=500').then(evs => {
+              this.setState({ events: (evs || []).map(e => SD.x.event(e)) });
+            });
+          }
+        }
+      };
+      out.goToday = () => { this.setState({ dateF: null, live: true, events: (window.SCALE_DATA || {}).logEvents || [] }); };
       const groups = []; list.forEach(e => { const h = Math.floor(e.t / 36e5); let g = groups[groups.length - 1]; if (!g || g.h !== h) { g = { h, items: [] }; groups.push(g); } g.items.push(e); });
       const today = new Date(); today.setHours(0, 0, 0, 0);
       out.groups = groups.map(g => { const d = new Date(g.h * 36e5); const H = d.getHours(); const isToday = d >= today; return { label: this.pad(H) + ' h – ' + this.pad((H + 1) % 24) + ' h', sub: (isToday ? 'Aujourd\'hui' : 'Hier') + ' · ' + g.items.length + ' événement' + (g.items.length > 1 ? 's' : ''),
