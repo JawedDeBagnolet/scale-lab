@@ -39,9 +39,30 @@ async def _dismiss_meta_popup(driver, log):
 async def _open_edit_profile(driver, navigator, log) -> bool:
     """Ouvre l'ecran Modifier le profil."""
     await navigator.go_profile()
-    await asyncio.sleep(1)
-    # Handle Meta popup if it appears
-    await _dismiss_meta_popup(driver, log)
+    await asyncio.sleep(1.5)
+    # Dismiss any overlay/popup (Meta, consent, etc.) by checking for grey background
+    overlay = await driver.find_element(contains="gris", refresh=True)
+    if overlay:
+        log("   [popup] overlay detecte, tentative de fermeture")
+        # Try common dismiss buttons
+        for label in ["Examiner", "Termin", "Plus tard", "OK", "Ignorer", "Fermer"]:
+            btn = await driver.find_element(contains=label, clickable=True, refresh=True)
+            if btn:
+                tap = btn.get('tap', {})
+                log("   [popup] tap '%s'" % label)
+                await driver.ht.tap(tap['x'], tap['y'])
+                await asyncio.sleep(1.5)
+        # Check if we need a second dismiss
+        overlay2 = await driver.find_element(contains="gris", refresh=True)
+        if overlay2:
+            for label in ["Termin", "OK", "Fermer"]:
+                btn = await driver.find_element(contains=label, clickable=True, refresh=True)
+                if btn:
+                    tap = btn.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(1.5)
+                    break
+    # Find and tap "Modifier le profil"
     el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
     if not el:
         el = await driver.find_element(contains="Modifier le profil", clickable=True, refresh=True)
@@ -53,8 +74,14 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
     await asyncio.sleep(1.5)
-    # Handle Meta popup again (can appear after opening edit)
-    await _dismiss_meta_popup(driver, log)
+    # Verify we're on the edit screen
+    check = await driver.find_element(contains="nom", refresh=True)
+    if not check:
+        check = await driver.find_element(contains="Bio", refresh=True)
+    if not check:
+        log("   ! pas sur l'ecran de modification apres tap")
+        return False
+    log("   ecran 'Modifier le profil' confirme")
     return True
 
 
