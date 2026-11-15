@@ -221,6 +221,18 @@ async def _open_settings(driver, navigator, log) -> bool:
     return True
 
 
+
+async def _dump_screen(driver, log, label=""):
+    """Log les elements visibles a l'ecran pour debug."""
+    els = await driver.find_elements(refresh=True)
+    texts = []
+    for e in els:
+        t = (e.get('text', '') or '')
+        if t and len(t) > 1:
+            r = e.get('rect', {})
+            texts.append("'%s' y=%d x=%d" % (t[:35], r.get('y', 0), r.get('x', 0)))
+    log("   [dump %s] %s" % (label, ' | '.join(texts[:12])))
+
 async def _tap_field(driver, log, field_name) -> bool:
     """Tape sur un champ dans l'ecran d'edition et verifie qu'on est dans le sous-ecran."""
     el = await driver.find_element(contains=field_name, clickable=True, refresh=True)
@@ -657,9 +669,15 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
             log("   [1] nom -> '%s'" % edit_fields["name"])
             if not await _ensure_screen(driver, navigator, log, "edit_profile"):
                 log("   ! abort: pas sur edit_profile")
-            elif await _tap_field(driver, log, "nom"):
-                await _clear_and_type(driver, log, edit_fields["name"])
-                if await _tap_done(driver, log):
+            else:
+                await _dump_screen(driver, log, "avant tap nom")
+                if not await _tap_field(driver, log, "nom"):
+                    log("   ! tap_field nom echoue")
+                else:
+                    await _dump_screen(driver, log, "apres tap nom")
+                    await _clear_and_type(driver, log, edit_fields["name"])
+                    await _dump_screen(driver, log, "apres saisie")
+                    if await _tap_done(driver, log):
                     await asyncio.sleep(2)
                     results["name"] = True
                 else:
