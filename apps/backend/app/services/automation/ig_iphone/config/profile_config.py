@@ -13,10 +13,35 @@ from typing import Any, Callable
 
 # ── Navigation helpers ────────────────────────────────────────────────────────
 
+async def _dismiss_meta_popup(driver, log):
+    """Gere le popup 'Votre Compte Meta est disponible'."""
+    meta = await driver.find_element(contains="Compte Meta", refresh=True)
+    if not meta:
+        meta = await driver.find_element(contains="Compte Meta", refresh=True)
+    if not meta:
+        return  # pas de popup
+    log("   [popup] Compte Meta detecte")
+    # Tap "Examiner le compte"
+    btn = await driver.find_element(contains="Examiner", clickable=True, refresh=True)
+    if btn:
+        tap = btn.get('tap', {})
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(2)
+    # Tap "Termine" sur l'ecran suivant
+    done = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+    if done:
+        tap = done.get('tap', {})
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(1.5)
+    log("   [popup] Compte Meta ferme")
+
+
 async def _open_edit_profile(driver, navigator, log) -> bool:
     """Ouvre l'ecran Modifier le profil."""
     await navigator.go_profile()
     await asyncio.sleep(1)
+    # Handle Meta popup if it appears
+    await _dismiss_meta_popup(driver, log)
     el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
     if not el:
         el = await driver.find_element(contains="Modifier le profil", clickable=True, refresh=True)
@@ -28,6 +53,8 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
     await asyncio.sleep(1.5)
+    # Handle Meta popup again (can appear after opening edit)
+    await _dismiss_meta_popup(driver, log)
     return True
 
 
@@ -166,7 +193,7 @@ async def set_name(driver, navigator, name, log: Callable = print) -> bool:
     log("-> Config: nom -> '%s'" % name)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    if not await _tap_field(driver, log, "Nom complet"):
+    if not await _tap_field(driver, log, "nom"):
         await _go_back(driver, navigator, log)
         return False
     await _clear_and_type(driver, log, name)
@@ -296,7 +323,7 @@ async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = pr
     log("-> Config: photo de profil (index=%d)" % photo_index)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    el = await driver.find_element(contains="Modifier la photo", clickable=True, refresh=True)
+    el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
     if not el:
         log("   ! bouton photo profil non trouve")
         await _go_back(driver, navigator, log)
@@ -478,7 +505,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "name" in edit_fields:
             log("   [1] nom -> '%s'" % edit_fields["name"])
-            if await _tap_field(driver, log, "Nom complet"):
+            if await _tap_field(driver, log, "nom"):
                 await _clear_and_type(driver, log, edit_fields["name"])
                 await _tap_done(driver, log)
                 await _dismiss_popup(driver, log)
@@ -582,11 +609,11 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "photo_index" in edit_fields:
             log("   [6] photo de profil")
-            el = await driver.find_element(contains="Modifier la photo", clickable=True, refresh=True)
+            el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
             if not el:
                 await driver.scroll_up('normal')
                 await asyncio.sleep(0.5)
-                el = await driver.find_element(contains="Modifier la photo", clickable=True, refresh=True)
+                el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
             if el:
                 tap = el.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
