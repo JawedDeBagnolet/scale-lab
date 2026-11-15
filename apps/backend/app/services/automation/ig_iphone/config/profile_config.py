@@ -37,51 +37,63 @@ async def _dismiss_meta_popup(driver, log):
 
 
 async def _open_edit_profile(driver, navigator, log) -> bool:
-    """Ouvre l'ecran Modifier le profil."""
-    await navigator.go_profile()
-    await asyncio.sleep(1.5)
-    # Dismiss any overlay/popup (Meta, consent, etc.) by checking for grey background
-    overlay = await driver.find_element(contains="gris", refresh=True)
-    if overlay:
-        log("   [popup] overlay detecte, tentative de fermeture")
-        # Try common dismiss buttons
-        for label in ["Examiner", "Termin", "Plus tard", "OK", "Ignorer", "Fermer"]:
+    """Ouvre l'ecran Modifier le profil via l'arbre d'accessibilite."""
+    # 1. Navigate to profile tab via accessibility tree (not blind coordinates)
+    profile_tab = await driver.find_element(text="Profil", clickable=True, refresh=True)
+    if profile_tab:
+        r = profile_tab.get('rect', {})
+        # Only tap if it's in the bottom bar area (y > 700)
+        if r.get('y', 0) > 650:
+            tap = profile_tab.get('tap', {})
+            log("   -> Profil (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2)
+    else:
+        # Fallback to navigator
+        await navigator.go_profile()
+        await asyncio.sleep(1.5)
+
+    # 2. Check for popups (modal overlay with "Arrière-plan grisé")
+    for attempt in range(2):
+        overlay = await driver.find_element(text="Arrière-plan grisé", refresh=True)
+        if not overlay:
+            break
+        log("   [popup] overlay detecte (tentative %d)" % (attempt + 1))
+        # Try dismiss buttons one at a time, break after first match
+        dismissed = False
+        for label in ["Termin", "Plus tard", "Ignorer", "Fermer"]:
             btn = await driver.find_element(contains=label, clickable=True, refresh=True)
             if btn:
                 tap = btn.get('tap', {})
                 log("   [popup] tap '%s'" % label)
                 await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(1.5)
-        # Check if we need a second dismiss
-        overlay2 = await driver.find_element(contains="gris", refresh=True)
-        if overlay2:
-            for label in ["Termin", "OK", "Fermer"]:
-                btn = await driver.find_element(contains=label, clickable=True, refresh=True)
-                if btn:
-                    tap = btn.get('tap', {})
-                    await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(1.5)
-                    break
-    # Find and tap "Modifier le profil"
+                await asyncio.sleep(2)
+                dismissed = True
+                break
+        if not dismissed:
+            # Try tapping outside the popup to dismiss
+            await driver.ht.tap(187, 400)
+            await asyncio.sleep(1)
+
+    # 3. Find and tap "Modifier le profil"
     el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
-    if not el:
-        el = await driver.find_element(contains="Modifier le profil", clickable=True, refresh=True)
     if not el:
         log("   ! bouton 'Modifier le profil' non trouve")
         return False
     tap = el.get('tap', {})
-    log("   ouvre edition profil")
+    log("   ouvre edition profil (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.0, 2.0))
-    await asyncio.sleep(1.5)
-    # Verify we're on the edit screen
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+    await asyncio.sleep(1)
+
+    # 4. Verify we're on the edit screen
     check = await driver.find_element(contains="nom", refresh=True)
     if not check:
         check = await driver.find_element(contains="Bio", refresh=True)
     if not check:
         log("   ! pas sur l'ecran de modification apres tap")
         return False
-    log("   ecran 'Modifier le profil' confirme")
+    log("   ecran Modifier le profil confirme")
     return True
 
 
