@@ -1425,7 +1425,7 @@ if ('serviceWorker' in navigator) {
     if (_ws && (_ws.readyState === 0 || _ws.readyState === 1)) return;
 
     // Construire l'URL WS a partir de API_BASE : https://api.scalelab.win → wss://api.scalelab.win
-    var wsBase = API_BASE.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://');
+    var wsBase = AUTH_BASE.replace('https://', 'wss://').replace('http://', 'ws://');
     var wsUrl = wsBase + '/ws/logs?token=' + TOKEN;
 
     try {
