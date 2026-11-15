@@ -237,7 +237,7 @@ async def _tap_field(driver, log, field_name) -> bool:
     """Tape sur un champ dans l'ecran d'edition et verifie qu'on est dans le sous-ecran."""
     # Search ALL elements (not just clickable) in the edit profile zone (y > 150)
     # to avoid matching nav elements like "Retour" (y~44) that also contain the needle
-    all_els = await driver.find_elements(contains=field_name, refresh=True)
+    all_els = await driver.find_elements(field_name, contains=True, refresh=True)
     el = None
     for candidate in all_els:
         r = candidate.get('rect', {})
@@ -247,7 +247,7 @@ async def _tap_field(driver, log, field_name) -> bool:
             break
     if not el:
         # Fallback: try clickable only (might still work for some fields)
-        el = await driver.find_element(contains=field_name, clickable=True)
+        el = await driver.find_element(field_name, contains=True, clickable=True)
     if not el:
         log("   ! champ '%s' non trouve" % field_name)
         return False
