@@ -678,11 +678,11 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     await _clear_and_type(driver, log, edit_fields["name"])
                     await _dump_screen(driver, log, "apres saisie")
                     if await _tap_done(driver, log):
-                    await asyncio.sleep(2)
-                    results["name"] = True
-                else:
-                    log("   ! nom: validation echouee")
-                    await _ensure_screen(driver, navigator, log, "edit_profile")
+                        await asyncio.sleep(2)
+                        results["name"] = True
+                    else:
+                        log("   ! nom: validation echouee")
+                        await _ensure_screen(driver, navigator, log, "edit_profile")
 
         if "username" in edit_fields:
             log("   [2] username -> '@%s'" % edit_fields["username"])
