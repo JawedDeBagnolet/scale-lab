@@ -335,18 +335,24 @@ class IGScraperClient:
     async def get_user_profile_full(self, username: str) -> dict | None:
         """Get full profile data: info + highlights. One call for the modal.
 
-        Uses web profile endpoint to resolve username → pk, then fetches
-        detailed info and highlights in parallel.
+        Uses search_users to resolve username → pk (web_profile_info is
+        heavily rate-limited and returns 429), then fetches detailed info
+        and highlights in parallel.
         """
         import asyncio
 
-        # Resolve username to pk via search
-        data = await self._get(
-            "/api/v1/users/web_profile_info/",
-            params={"username": username},
-        )
-        user = (data.get("data", {}) or {}).get("user") or data.get("user")
+        # Resolve username to pk via search (NOT web_profile_info — 429 prone)
+        results = await self.search_users(username, count=5)
+        user = None
+        for r in results:
+            if r.get("username", "").lower() == username.lower():
+                user = r
+                break
+        if not user and results:
+            # Fuzzy fallback: first result
+            user = results[0]
         if not user:
+            logger.warning("get_user_profile_full: no search results for %s", username)
             return None
 
         pk = str(user.get("pk", user.get("id", "")))
@@ -366,22 +372,22 @@ class IGScraperClient:
             highlights = []
 
         if not info:
-            # Fallback: use data from web_profile_info
+            # Fallback: use data from search result
             info = {
                 "pk": pk,
                 "username": user.get("username", username),
                 "full_name": user.get("full_name", ""),
                 "biography": user.get("biography", ""),
                 "profile_pic_url": user.get("profile_pic_url", ""),
-                "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
+                "hd_profile_pic_url": user.get("profile_pic_url", ""),
                 "is_verified": user.get("is_verified", False),
                 "is_private": user.get("is_private", False),
-                "is_business": user.get("is_business", False),
-                "follower_count": user.get("edge_followed_by", {}).get("count", user.get("follower_count", 0)),
-                "following_count": user.get("edge_follow", {}).get("count", user.get("following_count", 0)),
-                "media_count": user.get("edge_owner_to_timeline_media", {}).get("count", user.get("media_count", 0)),
-                "external_url": user.get("external_url", ""),
-                "category": user.get("category_name", user.get("category", "")),
+                "is_business": False,
+                "follower_count": user.get("follower_count", 0),
+                "following_count": user.get("following_count", 0),
+                "media_count": user.get("media_count", 0),
+                "external_url": "",
+                "category": "",
             }
 
         info["highlights"] = highlights if not isinstance(highlights, Exception) else []
