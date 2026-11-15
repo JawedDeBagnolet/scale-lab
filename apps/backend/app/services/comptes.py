@@ -313,7 +313,13 @@ async def update_compte(db: AsyncSession, compte: Compte, data: CompteUpdate) ->
     )
 
     for key, value in changes.items():
-        setattr(compte, key, value)
+        # MERGE env JSONB instead of overwriting — the frontend sends partial
+        # env (web/phone/iphone) without container_uuid, proxy_country etc.
+        if key == "env" and isinstance(value, dict):
+            merged = {**(compte.env or {}), **value}
+            setattr(compte, key, merged)
+        else:
+            setattr(compte, key, value)
 
     # Auto-create container when assigning to a new iPhone
     if device_changed:
