@@ -168,27 +168,35 @@ class IGScraperClient:
                 h[k] = v
         return h
 
-    async def _get(self, path: str, params: dict | None = None) -> dict:
-        """GET request through Scrapigo proxy."""
+    async def _get(self, path: str, params: dict | None = None, retries: int = 2) -> dict:
+        """GET request through Scrapigo proxy with retry on 429."""
+        import asyncio
         proxy = self.proxy_url
-        async with httpx.AsyncClient(
-            timeout=20,
-            verify=False,
-            proxy=proxy,
-        ) as client:
-            resp = await client.get(
-                f"{IG_BASE}{path}",
-                headers=self._headers(),
-                params=params,
-            )
-            # Track usage
-            await self._track(len(resp.content))
-            if resp.status_code == 401:
-                await self._mark_expired("session expired (401)")
-            elif resp.status_code == 429:
-                await self._mark_rate_limited()
-            resp.raise_for_status()
-            return resp.json()
+        for attempt in range(retries + 1):
+            async with httpx.AsyncClient(
+                timeout=20,
+                verify=False,
+                proxy=proxy,
+            ) as client:
+                resp = await client.get(
+                    f"{IG_BASE}{path}",
+                    headers=self._headers(),
+                    params=params,
+                )
+                # Track usage
+                await self._track(len(resp.content))
+                if resp.status_code == 401:
+                    await self._mark_expired("session expired (401)")
+                    resp.raise_for_status()
+                elif resp.status_code == 429:
+                    if attempt < retries:
+                        wait = int(resp.headers.get("Retry-After", 3 + attempt * 2))
+                        logger.info("ig_scraper: 429 on %s, retry %d/%d in %ds", path, attempt + 1, retries, wait)
+                        await asyncio.sleep(wait)
+                        continue
+                    await self._mark_rate_limited()
+                resp.raise_for_status()
+                return resp.json()
 
     async def _post(self, path: str, data: dict | None = None) -> dict:
         """POST request through Scrapigo proxy."""
@@ -335,24 +343,22 @@ class IGScraperClient:
     async def get_user_profile_full(self, username: str) -> dict | None:
         """Get full profile data: info + highlights. One call for the modal.
 
-        Uses search_users to resolve username → pk (web_profile_info is
-        heavily rate-limited and returns 429), then fetches detailed info
-        and highlights in parallel.
+        Uses search endpoint to resolve username → pk (less rate-limited
+        than web_profile_info), then fetches detailed info and highlights.
         """
         import asyncio
 
-        # Resolve username to pk via search (NOT web_profile_info — 429 prone)
-        results = await self.search_users(username, count=5)
+        # Resolve username to pk via search (less rate-limited)
+        results = await self.search_users(username, count=1)
         user = None
         for r in results:
             if r.get("username", "").lower() == username.lower():
                 user = r
                 break
         if not user and results:
-            # Fuzzy fallback: first result
-            user = results[0]
+            user = results[0]  # best match fallback
         if not user:
-            logger.warning("get_user_profile_full: no search results for %s", username)
+            logger.warning("get_user_profile_full: user %s not found via search", username)
             return None
 
         pk = str(user.get("pk", user.get("id", "")))
@@ -372,22 +378,22 @@ class IGScraperClient:
             highlights = []
 
         if not info:
-            # Fallback: use data from search result
+            # Fallback: use data from web_profile_info
             info = {
                 "pk": pk,
                 "username": user.get("username", username),
                 "full_name": user.get("full_name", ""),
                 "biography": user.get("biography", ""),
                 "profile_pic_url": user.get("profile_pic_url", ""),
-                "hd_profile_pic_url": user.get("profile_pic_url", ""),
+                "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
                 "is_verified": user.get("is_verified", False),
                 "is_private": user.get("is_private", False),
-                "is_business": False,
-                "follower_count": user.get("follower_count", 0),
-                "following_count": user.get("following_count", 0),
-                "media_count": user.get("media_count", 0),
-                "external_url": "",
-                "category": "",
+                "is_business": user.get("is_business", False),
+                "follower_count": user.get("edge_followed_by", {}).get("count", user.get("follower_count", 0)),
+                "following_count": user.get("edge_follow", {}).get("count", user.get("following_count", 0)),
+                "media_count": user.get("edge_owner_to_timeline_media", {}).get("count", user.get("media_count", 0)),
+                "external_url": user.get("external_url", ""),
+                "category": user.get("category_name", user.get("category", "")),
             }
 
         info["highlights"] = highlights if not isinstance(highlights, Exception) else []

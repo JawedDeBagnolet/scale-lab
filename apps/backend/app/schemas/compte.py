@@ -56,6 +56,8 @@ class CompteOut(BaseModel):
     follows: int
     is_scraper: bool = False
     has_session: bool = False
+    has_profile: bool = False
+    profile_config: dict | None = None
     scraper_bytes_used: int = 0
     scraper_requests_count: int = 0
     created_at: datetime
@@ -69,4 +71,6 @@ class CompteOut(BaseModel):
             data = {k: getattr(data, k) for k in data.__dict__ if not k.startswith("_")}
         if "has_session" not in data or data.get("has_session") is None:
             data["has_session"] = bool(data.get("session_data"))
+        if "has_profile" not in data or data.get("has_profile") is None:
+            data["has_profile"] = bool(data.get("profile_data"))
         return data

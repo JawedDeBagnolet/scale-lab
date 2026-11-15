@@ -123,10 +123,20 @@ async def scrapigo_balance():
     client = await get_scrapigo_client()
     if not client:
         raise HTTPException(400, "Scrapigo non configuré (clé API manquante)")
-    balance = await client.get_balance()
-    if not balance:
+    raw = await client.get_balance()
+    if not raw:
         raise HTTPException(502, "Erreur Scrapigo API")
-    return balance
+    # Normalize: Scrapigo returns creditUsd, frontend expects balance
+    credit = float(raw.get("creditUsd", 0))
+    rate_per_gb = 0.99  # residential rate
+    return {
+        "balance": credit,
+        "creditUsd": raw.get("creditUsd"),
+        "data_remaining_gb": round(credit / rate_per_gb, 1) if rate_per_gb else None,
+        "dailySpendCapUsd": raw.get("key", {}).get("dailySpendCapUsd"),
+        "keyName": raw.get("key", {}).get("name"),
+        "callerIp": raw.get("callerIp"),
+    }
 
 
 @router.get("/scrapigo/usage")
