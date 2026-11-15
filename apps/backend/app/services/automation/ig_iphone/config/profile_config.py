@@ -11,6 +11,112 @@ import random
 from typing import Any, Callable
 
 
+
+
+# ── Screen awareness (safety layer) ─────────────────────────────────────────
+
+SCREENS = {
+    "edit_profile": {
+        "markers": ["nom", "Bio", "Modifier la photo"],
+        "desc": "Modifier le profil",
+    },
+    "edit_field": {
+        "markers": ["fait", "Champ de texte"],
+        "desc": "Edition d'un champ",
+    },
+    "own_profile": {
+        "markers": ["Modifier le profil", "Partager le profil"],
+        "desc": "Profil du compte",
+    },
+    "feed": {
+        "markers": ["Fil principal", "Explorer"],
+        "desc": "Feed principal",
+    },
+}
+
+
+async def _detect_screen(driver, log=None) -> str:
+    """Detect current screen from accessibility tree markers."""
+    els = await driver.find_elements(refresh=True)
+    texts = set()
+    for e in els:
+        t = (e.get('text', '') or '').lower()
+        if t:
+            texts.add(t)
+    all_text = ' '.join(texts)
+    # Check each screen type
+    for screen_id, info in SCREENS.items():
+        matches = sum(1 for m in info["markers"] if m.lower() in all_text)
+        if matches >= 2 or (len(info["markers"]) == 2 and matches >= 1):
+            return screen_id
+    return "unknown"
+
+
+async def _ensure_screen(driver, navigator, log, target: str, max_retries: int = 2) -> bool:
+    """Verify we're on the expected screen, try to recover if not.
+
+    Returns True if we're on the target screen (or recovered to it).
+    """
+    current = await _detect_screen(driver, log)
+    if current == target:
+        return True
+
+    log("   [safety] ecran attendu '%s', detecte '%s' — recovery" % (target, current))
+
+    for attempt in range(max_retries):
+        if target == "edit_profile":
+            if current == "own_profile":
+                el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
+                if el:
+                    tap = el.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(2)
+            elif current == "feed" or current == "unknown":
+                # Go to profile first
+                profile_tab = await driver.find_element(text="Profil", clickable=True, refresh=True)
+                if profile_tab and profile_tab.get('rect', {}).get('y', 0) > 650:
+                    tap = profile_tab.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(2)
+                # Then tap modifier le profil
+                el = await driver.find_element(text="Modifier le profil", clickable=True, refresh=True)
+                if el:
+                    tap = el.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(2)
+            elif current == "edit_field":
+                # We're in a field sub-screen, go back
+                await navigator.go_back()
+                await asyncio.sleep(1.5)
+
+        elif target == "edit_field":
+            if current != "edit_profile":
+                # Need to get to edit_profile first
+                ok = await _ensure_screen(driver, navigator, log, "edit_profile", max_retries=1)
+                if not ok:
+                    return False
+
+        elif target == "own_profile":
+            if current == "feed" or current == "unknown":
+                profile_tab = await driver.find_element(text="Profil", clickable=True, refresh=True)
+                if profile_tab and profile_tab.get('rect', {}).get('y', 0) > 650:
+                    tap = profile_tab.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(2)
+            elif current == "edit_profile" or current == "edit_field":
+                await navigator.go_back()
+                await asyncio.sleep(1.5)
+
+        # Re-check
+        current = await _detect_screen(driver, log)
+        if current == target:
+            log("   [safety] recovery OK -> '%s'" % target)
+            return True
+
+    log("   [safety] ! recovery echouee (cible: %s, actuel: %s)" % (target, current))
+    return False
+
+
 # ── Navigation helpers ────────────────────────────────────────────────────────
 
 async def _dismiss_meta_popup(driver, log):
@@ -116,7 +222,7 @@ async def _open_settings(driver, navigator, log) -> bool:
 
 
 async def _tap_field(driver, log, field_name) -> bool:
-    """Tape sur un champ dans l'ecran d'edition."""
+    """Tape sur un champ dans l'ecran d'edition et verifie qu'on est dans le sous-ecran."""
     el = await driver.find_element(contains=field_name, clickable=True, refresh=True)
     if not el:
         log("   ! champ '%s' non trouve" % field_name)
@@ -125,6 +231,13 @@ async def _tap_field(driver, log, field_name) -> bool:
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
     await asyncio.sleep(1)
+    # Verify we entered the field editing sub-screen
+    done_btn = await driver.find_element(contains="fait", clickable=True, refresh=True)
+    if not done_btn:
+        done_btn = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+    if not done_btn:
+        log("   ! sous-ecran '%s' non confirme (pas de bouton valider)" % field_name)
+        return False
     return True
 
 
@@ -542,51 +655,61 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "name" in edit_fields:
             log("   [1] nom -> '%s'" % edit_fields["name"])
-            if await _tap_field(driver, log, "nom"):
+            if not await _ensure_screen(driver, navigator, log, "edit_profile"):
+                log("   ! abort: pas sur edit_profile")
+            elif await _tap_field(driver, log, "nom"):
                 await _clear_and_type(driver, log, edit_fields["name"])
-                await _tap_done(driver, log)
-                await _dismiss_popup(driver, log)
-                await _verify_on_edit_screen(driver, log)
-                results["name"] = True
+                if await _tap_done(driver, log):
+                    await asyncio.sleep(2)
+                    results["name"] = True
+                else:
+                    log("   ! nom: validation echouee")
+                    await _ensure_screen(driver, navigator, log, "edit_profile")
 
         if "username" in edit_fields:
             log("   [2] username -> '@%s'" % edit_fields["username"])
-            if await _tap_field(driver, log, "Nom de profil"):
+            if not await _ensure_screen(driver, navigator, log, "edit_profile"):
+                log("   ! abort: pas sur edit_profile")
+            elif await _tap_field(driver, log, "Nom de profil"):
                 await _clear_and_type(driver, log, edit_fields["username"])
-                await _tap_done(driver, log)
-                await _dismiss_popup(driver, log)
-                await _verify_on_edit_screen(driver, log)
-                results["username"] = True
+                if await _tap_done(driver, log):
+                    await asyncio.sleep(2)
+                    results["username"] = True
+                else:
+                    log("   ! username: validation echouee")
+                    await _ensure_screen(driver, navigator, log, "edit_profile")
 
         if "bio" in edit_fields:
             log("   [3] bio -> '%s'" % str(edit_fields["bio"])[:40])
-            # Tap on Bio field (the larger one, not the label)
-            bio_els = await driver.find_elements(text="Bio", clickable=True, refresh=True)
-            best = None
-            for e in bio_els:
-                w = e.get('rect', {}).get('width', 0)
-                if not best or w > best.get('rect', {}).get('width', 0):
-                    best = e
-            if best:
-                tap = best.get('tap', {})
-                await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(1.5)
-                # Triple-tap to select all existing text in field
-                tx = tap.get('x', 180)
-                ty = tap.get('y', 140)
-                for _ in range(3):
-                    await driver.ht.tap(tx, ty)
-                    await asyncio.sleep(0.08)
-                await asyncio.sleep(0.5)
-                # Type new bio (replaces selection if any)
-                log("   saisie bio: '%s'" % edit_fields["bio"][:40])
-                await driver.ht.type_text(edit_fields["bio"])
-                await asyncio.sleep(1.0)
-                await _tap_done(driver, log)
-                await asyncio.sleep(2.5)
-                await _dismiss_popup(driver, log)
-                await _verify_on_edit_screen(driver, log)
-                results["bio"] = True
+            if not await _ensure_screen(driver, navigator, log, "edit_profile"):
+                log("   ! abort: pas sur edit_profile")
+            else:
+                bio_els = await driver.find_elements(text="Bio", clickable=True, refresh=True)
+                best = None
+                for e in bio_els:
+                    w = e.get('rect', {}).get('width', 0)
+                    if not best or w > best.get('rect', {}).get('width', 0):
+                        best = e
+                if best:
+                    tap = best.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(1.5)
+                    # Triple-tap to select all + type
+                    tx = tap.get('x', 180)
+                    ty = tap.get('y', 140)
+                    for _ in range(3):
+                        await driver.ht.tap(tx, ty)
+                        await asyncio.sleep(0.08)
+                    await asyncio.sleep(0.5)
+                    log("   saisie bio: '%s'" % edit_fields["bio"][:40])
+                    await driver.ht.type_text(edit_fields["bio"])
+                    await asyncio.sleep(1.0)
+                    if await _tap_done(driver, log):
+                        await asyncio.sleep(2.5)
+                        results["bio"] = True
+                    else:
+                        log("   ! bio: validation echouee")
+                        await _ensure_screen(driver, navigator, log, "edit_profile")
 
         if "link" in edit_fields:
             link = edit_fields["link"]
