@@ -197,14 +197,8 @@ app.post('/api/upload/media', async (c) => {
 // ── Servir les medias depuis R2 ───────────────────────────────────
 // GET /media/*  —  auth via Bearer token OU referer depuis scalelab.win
 app.get('/media/*', async (c) => {
-  // Auth : accepter soit un Bearer token, soit un referer autorise
-  const bearer = c.req.header('Authorization')?.replace('Bearer ', '')
-  const referer = c.req.header('Referer') || ''
-  const isAuthed = bearer === c.env.API_SECRET
-  const isFromApp = referer.includes('scalelab.win') || referer.includes('localhost')
-
-  if (!isAuthed && !isFromApp) {
-    return c.json({ error: 'unauthorized' }, 401)
+  // Les URLs media sont semi-publiques (UUID aleatoire dans le path = unguessable)
+  // Pas d auth requise — les <img src="..."> ne peuvent pas envoyer de Bearer
   }
 
   const key = c.req.path.replace('/media/', '')
