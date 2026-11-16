@@ -187,7 +187,8 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
     profile = None
 
     # Strategy 1: Use the account's own session (most accurate for pro fields)
-    if compte.session_data and compte.session_data.get("sessionid"):
+    sd = compte.session_data or {}
+    if sd.get("sessionid") or sd.get("authorization"):
         try:
             from app.services.session_extract import get_own_profile
             await emit_log("comptes", "scrape", "info", compte.handle,

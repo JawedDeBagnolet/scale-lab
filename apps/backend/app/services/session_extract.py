@@ -167,6 +167,107 @@ async def verify_session(
         return {"valid": False, "status": f"error: {str(e)[:100]}", "username": None, "csrftoken": None}
 
 
+async def get_own_profile(compte) -> dict | None:
+    """Fetch the account's own profile using its saved session cookies.
+
+    Uses /api/v1/accounts/current_user/?edit=true with the account's own
+    session (not a scraper), via Scrapigo proxy. Returns full profile data
+    with accurate is_business, is_professional, account_type, category etc.
+    """
+    session = compte.session_data or {}
+    sessionid = session.get("sessionid")
+    csrftoken = session.get("csrftoken")
+    ds_user_id = session.get("ds_user_id")
+    mid = session.get("mid")
+    authorization = session.get("authorization")
+
+    if not sessionid and not authorization:
+        logger.warning("get_own_profile: no session for %s", compte.handle)
+        return None
+
+    # Get Scrapigo proxy
+    proxy_url = None
+    try:
+        from app.services.scrapigo import get_scrapigo_client
+        sg = await get_scrapigo_client()
+        if sg:
+            proxy_obj = await sg.get_proxy_for_account(ds_user_id or compte.handle, country="FR")
+            if proxy_obj:
+                proxy_url = proxy_obj.url
+    except Exception as e:
+        logger.warning("get_own_profile: proxy error: %s", e)
+
+    cookie_parts = []
+    if sessionid:
+        cookie_parts.append(f"sessionid={sessionid}")
+    if csrftoken:
+        cookie_parts.append(f"csrftoken={csrftoken}")
+    if ds_user_id:
+        cookie_parts.append(f"ds_user_id={ds_user_id}")
+    if mid:
+        cookie_parts.append(f"mid={mid}")
+
+    platform = compte.plateforme or "ig"
+    headers = {
+        "Cookie": "; ".join(cookie_parts),
+        "User-Agent": "Instagram 345.1.0.36.109 (iPhone14,5; iOS 17_5_1; fr_FR; fr; scale=3.00; 1170x2532; 617931868) AppleWebKit/420+",
+        "X-IG-App-ID": "124024574287414",
+        "X-IG-App-Locale": "fr_FR",
+        "X-IG-Device-Locale": "fr_FR",
+        "Accept-Language": "fr-FR,fr;q=0.9",
+    }
+    if csrftoken:
+        headers["X-CSRFToken"] = csrftoken
+    if authorization:
+        headers["Authorization"] = authorization
+
+    try:
+        async with httpx.AsyncClient(timeout=15, verify=False, proxy=proxy_url) as client:
+            url = "https://i.instagram.com/api/v1/accounts/current_user/?edit=true"
+            resp = await client.get(url, headers=headers)
+
+            if resp.status_code != 200:
+                logger.warning("get_own_profile: HTTP %s for %s", resp.status_code, compte.handle)
+                return None
+
+            data = resp.json()
+            user = data.get("user", {})
+            if not user:
+                return None
+
+            is_pro = (
+                user.get("is_business", False)
+                or user.get("is_professional", False)
+                or (user.get("account_type", 1) or 1) >= 3
+                or bool(user.get("category_name") or user.get("category"))
+            )
+
+            return {
+                "pk": user.get("pk"),
+                "username": user.get("username"),
+                "full_name": user.get("full_name", ""),
+                "biography": user.get("biography", ""),
+                "profile_pic_url": user.get("profile_pic_url", ""),
+                "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
+                "is_verified": user.get("is_verified", False),
+                "is_private": user.get("is_private", False),
+                "is_business": is_pro,
+                "is_professional": user.get("is_professional", False),
+                "account_type": user.get("account_type"),
+                "follower_count": user.get("follower_count", 0),
+                "following_count": user.get("following_count", 0),
+                "media_count": user.get("media_count", 0),
+                "external_url": user.get("external_url", ""),
+                "category": user.get("category_name", user.get("category", "")),
+                "phone_number": user.get("phone_number", ""),
+                "email": user.get("email", ""),
+            }
+
+    except Exception as e:
+        logger.warning("get_own_profile failed for %s: %s", compte.handle, e)
+        return None
+
+
 async def extract_and_store(
     compte_id: str,
     mcp_port: int = DEFAULT_MCP_PORT,
