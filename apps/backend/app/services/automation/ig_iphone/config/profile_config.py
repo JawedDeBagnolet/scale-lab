@@ -1457,7 +1457,11 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                                     await _dump_screen(driver, log, "apres_photo")
 
             results["photo"] = photo_ok
-            if not photo_ok and "photo_url" not in results:
+            # photo_url was popped and converted to photo_index — sync the result
+            # so the runner sees photo_url as succeeded too
+            if photo_ok:
+                results["photo_url"] = True
+            elif "photo_url" not in results:
                 results["photo_url"] = False
 
         # Fermer l'edit profil
