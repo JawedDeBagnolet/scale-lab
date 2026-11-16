@@ -1142,16 +1142,27 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Select all: tap at start of field → cursor appears → re-tap cursor → "Tout sélectionner"
-                    # Tap at x=24 (left edge of text field, from UI dump) to place cursor at start
-                    ty = tap.get('y', 140)
+                    # We're now on the bio editing sub-screen
+                    # Find the actual text content here (NOT reuse tap from edit_profile screen)
+                    bio_screen_els = await driver.find_elements(refresh=True)
+                    bio_field_y = 138  # default from UI dumps
+                    for bse in bio_screen_els:
+                        bt = (bse.get('text', '') or '').strip()
+                        br = bse.get('rect', {})
+                        # Text field content is between y=100-250, width > 100
+                        if bt and len(bt) > 3 and br.get('y', 0) > 100 and br.get('y', 0) < 250 and br.get('width', 0) > 100:
+                            bio_field_y = bse.get('tap', {}).get('y', 138)
+                            log("   champ bio détecté: '%s' (y=%d)" % (bt[:25], bio_field_y))
+                            break
+                    # Select all: tap center of field → cursor → re-tap → "Tout sélectionner"
+                    ty = bio_field_y
                     selected = False
                     for attempt in range(3):
-                        # Tap at left edge of text field to place cursor at start
-                        await driver.ht.tap(24 + random.randint(0, 5), ty + random.randint(-2, 2))
+                        # Tap at center of text field to place cursor
+                        await driver.ht.tap(100 + random.randint(0, 80), ty + random.randint(-2, 2))
                         await asyncio.sleep(random.uniform(0.8, 1.2))
-                        # Re-tap near cursor to trigger context menu
-                        await driver.ht.tap(24 + random.randint(0, 8), ty + random.randint(-2, 2))
+                        # Re-tap near same spot to trigger cursor context menu
+                        await driver.ht.tap(100 + random.randint(0, 80), ty + random.randint(-2, 2))
                         await asyncio.sleep(0.8)
                         # Search for "Tout sélectionner" / "sélectionner"
                         sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
