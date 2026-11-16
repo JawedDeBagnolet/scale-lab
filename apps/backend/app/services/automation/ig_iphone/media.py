@@ -225,7 +225,8 @@ async def push_media_to_gallery(
     iphone_path = "%s/%s" % (IPHONE_TMP, filename)
 
     try:
-        # 2. URL de telechargement (spoof server ou direct)
+        # 2. URL de telechargement (spoof server ou direct avec fallback)
+        dl_ok = False
         if spoof and ext != ".mp4":
             import urllib.parse
             download_url = "%s/spoof?url=%s&market=%s" % (
@@ -240,7 +241,11 @@ async def push_media_to_gallery(
             log("   [media] via spoofer (phone_id=%s)" % (phone_id or device or "random"))
             # Le spoof server est en local sur le VPS, pas besoin d'auth
             dl_ok = await _vps_download(download_url, local_path, log=log)
-        else:
+            if not dl_ok:
+                log("   [media] ⚠ spoofer echoue, fallback download direct")
+
+        if not dl_ok:
+            # Fallback: download direct depuis R2 (sans spoof EXIF)
             dl_ok = await _vps_download(media_url, local_path, auth_header=auth_header, log=log)
 
         if not dl_ok:
