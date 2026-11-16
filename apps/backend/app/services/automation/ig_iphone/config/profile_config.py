@@ -707,6 +707,226 @@ async def set_public(driver, navigator, log: Callable = print) -> bool:
     return await set_private(driver, navigator, private=False, log=log)
 
 
+async def set_age_limit(driver, navigator, age: int | None, log: Callable = print) -> bool:
+    """Configure la limite d'âge minimum du compte.
+
+    Flow: Profil → Paramètres → scroll → Type de compte et outils → Autre → Âge minimum
+    age=18 → définir 18 ans minimum
+    age=None ou 0 → supprimer la limite d'âge
+
+    Écrans (depuis les dumps réels) :
+    - Paramètres : "Type de compte et outils" (peut nécessiter scroll)
+    - Type de compte et outils : "Autre"
+    - Autre : "Âge minimum"
+    - Âge minimum : "Par défaut" + "Ajouter ou supprimer" / valeur actuelle
+    - Picker : "Âge par défaut" + scroll picker + "Enregistrer"
+    """
+    log("-> Config: âge minimum -> %s" % (age if age else "supprimer"))
+
+    # Step 1: Open settings from profile
+    if not await _open_settings(driver, navigator, log):
+        return False
+
+    # Step 2: Find "Type de compte et outils" (may need to scroll)
+    for attempt in range(3):
+        el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
+        if el:
+            break
+        # Scroll down to find it
+        await driver.ht.swipe(187, 600, 187, 300, 300)
+        await asyncio.sleep(1)
+
+    if not el:
+        log("   ! 'Type de compte et outils' non trouvé")
+        await _go_back(driver, navigator, log)
+        return False
+
+    tap = el.get('tap', {})
+    log("   tap 'Type de compte et outils' (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # Step 3: Tap "Autre"
+    autre = await driver.find_element("Autre", clickable=True, refresh=True)
+    if not autre:
+        log("   ! 'Autre' non trouvé")
+        await _go_back(driver, navigator, log)
+        return False
+
+    tap = autre.get('tap', {})
+    log("   tap 'Autre' (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.0, 2.0))
+
+    # Step 4: Tap "Âge minimum"
+    age_btn = await driver.find_element("ge minimum", contains=True, clickable=True, refresh=True)
+    if not age_btn:
+        log("   ! 'Âge minimum' non trouvé")
+        await _go_back(driver, navigator, log)
+        await _go_back(driver, navigator, log)
+        return False
+
+    tap = age_btn.get('tap', {})
+    log("   tap 'Âge minimum' (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.0, 2.0))
+
+    # Step 5: We're on the "Âge minimum" screen
+    # Check if there's already an age set (look for a number element)
+    all_els = await driver.find_elements(refresh=True)
+    current_age = None
+    for e in all_els:
+        t = (e.get('text', '') or '').strip()
+        r = e.get('rect', {})
+        if t.isdigit() and 13 <= int(t) <= 99 and r.get('y', 0) > 250:
+            current_age = int(t)
+            break
+    log("   âge actuel: %s" % (current_age if current_age else "aucun"))
+
+    if not age or age == 0:
+        # DELETE age limit
+        if not current_age:
+            log("   pas d'âge défini, rien à supprimer")
+            # Go back 3 levels: Âge minimum → Autre → Type de compte → Paramètres
+            for _ in range(3):
+                await _go_back(driver, navigator, log)
+            return True
+
+        # Tap "Ajouter ou supprimer" in the "Par défaut" section
+        add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
+        if not add_remove:
+            add_remove = await driver.find_element("supprimer", contains=True, clickable=True)
+        if add_remove:
+            tap = add_remove.get('tap', {})
+            log("   tap 'Ajouter ou supprimer' (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(1)
+
+            # The existing age entry should show — tap the trash/remove button
+            # After tapping "Ajouter ou supprimer", it may toggle delete mode
+            # or show a confirmation. Check what appears.
+            await asyncio.sleep(1)
+            # Check if the age was removed
+            all_els2 = await driver.find_elements(refresh=True)
+            age_gone = True
+            for e in all_els2:
+                t = (e.get('text', '') or '').strip()
+                r = e.get('rect', {})
+                if t.isdigit() and 13 <= int(t) <= 99 and r.get('y', 0) > 250:
+                    age_gone = False
+                    break
+            if age_gone:
+                log("   ✓ âge minimum supprimé")
+            else:
+                log("   ⚠ âge peut-être pas supprimé")
+        else:
+            log("   ! bouton supprimer non trouvé")
+
+        for _ in range(3):
+            await _go_back(driver, navigator, log)
+        return age_gone if 'age_gone' in dir() else False
+
+    else:
+        # SET age limit
+        # Tap "Ajouter ou supprimer" to open the picker
+        add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
+        if not add_remove:
+            # First-time setup — no "Ajouter ou supprimer" button
+            add_remove = await driver.find_element("Ajouter", contains=True, clickable=True)
+        if not add_remove:
+            log("   ! bouton ajouter non trouvé")
+            for _ in range(3):
+                await _go_back(driver, navigator, log)
+            return False
+
+        tap = add_remove.get('tap', {})
+        log("   tap '%s' (y=%d)" % (add_remove.get('text', '')[:25], tap.get('y', 0)))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(random.uniform(1.5, 2.5))
+
+        # Step 6: Picker bottom sheet should be open
+        # Elements: "Âge par défaut", "Enregistrer", picker with current value, "Fermer"
+        picker = await driver.find_element("par d", contains=True, refresh=True)
+        if not picker:
+            log("   ! picker d'âge non ouvert")
+            for _ in range(3):
+                await _go_back(driver, navigator, log)
+            return False
+
+        log("   picker ouvert")
+
+        # Read current picker value
+        picker_els = await driver.find_elements(refresh=True)
+        picker_value = None
+        picker_el = None
+        for e in picker_els:
+            t = (e.get('text', '') or '').strip()
+            r = e.get('rect', {})
+            if t.isdigit() and r.get('y', 500) > 580 and r.get('height', 0) > 100:
+                picker_value = int(t)
+                picker_el = e
+                break
+
+        log("   valeur picker: %s (cible: %d)" % (picker_value, age))
+
+        if picker_el and picker_value:
+            # Scroll the picker to reach the target age
+            # Each swipe step ≈ 1-2 age units on the picker
+            diff = age - picker_value
+            if diff != 0:
+                pr = picker_el.get('rect', {})
+                px = pr.get('x', 0) + pr.get('width', 375) / 2
+                py = pr.get('y', 650) + pr.get('height', 200) / 2
+
+                # Scroll: positive diff = need higher number = swipe up
+                steps = abs(diff)
+                for i in range(min(steps, 50)):
+                    if diff > 0:
+                        # Swipe up to increase
+                        await driver.ht.swipe(px, py + 30, px, py - 30, 200)
+                    else:
+                        # Swipe down to decrease
+                        await driver.ht.swipe(px, py - 30, px, py + 30, 200)
+                    await asyncio.sleep(0.3)
+
+                await asyncio.sleep(0.5)
+                log("   picker scrollé de %d pas" % steps)
+
+        # Tap "Enregistrer"
+        save_btn = await driver.find_element("Enregistrer", clickable=True, refresh=True)
+        if save_btn:
+            tap = save_btn.get('tap', {})
+            log("   tap 'Enregistrer' (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(1)
+        else:
+            log("   ! bouton Enregistrer non trouvé")
+            for _ in range(3):
+                await _go_back(driver, navigator, log)
+            return False
+
+        # Verify: check the age is now displayed
+        await asyncio.sleep(0.5)
+        all_els3 = await driver.find_elements(refresh=True)
+        verified = False
+        for e in all_els3:
+            t = (e.get('text', '') or '').strip()
+            r = e.get('rect', {})
+            if t == str(age) and r.get('y', 0) > 250:
+                log("   ✓ âge vérifié: %s (y=%d)" % (t, r.get('y', 0)))
+                verified = True
+                break
+
+        if not verified:
+            log("   ⚠ âge %d non vérifié (peut nécessiter ajustement du picker)" % age)
+
+        # Go back 3 levels
+        for _ in range(3):
+            await _go_back(driver, navigator, log)
+
+        return verified
+
+
 # ── Config batch (ouvre edit profil UNE SEULE FOIS) ───────────────────────────
 
 async def configure_profile(driver, navigator, config: dict, log: Callable = print) -> dict:
@@ -1097,6 +1317,10 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
     # ── Phase 3 : confidentialite ───────────────────────
     if "private" in config:
         results["private"] = await set_private(driver, navigator, config["private"], log)
+
+    # ── Phase 4 : limite d'âge ─────────────────────────
+    if "age_limit" in config:
+        results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
 
     log("=" * 50)
     log("CONFIG TERMINEE: %s" % results)
