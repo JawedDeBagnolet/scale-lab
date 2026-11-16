@@ -1101,12 +1101,13 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Triple-tap to select all + type
+                    # Triple-tap to select all text (iOS timing: 150ms between taps)
                     tx = tap.get('x', 180)
                     ty = tap.get('y', 140)
-                    for _ in range(3):
+                    for i in range(3):
                         await driver.ht.tap(tx, ty)
-                        await asyncio.sleep(0.08)
+                        if i < 2:
+                            await asyncio.sleep(0.15)
                     await asyncio.sleep(0.5)
                     log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                     await driver.ht.type_text(edit_fields["bio"])

@@ -274,6 +274,7 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
         raise HTTPException(404, "compte not found")
 
     changes = body.model_dump(exclude_unset=True)
+    logger.info("profile-update: raw changes=%s", changes)
     live = compte.profile_data or {}
     config = compte.profile_config or {}
 
