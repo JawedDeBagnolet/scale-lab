@@ -249,6 +249,7 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
 # ── Profile update (diff-based, dispatches to iPhone) ──────────────────
 
 class ProfileUpdateRequest(BaseModel):
+    username: str | None = None
     full_name: str | None = None
     biography: str | None = None
     external_url: str | None = None
@@ -281,7 +282,7 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
 
     # Separate internal config vs IG-pushable fields
     INTERNAL_KEYS = {"pro_type", "pro_category"}
-    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business", "age_limit", "photo_url"}
+    IG_KEYS = {"username", "full_name", "biography", "external_url", "is_private", "is_business", "age_limit", "photo_url"}
 
     # Update internal config
     config_changed = False

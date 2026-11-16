@@ -193,6 +193,7 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
 
     # Map frontend fields to configure_profile kwargs
     FIELD_MAP = {
+        "username": "username",
         "full_name": "name",
         "biography": "bio",
         "external_url": "link",

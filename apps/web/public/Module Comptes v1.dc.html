@@ -1297,6 +1297,7 @@ class Component extends DCLogic {
         const pk = d.platform === 'x' ? 'x' : d.platform === 'th' ? 'th' : 'ig';
         const prof = d.profile[pk] || {};
         const profilePayload = {};
+        if (prof.username && prof.username !== (real.handle || d.username)) profilePayload.username = prof.username;
         if (prof.displayName != null) profilePayload.full_name = prof.displayName;
         if (prof.bio != null) profilePayload.biography = prof.bio;
         if (prof.link != null) profilePayload.external_url = prof.link;
