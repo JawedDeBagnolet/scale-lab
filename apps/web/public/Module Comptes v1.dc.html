@@ -1684,16 +1684,16 @@ class Component extends DCLogic {
       };
     });
     const addToPool = () => {
+      const _SD = window.SCALE_DATA;
+      if (!_SD || !_SD._live) { this.toastMsg('API non connectée'); return; }
       const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
       inp.onchange = async () => {
         const f = inp.files[0]; if (!f) return;
         this.toastMsg('Upload en cours...');
-        const r = await SD.apiUploadAsync(f, d.persona || null);
+        const r = await _SD.apiUploadAsync(f, d.persona || null);
         if (r && r.url) {
-          // Create media record in mediatheque with folder=pp
-          await SD.apiAsync('POST', '/posting/medias', { persona_id: d.persona || null, media_type: 'image', url: r.url, folder: 'pp' });
-          // Reload pool
-          const medias = await SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pp');
+          await _SD.apiAsync('POST', '/posting/medias', { persona_id: d.persona || null, media_type: 'image', url: r.url, folder: 'pp' });
+          const medias = await _SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pp');
           if (Array.isArray(medias)) this.setState({ ppMedias: medias });
           this.toastMsg('Photo ajoutée au pool');
         } else { this.toastMsg('Erreur upload'); }
