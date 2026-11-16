@@ -289,8 +289,8 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
     config = compte.profile_config or {}
 
     # Separate internal config vs IG-pushable fields
-    INTERNAL_KEYS = {"age_limit", "pro_type", "pro_category"}
-    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business"}
+    INTERNAL_KEYS = {"pro_type", "pro_category"}
+    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business", "age_limit"}
 
     # Update internal config
     config_changed = False
@@ -302,11 +302,18 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
     if config_changed:
         compte.profile_config = config
 
-    # Diff IG fields against live data
+    # Diff IG fields against live data (age_limit checks config, others check live)
     ig_diff = {}
     for k in IG_KEYS:
-        if k in changes and changes[k] != live.get(k):
+        if k not in changes:
+            continue
+        ref = config.get(k) if k == "age_limit" else live.get(k)
+        if changes[k] != ref:
             ig_diff[k] = changes[k]
+            # Also persist age_limit in config for future diffs
+            if k == "age_limit":
+                config[k] = changes[k]
+                config_changed = True
 
     if ig_diff:
         await emit_log("comptes", "profile", "info", compte.handle,
