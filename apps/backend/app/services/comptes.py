@@ -231,6 +231,21 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
             logger.info("profile_edit: %s configuré — %s", handle or compte_id, msg)
             await _log("comptes", "profile_edit", "success", handle or str(compte_id),
                         f"Profil configuré — {', '.join(requested_fields)}", meta=meta)
+            # Persist age_limit in profile_config after successful automation
+            if "age_limit" in config_values:
+                try:
+                    from app.db import AsyncSessionLocal
+                    from app.models.compte import Compte
+                    async with AsyncSessionLocal() as db:
+                        c = await db.get(Compte, compte_id)
+                        if c:
+                            cfg = c.profile_config or {}
+                            cfg["age_limit"] = config_values["age_limit"]
+                            c.profile_config = cfg
+                            await db.commit()
+                            logger.info("profile_edit: age_limit=%s saved to profile_config", config_values["age_limit"])
+                except Exception as e:
+                    logger.warning("profile_edit: failed to persist age_limit: %s", e)
         else:
             logger.error("profile_edit: échec %s — %s", handle or compte_id, msg)
             await _log("comptes", "profile_edit", "error", handle or str(compte_id),
