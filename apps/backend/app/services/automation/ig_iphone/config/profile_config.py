@@ -851,6 +851,14 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     - Âge minimum : "Par défaut" + "Ajouter ou supprimer" / valeur actuelle
     - Picker : "Âge par défaut" + scroll picker + "Enregistrer"
     """
+    # Parse age: "18+" → 18, "21+" → 21, None/0/"" → None
+    import re as _re
+    if isinstance(age, str):
+        m = _re.match(r"(\d+)", age)
+        age = int(m.group(1)) if m else None
+    if age and not isinstance(age, int):
+        age = int(age) if str(age).isdigit() else None
+
     log("-> Config: âge minimum -> %s" % (age if age else "supprimer"))
 
     # Step 1: Open settings from profile
@@ -1013,7 +1021,7 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
                 picker_el = e
                 break
 
-        log("   valeur picker: %s (cible: %d)" % (picker_value, age))
+        log("   valeur picker: %s (cible: %s)" % (picker_value, age))
 
         if picker_el and picker_value:
             # Scroll the picker to reach the target age
