@@ -1171,8 +1171,6 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
                     # Step 2: We're on the links list screen
                     # Check if there's an existing link to edit or if we add new
-                    await _dump_screen(driver, log, "liste liens")
-
                     if not url:
                         # DELETE existing link: tap on it, then "Supprimer le lien"
                         # Find existing link (any element with a URL-like text, y > 130)
