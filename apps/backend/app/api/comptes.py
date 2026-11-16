@@ -186,57 +186,46 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
     from app.services.comptes import _log as emit_log
     profile = None
 
-    # Strategy 1: Use the account's own session (most accurate for pro fields)
+    # Always fetch via scraper (stats, photo, highlights)
+    scraper_profile = None
+    try:
+        from app.services.ig_api_scraper import IGScraperClient
+        client = await IGScraperClient.from_db(db)
+        if client:
+            await emit_log("comptes", "scrape", "info", compte.handle,
+                f"Lecture profil live @{compte.handle} via scraper (stats/photo/highlights)")
+            scraper_profile = await client.get_user_profile_full(compte.handle)
+    except Exception as e:
+        logger.warning("profile-live: scraper failed for %s: %s", compte.handle, e)
+
+    # Own session overlay for accurate pro fields (is_business, category, account_type, email, phone)
+    own_profile = None
     sd = compte.session_data or {}
     if sd.get("sessionid") or sd.get("authorization"):
         try:
             from app.services.session_extract import get_own_profile
-            await emit_log("comptes", "scrape", "info", compte.handle,
-                f"Lecture profil live @{compte.handle} via session propre")
-            own = await get_own_profile(compte)
-            if own and own.get("username"):
-                profile = own
-                logger.info("profile-live: %s via own session (is_business=%s, category=%s)",
-                    compte.handle, own.get("is_business"), own.get("category"))
+            own_profile = await get_own_profile(compte)
+            if own_profile and own_profile.get("username"):
+                logger.info("profile-live: %s own session OK (is_business=%s, category=%s)",
+                    compte.handle, own_profile.get("is_business"), own_profile.get("category"))
         except Exception as e:
             logger.warning("profile-live: own session failed for %s: %s", compte.handle, e)
 
-    # Strategy 2: Fallback to scraper
-    if not profile:
-        await emit_log("comptes", "scrape", "info", compte.handle,
-            f"Lecture profil live @{compte.handle} via scraper")
-        try:
-            from app.services.ig_api_scraper import IGScraperClient
-            client = await IGScraperClient.from_db(db)
-            if not client:
-                await emit_log("comptes", "scrape", "error", compte.handle,
-                    "Aucun compte scraper avec session valide", code="NO_SCRAPER")
-                raise HTTPException(503, "Aucun compte scraper avec session valide")
-
-            profile = await client.get_user_profile_full(compte.handle)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("profile-live scraper error for %s", compte.handle)
-            await emit_log("comptes", "scrape", "error", compte.handle,
-                f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
-            raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
-
-    if not profile:
-        await emit_log("comptes", "scrape", "warning", compte.handle,
-            f"Profil @{compte.handle} introuvable")
-        raise HTTPException(404, f"Profil @{compte.handle} introuvable")
-
-    # Fetch highlights separately (own session doesn't return them)
-    if "highlights" not in profile:
-        try:
-            from app.services.ig_api_scraper import IGScraperClient
-            client = await IGScraperClient.from_db(db)
-            if client and profile.get("pk"):
-                highlights = await client.get_user_highlights(str(profile["pk"]))
-                profile["highlights"] = highlights
-        except Exception:
-            profile["highlights"] = []
+    # Merge: scraper as base (stats, photo, highlights), own session overlay (pro fields)
+    if scraper_profile:
+        profile = scraper_profile
+        if own_profile:
+            # Override pro-related fields with own session data (more accurate)
+            for key in ("is_business", "is_professional", "account_type", "category",
+                        "phone_number", "email", "full_name", "biography", "external_url"):
+                if key in own_profile and own_profile[key]:
+                    profile[key] = own_profile[key]
+    elif own_profile:
+        profile = own_profile
+    else:
+        await emit_log("comptes", "scrape", "error", compte.handle,
+            "Aucune source disponible pour le profil", code="NO_PROFILE_SOURCE")
+        raise HTTPException(503, "Aucune source disponible pour le profil")
 
     hl_count = len(profile.get("highlights", []))
     await emit_log("comptes", "scrape", "success", compte.handle,
