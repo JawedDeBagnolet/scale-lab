@@ -283,10 +283,8 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 
 async def _clear_and_type(driver, log, text, current_text=""):
-    """Efface le texte existant via double-tap → Tout sélectionner → type (remplace)."""
-    # Tap once on text area to place cursor, wait, tap again to get context menu
+    """Efface le texte existant via tap → re-tap → Tout sélectionner → type."""
     cx, cy = 187, 150
-    # Find text content in the editing area to tap on
     all_els = await driver.find_elements(refresh=True)
     for e in all_els:
         t = (e.get('text', '') or '').strip()
@@ -297,27 +295,34 @@ async def _clear_and_type(driver, log, text, current_text=""):
             cx, cy = tp['x'], tp['y']
             break
 
-    # Tap 1: position cursor
-    await driver.ht.tap(cx, cy)
-    await asyncio.sleep(1.0)
-    # Tap 2: trigger context menu with "Tout sélectionner"
-    await driver.ht.tap(cx, cy)
-    await asyncio.sleep(0.8)
-
-    # Look for "lectionner" (matches "Tout sélectionner" / "Sélectionner tout")
-    sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
-    if sel:
-        stap = sel.get('tap', {})
-        log("   tap 'Tout sélectionner' (y=%d)" % stap.get('y', 0))
-        await driver.ht.tap(stap['x'], stap['y'])
+    selected = False
+    for attempt in range(3):
+        # Tap to place cursor
+        jx = cx + random.randint(-3, 3)
+        jy = cy + random.randint(-3, 3)
+        await driver.ht.tap(jx, jy)
+        await asyncio.sleep(random.uniform(0.8, 1.2))
+        # Re-tap near same spot to trigger context menu
+        jx2 = cx + random.randint(-5, 5)
+        jy2 = cy + random.randint(-5, 5)
+        await driver.ht.tap(jx2, jy2)
+        await asyncio.sleep(0.8)
+        sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+        if sel:
+            stap = sel.get('tap', {})
+            log("   tap 'Tout sélectionner' (y=%d, tentative %d)" % (stap.get('y', 0), attempt + 1))
+            await driver.ht.tap(stap['x'], stap['y'])
+            await asyncio.sleep(0.5)
+            selected = True
+            break
+        log("   retry sélection (%d/3)" % (attempt + 1))
+        await driver.ht.tap(20, 300)
         await asyncio.sleep(0.5)
-    else:
-        log("   ! 'Tout sélectionner' non trouvé, essai double_tap")
-        # Fallback: try double_tap MCP command
-        await driver.ht._call("double_tap", {"x": cx, "y": cy}, timeout=5)
-        await asyncio.sleep(0.5)
 
-    # Type the new text — replaces the selection
+    if not selected:
+        log("   ! impossible de sélectionner — champ inchangé")
+        return
+
     log("   saisie texte: '%s'" % text[:40])
     await driver.ht.type_text(text)
     await asyncio.sleep(0.5)
@@ -1087,24 +1092,39 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Tap twice with 1s delay to trigger "Tout sélectionner" context menu
+                    # Select all via tap → wait → re-tap → "Tout sélectionner"
                     tx = tap.get('x', 180)
                     ty = tap.get('y', 140)
-                    await driver.ht.tap(tx, ty)
-                    await asyncio.sleep(1.0)
-                    await driver.ht.tap(tx, ty)
-                    await asyncio.sleep(0.8)
-                    # Tap "Tout sélectionner" in context menu
-                    sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
-                    if sel:
-                        stap = sel.get('tap', {})
-                        log("   tap 'Tout sélectionner'")
-                        await driver.ht.tap(stap['x'], stap['y'])
+                    selected = False
+                    for attempt in range(3):
+                        # Tap to place cursor
+                        jx = tx + random.randint(-3, 3)
+                        jy = ty + random.randint(-3, 3)
+                        await driver.ht.tap(jx, jy)
+                        await asyncio.sleep(random.uniform(0.8, 1.2))
+                        # Re-tap near same spot to trigger context menu
+                        jx2 = tx + random.randint(-5, 5)
+                        jy2 = ty + random.randint(-5, 5)
+                        await driver.ht.tap(jx2, jy2)
+                        await asyncio.sleep(0.8)
+                        sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+                        if sel:
+                            stap = sel.get('tap', {})
+                            log("   tap 'Tout sélectionner' (tentative %d)" % (attempt + 1))
+                            await driver.ht.tap(stap['x'], stap['y'])
+                            await asyncio.sleep(0.5)
+                            selected = True
+                            break
+                        log("   retry sélection (%d/3)" % (attempt + 1))
+                        # Dismiss any menu by tapping elsewhere
+                        await driver.ht.tap(20, 300)
                         await asyncio.sleep(0.5)
+
+                    if not selected:
+                        log("   ! impossible de sélectionner le texte — bio inchangée")
                     else:
-                        log("   ! 'Tout sélectionner' non trouvé")
-                    log("   saisie bio: '%s'" % edit_fields["bio"][:40])
-                    await driver.ht.type_text(edit_fields["bio"])
+                        log("   saisie bio: '%s'" % edit_fields["bio"][:40])
+                        await driver.ht.type_text(edit_fields["bio"])
                     await asyncio.sleep(1.0)
                     if await _tap_done(driver, log):
                         await asyncio.sleep(2.5)
@@ -1366,8 +1386,18 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                                 break
                 results["photo"] = True
 
-        # Fermer l'edit profil
-        await _go_back(driver, navigator, log)
+        # Fermer l'edit profil — tap "Retour" ou "<" button
+        retour = await driver.find_element("Retour", clickable=True, refresh=True)
+        if not retour:
+            retour = await driver.find_element("cedent", contains=True, clickable=True, refresh=True)
+        if retour:
+            rtap = retour.get('tap', {})
+            log("   ferme edit profil (y=%d)" % rtap.get('y', 0))
+            await driver.ht.tap(rtap['x'], rtap['y'])
+        else:
+            log("   ferme edit profil (swipe)")
+            await _go_back(driver, navigator, log)
+        await asyncio.sleep(1.5)
 
     # ── Phase 2 : switch pro ────
     if config.get("pro"):
