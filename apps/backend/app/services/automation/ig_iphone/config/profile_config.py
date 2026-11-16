@@ -341,6 +341,17 @@ async def _verify_profile_field(driver, log, field_label, expected_value) -> boo
     return False
 
 
+def _looks_like_url(text: str) -> bool:
+    """Check if a text looks like a URL (not just any text with a period)."""
+    t = text.strip().lower()
+    # Must have a domain-like pattern: word.tld or http(s)://
+    if t.startswith('http://') or t.startswith('https://'):
+        return True
+    # Match domain patterns like "example.com", "ta-cassie.com/viens"
+    import re
+    return bool(re.match(r'^[a-z0-9][\w.-]*\.[a-z]{2,}(/\S*)?$', t))
+
+
 async def _dismiss_popup(driver, log, wait=1.5):
     """Gere les popups de confirmation apres modification."""
     await asyncio.sleep(wait)
@@ -861,7 +872,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         for e in all_els:
                             t = (e.get('text', '') or '')
                             r = e.get('rect', {})
-                            if r.get('y', 0) > 130 and ('.' in t or 'http' in t.lower()):
+                            if r.get('y', 0) > 130 and _looks_like_url(t):
                                 existing = e
                                 break
                         if existing:
@@ -897,7 +908,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         for e in all_els:
                             t = (e.get('text', '') or '')
                             r = e.get('rect', {})
-                            if r.get('y', 0) > 130 and ('.' in t or 'http' in t.lower()):
+                            if r.get('y', 0) > 130 and _looks_like_url(t):
                                 existing = e
                                 break
 

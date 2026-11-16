@@ -434,8 +434,14 @@ async def _config(drv, nav, sess, values, log):
     requested = list(config.keys()) if isinstance(config, dict) else []
     result = await configure_profile(drv, nav, log=log, **values)
     if result:
-        succeeded = list(result.keys())
-        failed = [k for k in requested if k not in result]
+        # Check actual values — False means the field was attempted but failed
+        succeeded = [k for k, v in result.items() if v]
+        failed = [k for k, v in result.items() if not v]
+        # Also catch fields that were requested but not even attempted
+        missing = [k for k in requested if k not in result]
+        failed.extend(missing)
+        if failed and not succeeded:
+            return False, "Échec configuration: %s" % failed
         if failed:
             return False, "Profil partiellement configuré: %s OK, %s échoué" % (succeeded, failed)
         return True, "Profil configuré: %s" % succeeded
