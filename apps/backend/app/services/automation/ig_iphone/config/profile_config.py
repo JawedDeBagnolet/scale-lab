@@ -1165,10 +1165,10 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         # Tap 2: re-tap on cursor (±1px) to trigger context menu
                         await driver.ht.tap(tap_x + random.randint(-1, 1), ty + random.randint(-1, 1))
                         await asyncio.sleep(0.8)
-                        # Search for "Tout sélectionner" / "sélectionner"
-                        sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+                        # Search for "Tout sélectionner" specifically (not "Sélectionner" which selects one word)
+                        sel = await driver.find_element("Tout s", contains=True, clickable=True, refresh=True)
                         if not sel:
-                            sel = await driver.find_element("Tout s", contains=True, clickable=True, refresh=True)
+                            sel = await driver.find_element("Tout", clickable=True, refresh=True)
                         if sel:
                             stap = sel.get('tap', {})
                             log("   tap 'Tout sélectionner' (tentative %d)" % (attempt + 1))
