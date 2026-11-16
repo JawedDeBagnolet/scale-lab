@@ -283,53 +283,39 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 
 async def _clear_and_type(driver, log, text, current_text=""):
-    """Efface le texte existant via triple-tap (select all) + type (remplace la selection)."""
+    """Efface le texte existant via double-tap → Tout sélectionner → type (remplace)."""
+    # Tap once on text area to place cursor, wait, tap again to get context menu
+    cx, cy = 187, 150
+    # Find text content in the editing area to tap on
     all_els = await driver.find_elements(refresh=True)
-
-    # Log visible elements for debug
-    dbg = []
     for e in all_els:
         t = (e.get('text', '') or '').strip()
         r = e.get('rect', {})
-        if t and len(t) > 1:
-            dbg.append("'%s' y=%d" % (t[:30], r.get('y', 0)))
-    log("   [clear_and_type] elements: %s" % ' | '.join(dbg[:8]))
-
-    # Strategy: find the element containing current_text if provided,
-    # otherwise find the text input area (largest text element in edit zone)
-    cx, cy = 187, 200  # fallback
-    best = None
-    best_len = 0
-
-    for e in all_els:
-        t = (e.get('text', '') or '').strip()
-        r = e.get('rect', {})
-        ey = r.get('y', 0)
         tp = e.get('tap', {})
-        if not t or not tp.get('x') or ey < 80 or ey > 600:
-            continue
-        # Exact match with current_text if provided
-        if current_text and current_text.strip() in t:
+        ey = r.get('y', 0)
+        if t and len(t) > 3 and ey > 80 and ey < 400 and tp.get('x'):
             cx, cy = tp['x'], tp['y']
-            log("   [clear_and_type] triple-tap sur texte existant '%s' (y=%d)" % (t[:30], ey))
-            best = e
             break
-        # Otherwise pick the longest text (likely the field content, not a label)
-        if len(t) > best_len and len(t) > 3:
-            best_len = len(t)
-            best = e
-            cx, cy = tp['x'], tp['y']
 
-    if best and not current_text:
-        bt = (best.get('text', '') or '').strip()
-        log("   [clear_and_type] triple-tap sur '%s' (y=%d)" % (bt[:30], best.get('rect', {}).get('y', 0)))
+    # Tap 1: position cursor
+    await driver.ht.tap(cx, cy)
+    await asyncio.sleep(1.0)
+    # Tap 2: trigger context menu with "Tout sélectionner"
+    await driver.ht.tap(cx, cy)
+    await asyncio.sleep(0.8)
 
-    # Triple-tap to select all text — iOS selects the paragraph
-    for i in range(3):
-        await driver.ht.tap(cx, cy)
-        if i < 2:
-            await asyncio.sleep(0.15)
-    await asyncio.sleep(0.5)
+    # Look for "lectionner" (matches "Tout sélectionner" / "Sélectionner tout")
+    sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+    if sel:
+        stap = sel.get('tap', {})
+        log("   tap 'Tout sélectionner' (y=%d)" % stap.get('y', 0))
+        await driver.ht.tap(stap['x'], stap['y'])
+        await asyncio.sleep(0.5)
+    else:
+        log("   ! 'Tout sélectionner' non trouvé, essai double_tap")
+        # Fallback: try double_tap MCP command
+        await driver.ht._call("double_tap", {"x": cx, "y": cy}, timeout=5)
+        await asyncio.sleep(0.5)
 
     # Type the new text — replaces the selection
     log("   saisie texte: '%s'" % text[:40])
@@ -1101,14 +1087,22 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Triple-tap to select all text (iOS timing: 150ms between taps)
+                    # Tap twice with 1s delay to trigger "Tout sélectionner" context menu
                     tx = tap.get('x', 180)
                     ty = tap.get('y', 140)
-                    for i in range(3):
-                        await driver.ht.tap(tx, ty)
-                        if i < 2:
-                            await asyncio.sleep(0.15)
-                    await asyncio.sleep(0.5)
+                    await driver.ht.tap(tx, ty)
+                    await asyncio.sleep(1.0)
+                    await driver.ht.tap(tx, ty)
+                    await asyncio.sleep(0.8)
+                    # Tap "Tout sélectionner" in context menu
+                    sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+                    if sel:
+                        stap = sel.get('tap', {})
+                        log("   tap 'Tout sélectionner'")
+                        await driver.ht.tap(stap['x'], stap['y'])
+                        await asyncio.sleep(0.5)
+                    else:
+                        log("   ! 'Tout sélectionner' non trouvé")
                     log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                     await driver.ht.type_text(edit_fields["bio"])
                     await asyncio.sleep(1.0)

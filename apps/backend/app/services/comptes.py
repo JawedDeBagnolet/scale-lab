@@ -236,12 +236,14 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
                 try:
                     from app.db import AsyncSessionLocal
                     from app.models.compte import Compte
+                    from sqlalchemy.orm.attributes import flag_modified
                     async with AsyncSessionLocal() as db:
                         c = await db.get(Compte, compte_id)
                         if c:
-                            cfg = c.profile_config or {}
+                            cfg = dict(c.profile_config or {})
                             cfg["age_limit"] = config_values["age_limit"]
                             c.profile_config = cfg
+                            flag_modified(c, "profile_config")
                             await db.commit()
                             logger.info("profile_edit: age_limit=%s saved to profile_config", config_values["age_limit"])
                 except Exception as e:
