@@ -274,11 +274,11 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
         await emit_log("comptes", "profile", "info", compte.handle,
             f"Modification profil demandée : {', '.join(ig_diff.keys())}")
 
-        # Dispatch to iPhone automation
+        # Dispatch to iPhone automation (uses service version with LogCollector + session_logs)
         if compte.device_id:
             import asyncio
             asyncio.create_task(
-                _dispatch_profile_edit(compte.id, compte.plateforme, ig_diff),
+                service._dispatch_profile_edit(compte.id, compte.plateforme, ig_diff, handle=compte.handle),
                 name=f"profile_edit_{compte.handle}",
             )
             logger.info("profile-update: dispatched %s changes for @%s", list(ig_diff.keys()), compte.handle)
@@ -292,53 +292,5 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
     return {"ok": True, "ig_changes": ig_diff, "config_changes": {k: config[k] for k in INTERNAL_KEYS if k in changes}}
 
 
-async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, changes: dict):
-    """Background task: edit profile on iPhone via automation script.
-
-    Maps frontend field names to configure_profile() expected keys:
-    full_name -> name, biography -> bio, external_url -> link, is_private -> private
-    """
-    # Map API field names to script config keys
-    config = {}
-    if "full_name" in changes:
-        config["name"] = changes["full_name"]
-    if "biography" in changes:
-        config["bio"] = changes["biography"]
-    if "external_url" in changes:
-        config["link"] = {"url": changes["external_url"]} if changes["external_url"] else ""
-    if "is_private" in changes:
-        config["private"] = changes["is_private"]
-    if "is_business" in changes:
-        config["pro"] = changes["is_business"]
-
-    if not config:
-        return
-
-    try:
-        if plateforme == "ig":
-            from app.services.automation.ig_runner import run_ig_task
-            ok, msg = await run_ig_task(compte_id, "ig_config", values={"config": config})
-        else:
-            logger.info("profile_edit: plateforme %s not yet supported", plateforme)
-            return
-
-        from app.services.comptes import _log as emit_log
-        if ok:
-            await emit_log("comptes", "profile", "success", str(compte_id),
-                f"Profil modifié sur iPhone — {', '.join(config.keys())} — {msg}",
-                meta={"config": config, "result": msg})
-        else:
-            await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Échec modification profil — {msg}",
-                code="PROFILE_EDIT_FAILED",
-                meta={"config": config, "result": msg, "requested": list(config.keys())})
-    except Exception as exc:
-        logger.exception("profile_edit error for %s", compte_id)
-        try:
-            from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "profile", "error", str(compte_id),
-                f"Erreur technique: {str(exc)[:150]}",
-                code="PROFILE_EDIT_ERROR",
-                meta={"config": config, "error": str(exc)[:300]})
-        except Exception:
-            pass
+    # _dispatch_profile_edit is now in app.services.comptes (single source of truth)
+    # with LogCollector for session_logs capture in alert modals
