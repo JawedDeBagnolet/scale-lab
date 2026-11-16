@@ -274,44 +274,30 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 
 async def _clear_and_type(driver, log, text, current_text=""):
-    """Efface le texte existant via select-all + type (le texte remplace la selection).
+    """Efface le texte existant via triple-tap (select all) + type (remplace la selection)."""
+    # Find the existing text in the field to triple-tap directly on it
+    all_els = await driver.find_elements(refresh=True)
+    cx, cy = 187, 150  # default center position
+    # Look for the actual text content in the field (y > 80 to skip nav)
+    for e in all_els:
+        t = (e.get('text', '') or '').strip()
+        r = e.get('rect', {})
+        ey = r.get('y', 0)
+        # Match the current text or any substantial text in the editing area
+        if t and len(t) > 2 and ey > 80 and ey < 500:
+            tp = e.get('tap', {})
+            if tp.get('x') and tp.get('y'):
+                cx, cy = tp['x'], tp['y']
+                break
 
-    Uses triple-tap with longer iOS timing to select all text,
-    then type_text replaces the selection. If the field has a "Tout
-    sélectionner" menu option, uses that instead for reliability.
-    """
-    # Find the text input field
-    field = await driver.find_element("Champ de texte", contains=True, refresh=True)
-    if field:
-        ft = field.get('tap', {})
-        cx, cy = ft.get('x', 187), ft.get('y', 100)
-    else:
-        # Fallback: center of screen, upper area
-        screen = await driver.ht._call("get_screen_info", timeout=3)
-        cx = (screen or {}).get("width", 375) / 2
-        cy = 100
-
-    # Tap the field once to ensure focus
-    await driver.ht.tap(cx, cy)
-    await asyncio.sleep(0.5)
-
-    # Method 1: Triple-tap to select all (iOS paragraph select)
-    # Longer timing (200ms intervals) for reliability
+    # Triple-tap to select all text — iOS selects the paragraph
     for i in range(3):
         await driver.ht.tap(cx, cy)
         if i < 2:
-            await asyncio.sleep(0.20)
-    await asyncio.sleep(0.8)
+            await asyncio.sleep(0.15)
+    await asyncio.sleep(0.5)
 
-    # Method 2: Check if "Tout sélectionner" / "Select All" menu appeared and tap it
-    sel_all = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
-    if sel_all:
-        stap = sel_all.get('tap', {})
-        log("   tap 'Tout sélectionner' (y=%d)" % stap.get('y', 0))
-        await driver.ht.tap(stap['x'], stap['y'])
-        await asyncio.sleep(0.5)
-
-    # Now type the new text — iOS replaces selected text automatically
+    # Type the new text — replaces the selection
     log("   saisie texte: '%s'" % text[:40])
     await driver.ht.type_text(text)
     await asyncio.sleep(0.5)
