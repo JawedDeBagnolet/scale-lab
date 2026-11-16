@@ -490,10 +490,41 @@ async def _tap_done(driver, log) -> bool:
 
 
 async def _go_back(driver, navigator, log):
-    """Retour arriere."""
-    await navigator.go_back()
-    await asyncio.sleep(random.uniform(1.0, 2.0))
-    await asyncio.sleep(0.5)
+    """Retour arriere avec verification — retente si l'ecran n'a pas change."""
+    # Capture screen signature before going back
+    before_els = await driver.find_elements(refresh=True)
+    before_sig = set()
+    for e in before_els:
+        t = (e.get('text', '') or '').strip()
+        if t and len(t) > 2:
+            before_sig.add(t[:30])
+
+    for attempt in range(3):
+        # Try "Retour" / "Précédent" button first (more reliable than swipe)
+        retour = await driver.find_element("Retour", clickable=True, refresh=True)
+        if not retour:
+            retour = await driver.find_element("cedent", contains=True, clickable=True, refresh=True)
+        if retour and retour.get('rect', {}).get('y', 0) < 100:
+            rtap = retour.get('tap', {})
+            await driver.ht.tap(rtap['x'], rtap['y'])
+        else:
+            # Fallback: swipe gesture
+            await navigator.go_back()
+        await asyncio.sleep(1.5)
+
+        # Verify screen changed
+        after_els = await driver.find_elements(refresh=True)
+        after_sig = set()
+        for e in after_els:
+            t = (e.get('text', '') or '').strip()
+            if t and len(t) > 2:
+                after_sig.add(t[:30])
+
+        if after_sig != before_sig:
+            return  # Screen changed — success
+        log("   [go_back] ecran inchange, retry (%d/3)" % (attempt + 1))
+
+    log("   [go_back] ⚠ retour echoue apres 3 tentatives")
 
 
 # ── Fonctions individuelles ──────────────────────────────────────────────────
