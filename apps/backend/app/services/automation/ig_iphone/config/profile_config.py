@@ -205,12 +205,21 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
 
 async def _open_settings(driver, navigator, log) -> bool:
     """Ouvre l'ecran Parametres et activite."""
-    await navigator.go_profile()
-    await asyncio.sleep(1)
+    # Try to find settings button on current screen first (may already be on profile)
     el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
     if not el:
         el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
     if not el:
+        # Not on profile — navigate there
+        log("   -> Navigation: Profil")
+        await navigator.go_profile()
+        await asyncio.sleep(2)
+        el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
+        if not el:
+            el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
+    if not el:
+        # Still not found — dump and fail
+        await _dump_screen(driver, log, "open_settings_fail")
         log("   ! bouton parametres non trouve")
         return False
     tap = el.get('tap', {})
@@ -275,20 +284,45 @@ async def _tap_field(driver, log, field_name) -> bool:
 
 async def _clear_and_type(driver, log, text, current_text=""):
     """Efface le texte existant via triple-tap (select all) + type (remplace la selection)."""
-    # Find the existing text in the field to triple-tap directly on it
     all_els = await driver.find_elements(refresh=True)
-    cx, cy = 187, 150  # default center position
-    # Look for the actual text content in the field (y > 80 to skip nav)
+
+    # Log visible elements for debug
+    dbg = []
+    for e in all_els:
+        t = (e.get('text', '') or '').strip()
+        r = e.get('rect', {})
+        if t and len(t) > 1:
+            dbg.append("'%s' y=%d" % (t[:30], r.get('y', 0)))
+    log("   [clear_and_type] elements: %s" % ' | '.join(dbg[:8]))
+
+    # Strategy: find the element containing current_text if provided,
+    # otherwise find the text input area (largest text element in edit zone)
+    cx, cy = 187, 200  # fallback
+    best = None
+    best_len = 0
+
     for e in all_els:
         t = (e.get('text', '') or '').strip()
         r = e.get('rect', {})
         ey = r.get('y', 0)
-        # Match the current text or any substantial text in the editing area
-        if t and len(t) > 2 and ey > 80 and ey < 500:
-            tp = e.get('tap', {})
-            if tp.get('x') and tp.get('y'):
-                cx, cy = tp['x'], tp['y']
-                break
+        tp = e.get('tap', {})
+        if not t or not tp.get('x') or ey < 80 or ey > 600:
+            continue
+        # Exact match with current_text if provided
+        if current_text and current_text.strip() in t:
+            cx, cy = tp['x'], tp['y']
+            log("   [clear_and_type] triple-tap sur texte existant '%s' (y=%d)" % (t[:30], ey))
+            best = e
+            break
+        # Otherwise pick the longest text (likely the field content, not a label)
+        if len(t) > best_len and len(t) > 3:
+            best_len = len(t)
+            best = e
+            cx, cy = tp['x'], tp['y']
+
+    if best and not current_text:
+        bt = (best.get('text', '') or '').strip()
+        log("   [clear_and_type] triple-tap sur '%s' (y=%d)" % (bt[:30], best.get('rect', {}).get('y', 0)))
 
     # Triple-tap to select all text — iOS selects the paragraph
     for i in range(3):

@@ -297,6 +297,9 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
         if k not in changes:
             continue
         ref = config.get(k) if k == "age_limit" else live.get(k)
+        if k == "age_limit":
+            logger.info("profile-update: age_limit diff — sent=%r, config=%r, match=%s",
+                changes[k], ref, changes[k] == ref)
         if changes[k] != ref:
             ig_diff[k] = changes[k]
 
