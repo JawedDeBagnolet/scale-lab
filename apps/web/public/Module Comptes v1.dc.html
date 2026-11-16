@@ -669,10 +669,10 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="border-radius:16px;padding:18px 20px 20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(80,130,250,.05),rgba(255,255,255,.012) 55%)">
 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
 <div><div style="font-size:14px;font-weight:600;color:#f2f3fa">Photo de profil</div>
-<div style="font-size:12px;color:#8a91a8;margin-top:3px">Pool de {{ ed.pName }} · 8 photos · le compteur indique combien de comptes l'utilisent</div></div>
-<span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#8db4fd;cursor:pointer"><i class="ph ph-upload-simple" style="font-size:14px"></i>Ajouter au pool</span>
+<div style="font-size:12px;color:#8a91a8;margin-top:3px">Pool de {{ ed.pName }} · {{ ppCount }} photos</div></div>
+<span onClick="{{ addToPool }}" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#8db4fd;cursor:pointer"><i class="ph ph-upload-simple" style="font-size:14px"></i>Ajouter au pool</span>
 </div>
-<div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:10px">
 <sc-for list="{{ photos }}" as="ph" hint-placeholder-count="8">
 <div onClick="{{ ph.pick }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer">
 <div style="{{ ph.ring }}"><div style="{{ ph.style }}"></div></div>
@@ -1168,6 +1168,12 @@ class Component extends DCLogic {
         const cid = realAcc ? realAcc.id : null;
         if (cid) {
           this.setState({ liveLoading: true });
+          // Load profile photo pool from mediatheque
+          if (!this.state.ppMedias) {
+            SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pp').then(medias => {
+              if (Array.isArray(medias)) this.setState({ ppMedias: medias });
+            }).catch(() => {});
+          }
           SD.apiAsync('GET', '/comptes/' + cid + '/profile-live').then(p => {
             if (!p || !p.username) { this.setState({ liveLoading: false }); return; }
             this.upd(d => {
@@ -1234,6 +1240,7 @@ class Component extends DCLogic {
         if (prof.ageLimit != null) profilePayload.age_limit = prof.ageLimit ? (prof.ageMin || '18+') : null;
         if (prof.proType) profilePayload.pro_type = prof.proType;
         if (prof.proCat) profilePayload.pro_category = prof.proCat;
+        if (prof.photoUrl) profilePayload.photo_url = prof.photoUrl;
         SD.apiAsync('POST', '/comptes/' + real.id + '/profile-update', profilePayload).then(r => {
           if (r && r.ig_changes && Object.keys(r.ig_changes).length) {
             this.toastMsg('Modification du profil en cours sur l\'iPhone...');
@@ -1661,17 +1668,38 @@ class Component extends DCLogic {
       { label: 'Hash FA', value: api.hash, copy: true }
     ].map(r => ({ ...r, isToken: !!r.isToken, copy: !!r.copy, doCopy: () => { try { navigator.clipboard.writeText(r.label === 'Token Meta' ? api.token : r.value); } catch (e) {} this.toastMsg(r.label + ' copié'); } })) : [];
 
-    const pool = [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ bg: this.photo(p.color, i), uses: [3, 1, 0, 2, 5, 0, 1, 4][(i + p.id.length) % 8] }));
+    // Pool de photos : médias réels (médiathèque) + fallback gradients
+    const ppMedias = (this.state.ppMedias || []).filter(m => !d.persona || m.persona_id === d.persona);
+    const pool = ppMedias.length > 0
+      ? ppMedias.map((m, i) => ({ url: m.url, id: m.id, bg: 'url(' + m.url + ') center/cover', uses: 0 }))
+      : [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ bg: this.photo(p.color, i), uses: [3, 1, 0, 2, 5, 0, 1, 4][(i + p.id.length) % 8] }));
     const photos = pool.map((ph, i) => {
-      const selp = prof.photo === i;
+      const selp = ph.url ? prof.photoUrl === ph.url : prof.photo === i;
       return {
-        uses: selp ? 'Sélectionnée' : ph.uses ? 'utilisée ' + ph.uses + '×' : 'jamais utilisée',
+        uses: selp ? 'Sélectionnée' : ph.uses ? 'utilisée ' + ph.uses + '×' : '',
         useStyle: { fontSize: 10.5, fontWeight: selp ? 600 : 400, color: selp ? '#cfd3ff' : ph.uses >= 4 ? '#f0c184' : '#8a91a8', whiteSpace: 'nowrap' },
         ring: { width: '100%', aspectRatio: '1', borderRadius: 99, padding: 3, border: '2px solid ' + (selp ? '#7c6cf6' : 'transparent'), boxShadow: selp ? '0 0 16px rgba(124,108,246,.45)' : 'none' },
         style: { width: '100%', height: '100%', borderRadius: 99, background: ph.bg },
-        pick: () => this.upd(x => { x.profile[pk].photo = i; })
+        pick: () => this.upd(x => { if (ph.url) { x.profile[pk].photoUrl = ph.url; } x.profile[pk].photo = i; })
       };
     });
+    const addToPool = () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return;
+        this.toastMsg('Upload en cours...');
+        const r = await SD.apiUploadAsync(f, d.persona || null);
+        if (r && r.url) {
+          // Create media record in mediatheque with folder=pp
+          await SD.apiAsync('POST', '/posting/medias', { persona_id: d.persona || null, media_type: 'image', url: r.url, folder: 'pp' });
+          // Reload pool
+          const medias = await SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pp');
+          if (Array.isArray(medias)) this.setState({ ppMedias: medias });
+          this.toastMsg('Photo ajoutée au pool');
+        } else { this.toastMsg('Erreur upload'); }
+      };
+      inp.click();
+    };
     const interestList = ['Beauté', 'Fitness', 'Lifestyle', 'Voyage', 'Mode', 'Nutrition', 'Yoga', 'Wellness', 'Food', 'Musique', 'Déco', 'Tech'];
     const interests = interestList.map(t => {
       const onI = prof.interests.indexOf(t) >= 0;
@@ -1815,7 +1843,7 @@ class Component extends DCLogic {
       linkLabel: pk === 'x' ? 'Site web' : 'Lien en bio', linkWrap: { display: 'block', gridColumn: pk === 'x' ? 'auto' : 'span 2' },
       privTitle: pk === 'x' ? 'Protéger les posts' : 'Confidentialité', privDesc: pk === 'x' ? 'Seuls les abonnés approuvés voient les posts du compte' : 'Un compte privé masque ses publications aux non-abonnés',
       banners: [0, 1, 2, 3, 4, 5].map(i => { const on2 = (prof.banner ?? 0) === i; return { pick: () => this.upd(x => { x.profile[pk].banner = i; }), ring: { borderRadius: 12, padding: 3, cursor: 'pointer', border: '2px solid ' + (on2 ? '#7c6cf6' : 'transparent'), boxShadow: on2 ? '0 0 16px rgba(124,108,246,.4)' : 'none' }, style: { width: '100%', aspectRatio: '3', borderRadius: 9, background: this.photo(p.color, (i * 3 + 1) % 8) } }; }),
-      bioCount: (prof.bio || '').length + (pk === 'x' ? ' / 160' : ' / 150'), bioSugs, photos, interests, hls,
+      bioCount: (prof.bio || '').length + (pk === 'x' ? ' / 160' : ' / 150'), bioSugs, photos, ppCount: pool.length, addToPool, interests, hls,
       addHl: () => this.upd(x => { x.profile.ig.highlights.push('Nouveau'); }),
       dupCurrent: () => acc && this.dup(acc), delCurrent: () => acc && this.setState({ confirm: { ids: [acc.id] } })
     };
