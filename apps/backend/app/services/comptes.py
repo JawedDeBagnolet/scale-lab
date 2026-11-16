@@ -188,6 +188,7 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
     from app.services.engine import LogCollector
 
     runner_log = logging.getLogger("automation.ig_runner")
+    logger.info("_dispatch_profile_edit: %s fields=%s", handle or compte_id, list(fields.keys()))
     collector = LogCollector(upstream=runner_log.info)
 
     # Map frontend fields to configure_profile kwargs

@@ -962,8 +962,30 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                             else:
                                 log("   timeout chargement lien (continue)")
 
-                            results["link"] = True
-                            log("   ✓ lien configure")
+                            # Verify: check the link appears in the links list
+                            await asyncio.sleep(1)
+                            all_els = await driver.find_elements(refresh=True)
+                            # Extract domain from URL for matching (e.g. "youtube.com" from "https://youtube.com/xyz")
+                            import re
+                            domain_match = re.search(r'(?:https?://)?(?:www\.)?([^/]+)', url)
+                            domain = domain_match.group(1) if domain_match else url
+                            found = False
+                            for e in all_els:
+                                t = (e.get('text', '') or '').lower()
+                                if domain.lower() in t or url.lower() in t:
+                                    log("   ✓ lien verifie: '%s'" % e.get('text', '')[:40])
+                                    found = True
+                                    results["link"] = True
+                                    break
+                            if not found:
+                                log("   ⚠ lien '%s' non retrouve dans la liste" % domain)
+                                # Don't mark as success — the link may not have been applied
+                                results["link"] = False
+
+                    if not url:
+                        pass  # Delete case already handled above
+                    elif "link" not in results:
+                        results["link"] = False
 
                     # Go back to edit_profile (from links list)
                     back = await driver.find_element("Modifier le profil", contains=True, clickable=True, refresh=True)
