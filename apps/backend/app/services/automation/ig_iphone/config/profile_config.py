@@ -203,22 +203,72 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
     return True
 
 
+async def _recover_to_profile(driver, navigator, log) -> bool:
+    """Depuis n'importe quel ecran IG, retourner au profil.
+
+    Detecte l'ecran actuel et navigue en arriere jusqu'au profil.
+    Gere: edit_profile, settings, sub-screens, feed, etc.
+    """
+    for attempt in range(5):
+        all_els = await driver.find_elements(refresh=True)
+        texts = [(e.get('text', '') or '') for e in all_els]
+        texts_lower = [t.lower() for t in texts]
+
+        # Already on profile? (has settings/gear icon + "Modifier le profil")
+        has_modifier = any("modifier le profil" in t for t in texts_lower)
+        has_param = any("param" in t for t in texts_lower)
+        if has_modifier and not any("modifier la photo" in t for t in texts_lower):
+            # On profile page (not edit profile screen)
+            return True
+        if has_param:
+            return True
+
+        # On edit profile screen? (has "Modifier la photo" + "Prénom et nom")
+        if any("nom et pr" in t or "nom de profil" in t for t in texts_lower):
+            retour = await driver.find_element("Retour", clickable=True, refresh=True)
+            if not retour:
+                retour = await driver.find_element("cedent", contains=True, clickable=True, refresh=True)
+            if retour:
+                rtap = retour.get('tap', {})
+                log("   [recovery] ferme edit profil (y=%d)" % rtap.get('y', 0))
+                await driver.ht.tap(rtap['x'], rtap['y'])
+                await asyncio.sleep(1.5)
+                continue
+
+        # On sub-screen (bio, liens, etc)? Look for "Retour" / "<" / "Précédent"
+        retour = await driver.find_element("Retour", clickable=True, refresh=True)
+        if not retour:
+            retour = await driver.find_element("cedent", contains=True, clickable=True, refresh=True)
+        if retour:
+            rtap = retour.get('tap', {})
+            log("   [recovery] retour (y=%d)" % rtap.get('y', 0))
+            await driver.ht.tap(rtap['x'], rtap['y'])
+            await asyncio.sleep(1.5)
+            continue
+
+        # On feed or unknown — use navigator
+        log("   [recovery] navigation profil")
+        await navigator.go_profile()
+        await asyncio.sleep(2)
+        return True
+
+    return False
+
+
 async def _open_settings(driver, navigator, log) -> bool:
     """Ouvre l'ecran Parametres et activite."""
-    # Try to find settings button on current screen first (may already be on profile)
+    # Try settings button on current screen
     el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
     if not el:
         el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
     if not el:
-        # Not on profile — navigate there
-        log("   -> Navigation: Profil")
-        await navigator.go_profile()
-        await asyncio.sleep(2)
+        # Recover to profile first
+        await _recover_to_profile(driver, navigator, log)
+        await asyncio.sleep(1)
         el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
         if not el:
             el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
     if not el:
-        # Still not found — dump and fail
         await _dump_screen(driver, log, "open_settings_fail")
         log("   ! bouton parametres non trouve")
         return False
@@ -1092,22 +1142,21 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Select all via tap → wait → re-tap → "Tout sélectionner"
-                    tx = tap.get('x', 180)
+                    # Select all: tap at start of field → cursor appears → re-tap cursor → "Tout sélectionner"
+                    # Tap at x=24 (left edge of text field, from UI dump) to place cursor at start
                     ty = tap.get('y', 140)
                     selected = False
                     for attempt in range(3):
-                        # Tap to place cursor
-                        jx = tx + random.randint(-3, 3)
-                        jy = ty + random.randint(-3, 3)
-                        await driver.ht.tap(jx, jy)
+                        # Tap at left edge of text field to place cursor at start
+                        await driver.ht.tap(24 + random.randint(0, 5), ty + random.randint(-2, 2))
                         await asyncio.sleep(random.uniform(0.8, 1.2))
-                        # Re-tap near same spot to trigger context menu
-                        jx2 = tx + random.randint(-5, 5)
-                        jy2 = ty + random.randint(-5, 5)
-                        await driver.ht.tap(jx2, jy2)
+                        # Re-tap near cursor to trigger context menu
+                        await driver.ht.tap(24 + random.randint(0, 8), ty + random.randint(-2, 2))
                         await asyncio.sleep(0.8)
+                        # Search for "Tout sélectionner" / "sélectionner"
                         sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
+                        if not sel:
+                            sel = await driver.find_element("Tout s", contains=True, clickable=True, refresh=True)
                         if sel:
                             stap = sel.get('tap', {})
                             log("   tap 'Tout sélectionner' (tentative %d)" % (attempt + 1))
@@ -1115,9 +1164,9 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                             await asyncio.sleep(0.5)
                             selected = True
                             break
-                        log("   retry sélection (%d/3)" % (attempt + 1))
-                        # Dismiss any menu by tapping elsewhere
-                        await driver.ht.tap(20, 300)
+                        log("   retry sélection bio (%d/3)" % (attempt + 1))
+                        # Dismiss any menu by tapping elsewhere then come back
+                        await driver.ht.tap(187, 300)
                         await asyncio.sleep(0.5)
 
                     if not selected:
