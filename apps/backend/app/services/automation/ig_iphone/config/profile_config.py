@@ -670,16 +670,60 @@ async def set_profile_photo(driver, navigator, photo_url=None, photo_index=0, lo
 
     # Step 0: Push media to iPhone gallery if URL provided
     if photo_url:
-        from app.services.automation.ig_iphone.media import push_media_via_mcp
-        # No EXIF spoof for profile photos, and pass auth for R2 URLs
-        import os
-        auth_token = os.environ.get("API_SECRET", "")
-        push_result = await push_media_via_mcp(driver, photo_url, log=log, spoof=False, auth_header=auth_token if "scalelab" in photo_url else None)
-        if not push_result.get("success"):
-            log("   ! push media echoue: %s" % push_result.get("error", "?"))
+        # Download on VPS → SCP to iPhone → import to gallery
+        # (MCP run_command doesn't work on this iPhone, use SSH instead)
+        import os, tempfile, httpx
+        log("   [media] download sur VPS: %s" % photo_url[:60])
+        try:
+            # 1. Download image on VPS
+            headers = {}
+            if "scalelab" in photo_url:
+                api_secret = os.environ.get("API_SECRET", "")
+                if api_secret:
+                    headers["Authorization"] = "Bearer " + api_secret
+            async with httpx.AsyncClient(timeout=30, verify=False) as client:
+                resp = await client.get(photo_url, headers=headers, follow_redirects=True)
+                if resp.status_code != 200:
+                    log("   ! download echoue: HTTP %d" % resp.status_code)
+                    return False
+            ext = ".jpg"
+            if ".png" in photo_url: ext = ".png"
+            elif ".webp" in photo_url: ext = ".webp"
+            local_path = "/tmp/pp_%s%s" % (os.urandom(4).hex(), ext)
+            with open(local_path, "wb") as f:
+                f.write(resp.content)
+            log("   [media] telecharge: %d Ko" % (len(resp.content) // 1024))
+
+            # 2. SCP to iPhone via SSH tunnel
+            from app.services.dispatch import _ssh_exec
+            ssh_port = driver.ht.ssh_port if hasattr(driver.ht, 'ssh_port') else 44
+            host = driver.ht.host if hasattr(driver.ht, 'host') else "127.0.0.1"
+            iphone_dir = "/var/mobile/Media/th_media"
+            iphone_path = "%s/pp_%s%s" % (iphone_dir, os.urandom(4).hex(), ext)
+            await _ssh_exec(ssh_port, "mkdir -p %s" % iphone_dir, host=host, timeout=5)
+            # SCP via subprocess
+            import subprocess
+            scp_cmd = ["scp", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
+                        "-P", str(ssh_port), local_path, "root@%s:%s" % (host, iphone_path)]
+            proc = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=30)
+            os.remove(local_path)
+            if proc.returncode != 0:
+                log("   ! SCP echoue: %s" % proc.stderr[:60])
+                return False
+            log("   [media] SCP OK → %s" % iphone_path)
+
+            # 3. Import to gallery via GalleryService
+            from app.services.automation.ig_iphone.media import _frida_save_to_gallery
+            ok = await _frida_save_to_gallery(iphone_path, log, driver=driver)
+            if not ok:
+                log("   ! import galerie echoue")
+                return False
+            log("   [media] importe dans la galerie")
+            await asyncio.sleep(2)
+        except Exception as e:
+            log("   ! push media erreur: %s" % str(e)[:100])
             return False
-        log("   media pousse dans la galerie")
-        photo_index = 0  # La photo pushee est la plus recente
+        photo_index = 0
 
     # Step 1: Open edit profile
     if not await _open_edit_profile(driver, navigator, log):
