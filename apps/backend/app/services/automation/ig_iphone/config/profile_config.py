@@ -678,9 +678,9 @@ async def set_profile_photo(driver, navigator, photo_url=None, photo_index=0, lo
             # 1. Download image on VPS
             headers = {}
             if "scalelab" in photo_url:
-                api_secret = os.environ.get("API_SECRET", "")
-                if api_secret:
-                    headers["Authorization"] = "Bearer " + api_secret
+                from app.config import settings
+                if settings.api_secret:
+                    headers["Authorization"] = "Bearer " + settings.api_secret
             async with httpx.AsyncClient(timeout=30, verify=False) as client:
                 resp = await client.get(photo_url, headers=headers, follow_redirects=True)
                 if resp.status_code != 200:
