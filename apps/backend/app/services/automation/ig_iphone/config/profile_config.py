@@ -671,7 +671,10 @@ async def set_profile_photo(driver, navigator, photo_url=None, photo_index=0, lo
     # Step 0: Push media to iPhone gallery if URL provided
     if photo_url:
         from app.services.automation.ig_iphone.media import push_media_via_mcp
-        push_result = await push_media_via_mcp(driver, photo_url, log=log, spoof=True)
+        # No EXIF spoof for profile photos, and pass auth for R2 URLs
+        import os
+        auth_token = os.environ.get("API_SECRET", "")
+        push_result = await push_media_via_mcp(driver, photo_url, log=log, spoof=False, auth_header=auth_token if "scalelab" in photo_url else None)
         if not push_result.get("success"):
             log("   ! push media echoue: %s" % push_result.get("error", "?"))
             return False

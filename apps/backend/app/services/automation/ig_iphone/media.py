@@ -58,7 +58,7 @@ def _scp_to_iphone(local_path, remote_path, timeout=30):
     return r.returncode == 0
 
 
-async def push_media_via_mcp(driver, media_url, log=print, device=None, market="FR", spoof=True, phone_id=None):
+async def push_media_via_mcp(driver, media_url, log=print, device=None, market="FR", spoof=True, phone_id=None, auth_header=None):
     """Push un media dans la galerie iPhone.
 
     Pipeline:
@@ -119,8 +119,9 @@ async def push_media_via_mcp(driver, media_url, log=print, device=None, market="
         })
 
         # 4. iPhone telecharge (depuis spoof server ou R2 direct)
+        auth_flag = '-H "Authorization: Bearer %s"' % auth_header if auth_header else ''
         result = await driver.ht._call("run_command", {
-            "command": 'curl -sL -o "%s" "%s" && echo "OK $(wc -c < "%s" | tr -d " ")" || echo "FAIL"' % (iphone_path, download_url, iphone_path),
+            "command": 'curl -sL %s -o "%s" "%s" && echo "OK $(wc -c < "%s" | tr -d " ")" || echo "FAIL"' % (auth_flag, iphone_path, download_url, iphone_path),
             "timeout": 120,
         })
         out = ""
