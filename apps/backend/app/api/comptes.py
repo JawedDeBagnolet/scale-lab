@@ -258,6 +258,7 @@ class ProfileUpdateRequest(BaseModel):
     age_limit: str | None = None      # "18+", "21+", or null
     pro_type: str | None = None        # "creator", "business"
     pro_category: str | None = None
+    photo_url: str | None = None          # R2 URL of new profile photo
 
 @router.post("/{compte_id}/profile-update")
 async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncSession = Depends(get_db)):
@@ -280,7 +281,7 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
 
     # Separate internal config vs IG-pushable fields
     INTERNAL_KEYS = {"pro_type", "pro_category"}
-    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business", "age_limit"}
+    IG_KEYS = {"full_name", "biography", "external_url", "is_private", "is_business", "age_limit", "photo_url"}
 
     # Update internal config
     config_changed = False

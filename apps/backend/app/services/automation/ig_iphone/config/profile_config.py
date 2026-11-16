@@ -659,40 +659,95 @@ async def add_link(driver, navigator, url, title=None, log: Callable = print) ->
     return True
 
 
-async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = print) -> bool:
-    """Change la photo de profil."""
-    log("-> Config: photo de profil (index=%d)" % photo_index)
+async def set_profile_photo(driver, navigator, photo_url=None, photo_index=0, log: Callable = print) -> bool:
+    """Change la photo de profil.
+
+    Si photo_url est fourni : push le media dans la galerie iPhone,
+    puis selectionne la photo la plus recente (index 0).
+    Sinon : selectionne la photo a photo_index dans la galerie.
+    """
+    log("-> Config: photo de profil%s" % (" (url=%s)" % photo_url[:40] if photo_url else " (index=%d)" % photo_index))
+
+    # Step 0: Push media to iPhone gallery if URL provided
+    if photo_url:
+        from app.services.automation.ig_iphone.media import push_media_via_mcp
+        push_result = await push_media_via_mcp(driver, photo_url, log=log, spoof=True)
+        if not push_result.get("success"):
+            log("   ! push media echoue: %s" % push_result.get("error", "?"))
+            return False
+        log("   media pousse dans la galerie")
+        photo_index = 0  # La photo pushee est la plus recente
+
+    # Step 1: Open edit profile
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    el = await driver.find_element("Modifier la photo de profil", contains=True, clickable=True, refresh=True)
+
+    # Step 2: Tap "Modifier la photo de profil" / "Modifier l'image"
+    el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
+    if not el:
+        el = await driver.find_element("Modifier l'image", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton photo profil non trouve")
         await _go_back(driver, navigator, log)
         return False
     tap = el.get('tap', {})
+    log("   tap '%s' (y=%d)" % ((el.get('text', '') or '')[:30], tap.get('y', 0)))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.0, 2.0))
-    await asyncio.sleep(1.5)
-    gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
+    await asyncio.sleep(2)
+
+    # Step 3: Ensure "Photo de profil" tab (not "Avatar")
+    photo_tab = await driver.find_element("Photo de profil", clickable=True, refresh=True)
+    if photo_tab:
+        ptap = photo_tab.get('tap', {})
+        await driver.ht.tap(ptap['x'], ptap['y'])
+        await asyncio.sleep(0.5)
+
+    # Step 4: Tap "Choisir dans la bibliothèque"
+    gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
     if not gallery:
-        gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
+        gallery = await driver.find_element("Choisir dans", contains=True, clickable=True, refresh=True)
     if not gallery:
-        gallery = await driver.find_element("Nouvelle photo", contains=True, clickable=True, refresh=True)
-    if gallery:
-        tap = gallery.get('tap', {})
-        await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(random.uniform(1.0, 2.0))
+        log("   ! bouton galerie non trouve")
+        await _dump_screen(driver, log, "photo_no_gallery")
+        await _go_back(driver, navigator, log)
+        return False
+    tap = gallery.get('tap', {})
+    log("   tap '%s' (y=%d)" % ((gallery.get('text', '') or '')[:30], tap.get('y', 0)))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(3)
+
+    # Step 5: Select the most recent photo (first "Miniature photo")
+    photos = await driver.find_elements("Miniature", contains=True, clickable=True, refresh=True)
+    if not photos:
+        log("   ! aucune photo dans la galerie")
+        await _go_back(driver, navigator, log)
+        return False
+    # Filter out "Camera" — real photos only
+    real_photos = [p for p in photos if "Cam" not in (p.get('text', '') or '')]
+    if not real_photos:
+        real_photos = photos
+    idx = min(photo_index, len(real_photos) - 1)
+    target = real_photos[idx]
+    tap = target.get('tap', {})
+    log("   selectionne photo %d/%d (y=%d)" % (idx, len(real_photos), tap.get('y', 0)))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(2)
+
+    # Step 6: "C'est fait"
+    if not await _tap_done(driver, log):
+        log("   ! validation photo echouee")
+        await _go_back(driver, navigator, log)
+        return False
+
+    # Step 7: Wait for upload
+    log("   attente upload photo...")
+    for _ in range(15):
         await asyncio.sleep(2)
-        photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-        if photos and photo_index < len(photos):
-            tap = photos[photo_index].get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(random.uniform(1.0, 2.0))
-            await asyncio.sleep(1)
-            await _tap_done(driver, log)
-            await asyncio.sleep(2)
-    await _go_back(driver, navigator, log)
-    log("   photo de profil modifiee")
+        check = await driver.find_element("Modifier le profil", refresh=True)
+        if check:
+            log("   ✓ photo de profil modifiee")
+            return True
+    log("   ⚠ timeout attente upload — photo peut-etre appliquee")
     return True
 
 
@@ -1503,6 +1558,10 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
     # ── Phase 4 : limite d'âge ─────────────────────────
     if "age_limit" in config:
         results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
+
+    # ── Phase 5 : photo de profil ──────────────────────
+    if "photo_url" in config:
+        results["photo"] = await set_profile_photo(driver, navigator, photo_url=config["photo_url"], log=log)
 
     log("=" * 50)
     log("CONFIG TERMINEE: %s" % results)
