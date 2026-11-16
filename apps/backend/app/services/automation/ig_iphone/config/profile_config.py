@@ -836,45 +836,143 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     title = None
                     log("   [4] lien -> (supprimer)")
 
-                if await _tap_field(driver, log, "Ajouter des liens"):
-                    if url:
-                        el = await driver.find_element("Ajouter un lien", contains=True, clickable=True, refresh=True)
-                        if not el:
-                            el = await driver.find_element("lien externe", contains=True, clickable=True)
-                        if el:
-                            tap = el.get('tap', {})
-                            log("   tap '%s' (y=%d)" % (el.get('text', '')[:30], tap.get('y', 0)))
+                # Step 1: Tap "Ajouter des liens" in edit_profile (navigates to links list)
+                # NOTE: Don't use _tap_field — the links list screen has NO done button
+                links_btn = await driver.find_element("Ajouter des liens", contains=True, refresh=True)
+                if not links_btn:
+                    links_btn = await driver.find_element("liens", contains=True, refresh=True)
+                if not links_btn:
+                    log("   ! bouton liens non trouve sur edit_profile")
+                else:
+                    tap = links_btn.get('tap', {})
+                    log("   tap '%s' (y=%d)" % (links_btn.get('text', '')[:30], tap.get('y', 0)))
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+                    # Step 2: We're on the links list screen
+                    # Check if there's an existing link to edit or if we add new
+                    await _dump_screen(driver, log, "liste liens")
+
+                    if not url:
+                        # DELETE existing link: tap on it, then "Supprimer le lien"
+                        # Find existing link (any element with a URL-like text, y > 130)
+                        all_els = await driver.find_elements(refresh=True)
+                        existing = None
+                        for e in all_els:
+                            t = (e.get('text', '') or '')
+                            r = e.get('rect', {})
+                            if r.get('y', 0) > 130 and ('.' in t or 'http' in t.lower()):
+                                existing = e
+                                break
+                        if existing:
+                            tap = existing.get('tap', {})
+                            log("   tap lien existant '%s' (y=%d)" % (existing.get('text', '')[:30], tap.get('y', 0)))
                             await driver.ht.tap(tap['x'], tap['y'])
+                            await asyncio.sleep(1.5)
+                            # Now on "Modifier le lien" screen — tap "Supprimer le lien"
+                            del_btn = await driver.find_element("Supprimer le lien", contains=True, clickable=True, refresh=True)
+                            if del_btn:
+                                tap = del_btn.get('tap', {})
+                                log("   tap 'Supprimer le lien' (y=%d)" % tap.get('y', 0))
+                                await driver.ht.tap(tap['x'], tap['y'])
+                                await asyncio.sleep(1.5)
+                                # Confirmation popup: "Supprimer le lien de votre bio ?"
+                                confirm = await driver.find_element("Supprimer", clickable=True, refresh=True)
+                                if confirm and confirm.get('rect', {}).get('y', 0) > 350:
+                                    tap = confirm.get('tap', {})
+                                    log("   confirmation suppression (y=%d)" % tap.get('y', 0))
+                                    await driver.ht.tap(tap['x'], tap['y'])
+                                    await asyncio.sleep(3)
+                                    results["link"] = True
+                                    log("   ✓ lien supprime")
+                            else:
+                                log("   ! bouton supprimer non trouve")
+                        else:
+                            log("   ! aucun lien existant a supprimer")
+                    else:
+                        # ADD or EDIT a link
+                        # Check if there's an existing link to edit
+                        all_els = await driver.find_elements(refresh=True)
+                        existing = None
+                        for e in all_els:
+                            t = (e.get('text', '') or '')
+                            r = e.get('rect', {})
+                            if r.get('y', 0) > 130 and ('.' in t or 'http' in t.lower()):
+                                existing = e
+                                break
+
+                        if existing:
+                            # EDIT existing link — tap on it
+                            tap = existing.get('tap', {})
+                            log("   tap lien existant '%s' pour modifier (y=%d)" % (existing.get('text', '')[:30], tap.get('y', 0)))
+                            await driver.ht.tap(tap['x'], tap['y'])
+                        else:
+                            # ADD new link — tap "Ajouter un lien"
+                            add_btn = await driver.find_element("Ajouter un lien", contains=True, clickable=True)
+                            if add_btn:
+                                tap = add_btn.get('tap', {})
+                                log("   tap 'Ajouter un lien' (y=%d)" % tap.get('y', 0))
+                                await driver.ht.tap(tap['x'], tap['y'])
+                            else:
+                                log("   ! ni lien existant ni bouton ajouter")
+                                await _go_back(driver, navigator, log)
+                                # skip rest of link editing
+                                edit_fields.pop("link", None)
+
+                        if "link" in edit_fields:
                             await asyncio.sleep(random.uniform(1.5, 2.5))
-                            # Find and fill URL field
-                            url_f = await driver.find_element("URL", clickable=True, refresh=True)
+                            # Now on "Modifier le lien" or "Ajouter un lien" screen
+                            # Fill URL field (tap it, clear, type)
+                            url_f = await driver.find_element("URL", contains=True, clickable=True, refresh=True)
+                            if not url_f:
+                                # URL field might show the current URL text instead
+                                url_f = await driver.find_element("http", contains=True, clickable=True)
                             if url_f:
                                 tap = url_f.get('tap', {})
                                 await driver.ht.tap(tap['x'], tap['y'])
-                                await asyncio.sleep(0.3)
-                                await driver.type_text(url)
                                 await asyncio.sleep(0.5)
+                                await _clear_and_type(driver, log, url)
                                 log("   URL saisie: '%s'" % url[:40])
                             else:
                                 log("   ! champ URL non trouve")
+
                             # Fill title if provided
                             if title:
                                 title_f = await driver.find_element("Titre", clickable=True, refresh=True)
                                 if title_f:
                                     tap = title_f.get('tap', {})
                                     await driver.ht.tap(tap['x'], tap['y'])
-                                    await asyncio.sleep(0.3)
-                                    await driver.type_text(title)
                                     await asyncio.sleep(0.5)
+                                    await _clear_and_type(driver, log, title)
                                     log("   titre saisi: '%s'" % title[:30])
-                            await _tap_done(driver, log)
-                            await asyncio.sleep(1.5)
-                        else:
-                            log("   ! bouton 'Ajouter un lien' non trouve")
 
-                    await _go_back(driver, navigator, log)
-                    results["link"] = True
-                    log("   ✓ lien configure")
+                            # Tap "C'est fait" — no popup, just loading 3-5s then back to links list
+                            await _tap_done(driver, log)
+                            # Wait for loading to finish (poll for links list or edit_profile)
+                            for attempt in range(8):
+                                await asyncio.sleep(1)
+                                check = await driver.find_element("Liens", refresh=True)
+                                if check and check.get('rect', {}).get('y', 0) < 80:
+                                    log("   chargement lien termine")
+                                    break
+                                check2 = await driver.find_element("Modifier le profil", refresh=True)
+                                if check2:
+                                    log("   retour a edit_profile")
+                                    break
+                            else:
+                                log("   timeout chargement lien (continue)")
+
+                            results["link"] = True
+                            log("   ✓ lien configure")
+
+                    # Go back to edit_profile (from links list)
+                    back = await driver.find_element("Modifier le profil", contains=True, clickable=True, refresh=True)
+                    if back and back.get('rect', {}).get('y', 0) < 80:
+                        tap = back.get('tap', {})
+                        await driver.ht.tap(tap['x'], tap['y'])
+                        await asyncio.sleep(1.5)
+                    else:
+                        await _go_back(driver, navigator, log)
 
         if "gender" in edit_fields:
             log("   [5] genre -> '%s'" % edit_fields["gender"])
