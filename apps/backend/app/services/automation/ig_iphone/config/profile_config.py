@@ -728,15 +728,23 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
         return False
 
     # Step 2: Find "Type de compte et outils" (may need to scroll)
-    for attempt in range(3):
+    await _dump_screen(driver, log, "parametres")
+    el = None
+    for attempt in range(5):
         el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
         if el:
             break
+        # Also try English ("Account type")
+        el = await driver.find_element("Account type", contains=True, clickable=True, refresh=True)
+        if el:
+            break
         # Scroll down to find it
-        await driver.ht.swipe(187, 600, 187, 300, 300)
-        await asyncio.sleep(1)
+        log("   scroll down (tentative %d/5)" % (attempt + 1))
+        await driver.ht.swipe(187, 600, 187, 200, 400)
+        await asyncio.sleep(1.5)
 
     if not el:
+        await _dump_screen(driver, log, "parametres apres scroll")
         log("   ! 'Type de compte et outils' non trouvé")
         await _go_back(driver, navigator, log)
         return False
