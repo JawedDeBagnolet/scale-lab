@@ -15,40 +15,74 @@ from typing import Any, Callable
 
 # ── Screen awareness (safety layer) ─────────────────────────────────────────
 
-SCREENS = {
-    "edit_profile": {
-        "markers": ["nom", "Bio", "Modifier la photo"],
-        "desc": "Modifier le profil",
-    },
-    "edit_field": {
-        "markers": ["fait", "Champ de texte"],
-        "desc": "Edition d'un champ",
-    },
-    "own_profile": {
-        "markers": ["Modifier le profil", "Partager le profil"],
-        "desc": "Profil du compte",
-    },
-    "feed": {
-        "markers": ["Fil principal", "Explorer"],
-        "desc": "Feed principal",
-    },
-}
+# Atlas complet des écrans Instagram — marqueurs issus des dumps réels
+# Le titre de page est TOUJOURS dans la zone y < 80 et est le marqueur le plus fiable.
+# L'ordre de détection compte : les écrans les plus spécifiques d'abord.
+SCREENS = [
+    # ── Sous-écrans profonds (spécifiques) ──
+    ("age_picker",      {"title": ["ge par d"], "body": ["Enregistrer", "Fermer"]}),
+    ("age_limit",       {"title": ["ge minimum"], "body": ["Par d", "Ajouter ou supprimer"]}),
+    ("other_tools",     {"title": ["Autre"], "body": ["Prospects", "ge minimum"]}),
+    ("account_type",    {"title": ["Type de compte et outils"], "body": ["Statistiques", "Autre"]}),
+    ("edit_link",       {"title": ["Modifier le lien"], "body": ["Effacer le texte"]}),
+    ("links_list",      {"title": ["Liens"], "body": ["Ajouter un lien"]}),
+    ("photo_gallery",   {"body": ["Miniature", "Photos"]}),
+    ("photo_menu",      {"body": ["Choisir dans la", "biblioth"]}),
+    ("creation_menu",   {"body": ["Reel", "Publication", "Story", "Fermer"]}),
+    # ── Écrans d'édition ──
+    ("edit_field",      {"body": ["fait", "Champ de texte"]}),
+    ("edit_bio",        {"title": ["Retour"], "body": ["Bio", "fait"]}),
+    ("edit_profile",    {"title": ["Modifier le profil"], "body": ["nom", "Bio"]}),
+    # ── Paramètres ──
+    ("settings",        {"title": ["tres et activit"], "body": ["Votre compte"]}),
+    ("settings_deep",   {"title": ["tres et activit"], "body": ["Type de compte"]}),
+    # ── Profil & feed ──
+    ("own_profile",     {"body": ["Modifier le profil", "Partager le profil"]}),
+    ("feed",            {"body": ["Fil principal", "Explorer"]}),
+    # ── iOS ──
+    ("ios_home",        {"body": ["FaceTime", "Photos"]}),
+]
 
 
 async def _detect_screen(driver, log=None) -> str:
-    """Detect current screen from accessibility tree markers."""
+    """Detect current screen from accessibility tree markers.
+
+    Uses the SCREENS atlas — checks title (y<80) and body markers.
+    Returns the first matching screen_id, or 'unknown'.
+    """
     els = await driver.find_elements(refresh=True)
-    texts = set()
+    title_texts = []
+    body_texts = []
     for e in els:
-        t = (e.get('text', '') or '').lower()
-        if t:
-            texts.add(t)
-    all_text = ' '.join(texts)
-    # Check each screen type
-    for screen_id, info in SCREENS.items():
-        matches = sum(1 for m in info["markers"] if m.lower() in all_text)
-        if matches >= 2 or (len(info["markers"]) == 2 and matches >= 1):
-            return screen_id
+        t = (e.get('text', '') or '').strip()
+        if not t or len(t) < 2:
+            continue
+        r = e.get('rect', {})
+        y = r.get('y', 999)
+        if y < 80:
+            title_texts.append(t.lower())
+        body_texts.append(t.lower())
+
+    title_joined = ' '.join(title_texts)
+    body_joined = ' '.join(body_texts)
+
+    for screen_id, sig in SCREENS:
+        # Check title markers (all must match if present)
+        title_markers = sig.get("title", [])
+        if title_markers:
+            title_ok = all(m.lower() in title_joined for m in title_markers)
+            if not title_ok:
+                continue
+        # Check body markers (at least 2 must match, or all if only 1-2)
+        body_markers = sig.get("body", [])
+        if body_markers:
+            body_hits = sum(1 for m in body_markers if m.lower() in body_joined)
+            needed = min(2, len(body_markers))
+            if body_hits < needed:
+                continue
+        # Matched
+        return screen_id
+
     return "unknown"
 
 
@@ -204,20 +238,57 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
 
 
 async def _open_settings(driver, navigator, log) -> bool:
-    """Ouvre l'ecran Parametres et activite."""
-    await navigator.go_profile()
-    await asyncio.sleep(1)
-    el = await driver.find_element(contains="param", clickable=True, refresh=True)
+    """Ouvre l'ecran Parametres et activite avec vérification."""
+    # D'abord s'assurer qu'on est sur le profil
+    screen = await _detect_screen(driver, log)
+    if screen not in ("own_profile", "settings", "settings_deep"):
+        log("   [nav] écran '%s' → navigation vers profil" % screen)
+        # Essayer le tab profil dans la barre du bas
+        profile_tab = await driver.find_element(text="Profil", clickable=True, refresh=True)
+        if profile_tab and profile_tab.get('rect', {}).get('y', 0) > 650:
+            tap = profile_tab.get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2)
+        else:
+            await navigator.go_profile()
+            await asyncio.sleep(2)
+
+        # Vérifier qu'on est bien sur le profil
+        screen = await _detect_screen(driver, log)
+        if screen != "own_profile":
+            log("   [nav] ⚠ écran '%s' après navigation profil" % screen)
+
+    if screen in ("settings", "settings_deep"):
+        log("   déjà dans les paramètres")
+        return True
+
+    # Trouver le bouton paramètres (icône engrenage en haut à droite du profil)
+    el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="activit", clickable=True, refresh=True)
+        el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
     if not el:
-        log("   ! bouton parametres non trouve")
+        log("   ! bouton parametres non trouvé")
+        await _dump_screen(driver, log, "profil_no_settings")
         return False
     tap = el.get('tap', {})
-    log("   ouvre parametres")
+    log("   ouvre parametres (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.0, 2.0))
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # Vérifier qu'on est bien dans les paramètres
+    screen = await _detect_screen(driver, log)
+    if screen not in ("settings", "settings_deep"):
+        log("   ! écran '%s' après ouverture paramètres (attendu settings)" % screen)
+        # Peut-être le menu création s'est ouvert — fermer
+        if screen == "creation_menu":
+            close = await driver.find_element("Fermer", clickable=True, refresh=True)
+            if close:
+                ct = close.get('tap', {})
+                await driver.ht.tap(ct['x'], ct['y'])
+                await asyncio.sleep(1)
+            return await _open_settings(driver, navigator, log)
+        return False
+    log("   ✓ paramètres ouverts")
     return True
 
 
@@ -786,17 +857,22 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     if not await _open_settings(driver, navigator, log):
         return False
 
-    # Step 2: Find "Type de compte et outils" (may need to scroll)
-    for attempt in range(3):
+    # Step 2: Find "Type de compte et outils" (needs scroll — it's below the fold)
+    # D'après les dumps : visible après 1 scroll dans les paramètres
+    el = None
+    for attempt in range(5):
         el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
         if el:
             break
-        # Scroll down to find it
-        await driver.ht.swipe(187, 600, 187, 300, 300)
-        await asyncio.sleep(1)
+        log("   scroll paramètres (%d/5)" % (attempt + 1))
+        await driver.ht.swipe(187, 650, 187, 250, 350)
+        await asyncio.sleep(1.5)
 
     if not el:
-        log("   ! 'Type de compte et outils' non trouvé")
+        log("   ! 'Type de compte et outils' non trouvé après 5 scrolls")
+        screen = await _detect_screen(driver, log)
+        log("   écran détecté: '%s'" % screen)
+        await _dump_screen(driver, log, "settings_no_type_compte")
         await _go_back(driver, navigator, log)
         return False
 
@@ -805,10 +881,16 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.5, 2.5))
 
+    # Vérifier qu'on est sur l'écran "Type de compte et outils"
+    screen = await _detect_screen(driver, log)
+    if screen != "account_type":
+        log("   ⚠ écran '%s' après tap Type de compte (attendu account_type)" % screen)
+
     # Step 3: Tap "Autre"
     autre = await driver.find_element("Autre", clickable=True, refresh=True)
     if not autre:
         log("   ! 'Autre' non trouvé")
+        await _dump_screen(driver, log, "type_compte_no_autre")
         await _go_back(driver, navigator, log)
         return False
 
@@ -816,6 +898,11 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     log("   tap 'Autre' (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
+
+    # Vérifier qu'on est sur l'écran "Autre"
+    screen = await _detect_screen(driver, log)
+    if screen != "other_tools":
+        log("   ⚠ écran '%s' après tap Autre (attendu other_tools)" % screen)
 
     # Step 4: Tap "Âge minimum"
     age_btn = await driver.find_element("ge minimum", contains=True, clickable=True, refresh=True)
@@ -1125,13 +1212,45 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-                    # Triple-tap to select all + type
-                    tx = tap.get('x', 180)
-                    ty = tap.get('y', 140)
-                    for _ in range(3):
-                        await driver.ht.tap(tx, ty)
-                        await asyncio.sleep(0.08)
-                    await asyncio.sleep(0.5)
+
+                    # Trouver le champ texte dans le sous-écran bio
+                    bio_field = await driver.find_element("Champ de texte", contains=True, refresh=True)
+                    if bio_field:
+                        ft = bio_field.get('tap', {})
+                        cx, cy = ft.get('x', 187), ft.get('y', 138)
+                    else:
+                        cx, cy = 187, 138
+
+                    # Approche "Tout sélectionner" : tap → pause → re-tap ±1px → menu contextuel
+                    await driver.ht.tap(cx, cy)
+                    await asyncio.sleep(random.uniform(0.8, 1.2))
+                    await driver.ht.tap(cx + 1, cy)
+                    await asyncio.sleep(0.6)
+
+                    # Chercher "Tout sélectionner" (ou "Tout s") dans le menu contextuel
+                    selected = False
+                    for attempt in range(3):
+                        sel = await driver.find_element("Tout s", contains=True, clickable=True, refresh=True)
+                        if sel:
+                            st = sel.get('tap', {})
+                            log("   'Tout sélectionner' trouvé (y=%d)" % st.get('y', 0))
+                            await driver.ht.tap(st['x'], st['y'])
+                            await asyncio.sleep(0.3)
+                            selected = True
+                            break
+                        # Re-tap pour faire apparaître le menu
+                        await driver.ht.tap(cx, cy)
+                        await asyncio.sleep(0.8)
+                        await driver.ht.tap(cx + 1, cy)
+                        await asyncio.sleep(0.6)
+
+                    if not selected:
+                        log("   ⚠ 'Tout sélectionner' non trouvé, fallback triple-tap")
+                        for _ in range(3):
+                            await driver.ht.tap(cx, cy)
+                            await asyncio.sleep(0.15)
+                        await asyncio.sleep(0.5)
+
                     log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                     await driver.ht.type_text(edit_fields["bio"])
                     await asyncio.sleep(1.0)
