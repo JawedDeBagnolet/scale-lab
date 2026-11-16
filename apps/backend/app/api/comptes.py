@@ -299,10 +299,6 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
         ref = config.get(k) if k == "age_limit" else live.get(k)
         if changes[k] != ref:
             ig_diff[k] = changes[k]
-            # Also persist age_limit in config for future diffs
-            if k == "age_limit":
-                config[k] = changes[k]
-                config_changed = True
 
     if ig_diff:
         await emit_log("comptes", "profile", "info", compte.handle,

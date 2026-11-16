@@ -236,6 +236,9 @@ async def get_own_profile(compte) -> dict | None:
             if not user:
                 return None
 
+            # Log all keys for debugging (helps discover age_limit field)
+            logger.info("get_own_profile: raw keys for %s: %s", compte.handle, sorted(user.keys()))
+
             is_pro = (
                 user.get("is_business", False)
                 or user.get("is_professional", False)
