@@ -76,15 +76,17 @@ async def _ensure_healthy(sess: DeviceSession, log: Callable) -> tuple[bool, str
     return None
 
 
-# ── Session extraction after login ─────────────────────────────────────
+# ── Session extraction (smart: only when needed) ──────────────────────
 
 async def _maybe_extract_session(sess, log):
-    """After login, extract and store the API session for all comptes.
+    """Extract and store the API session if missing or expired.
 
-    ScaleTweak writes /tmp/scale_session.json 15s after app launch.
-    We read it, verify it, and store it in Compte.session_data so:
-    - Scraper comptes: IGScraperClient can use it for private API calls
-    - Regular comptes: profile-live can read own profile with own session
+    Called on every run. Checks if session_data already exists and is
+    still valid before doing anything. This way:
+    - First login: session gets extracted and stored
+    - Subsequent runs: no-op (session already present)
+    - Session expired/lost: automatically re-extracted from the iPhone
+      (ScaleTweak keeps /tmp/scale_session.json up to date)
     """
     try:
         from app.db import AsyncSessionLocal
@@ -97,7 +99,24 @@ async def _maybe_extract_session(sess, log):
 
         is_scraper = compte.is_scraper
         tag = "[scraper]" if is_scraper else "[session]"
-        log(f"   {tag} extraction de session après login...")
+        sd = compte.session_data or {}
+
+        # Check if we already have a usable session
+        has_session = bool(sd.get("sessionid") or sd.get("authorization"))
+
+        if has_session:
+            # Verify the session is still valid (lightweight check)
+            try:
+                from app.services.session_extract import verify_session
+                check = await verify_session(sd, platform=compte.plateforme or "ig")
+                if check.get("valid"):
+                    return  # Session OK, nothing to do
+                log(f"   {tag} session expirée (status={check.get('status')}) — ré-extraction...")
+            except Exception as e:
+                log(f"   {tag} vérification session échouée ({e}) — ré-extraction...")
+        else:
+            log(f"   {tag} pas de session stockée — extraction...")
+
         from app.services.session_extract import extract_and_store
         session = await extract_and_store(
             str(sess.compte_id),
@@ -111,9 +130,9 @@ async def _maybe_extract_session(sess, log):
             from app.services.comptes import _log as emit_log
             await emit_log("comptes", "session", "success", compte.handle, f"Session extraite — ds_user_id={session.get('ds_user_id', '?')}")
         else:
-            log(f"   {tag} ⚠ extraction de session échouée — sera réessayé au prochain login")
+            log(f"   {tag} ⚠ extraction de session échouée — sera réessayé au prochain run")
             from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée après login", code="SESSION_EXTRACT_FAILED")
+            await emit_log("comptes", "session", "warning", compte.handle, "Extraction de session échouée — réessai au prochain run", code="SESSION_EXTRACT_FAILED")
             # Only mark scraper accounts as needing reconnection
             if is_scraper:
                 async with AsyncSessionLocal() as db2:
@@ -170,7 +189,7 @@ async def run_ig_task(
             # Ensure login
             await sess.ensure_login(drv, None)
 
-            # Extract & store session for scraper accounts (auto after login)
+            # Extract session if missing or expired (smart: no-op if valid)
             await _maybe_extract_session(sess, log)
 
             _check_abort(abort_event)
