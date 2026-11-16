@@ -216,7 +216,7 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
     try:
         if plateforme == "ig":
             from app.services.automation.ig_runner import run_ig_task
-            ok, msg = await run_ig_task(compte_id, "ig_config", values=config_values, log=collector)
+            ok, msg = await run_ig_task(compte_id, "ig_config", values={"config": config_values}, log=collector)
         else:
             await _log("comptes", "profile_edit", "warning", handle or str(compte_id),
                         f"Pas de script de config profil pour {plateforme}")
