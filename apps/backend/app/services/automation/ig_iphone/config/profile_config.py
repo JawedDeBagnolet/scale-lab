@@ -1157,12 +1157,13 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     # Select all: tap center of field → cursor → re-tap → "Tout sélectionner"
                     ty = bio_field_y
                     selected = False
+                    tap_x = 187  # center of field
                     for attempt in range(3):
-                        # Tap at center of text field to place cursor
-                        await driver.ht.tap(100 + random.randint(0, 80), ty + random.randint(-2, 2))
-                        await asyncio.sleep(random.uniform(0.8, 1.2))
-                        # Re-tap near same spot to trigger cursor context menu
-                        await driver.ht.tap(100 + random.randint(0, 80), ty + random.randint(-2, 2))
+                        # Tap 1: place cursor in field
+                        await driver.ht.tap(tap_x, ty)
+                        await asyncio.sleep(random.uniform(0.9, 1.1))
+                        # Tap 2: re-tap on cursor (±1px) to trigger context menu
+                        await driver.ht.tap(tap_x + random.randint(-1, 1), ty + random.randint(-1, 1))
                         await asyncio.sleep(0.8)
                         # Search for "Tout sélectionner" / "sélectionner"
                         sel = await driver.find_element("lectionner", contains=True, clickable=True, refresh=True)
