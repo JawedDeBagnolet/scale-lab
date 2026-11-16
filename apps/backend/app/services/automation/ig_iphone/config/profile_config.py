@@ -942,7 +942,20 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                                 tap = url_f.get('tap', {})
                                 await driver.ht.tap(tap['x'], tap['y'])
                                 await asyncio.sleep(0.5)
-                                await _clear_and_type(driver, log, url)
+                                # Use "Effacer le texte" (X) button to clear existing URL
+                                # (safe on link screen — unlike name field, X doesn't exit)
+                                x_btn = await driver.find_element("Effacer le texte", clickable=True, refresh=True)
+                                if x_btn:
+                                    xt = x_btn.get('tap', {})
+                                    await driver.ht.tap(xt['x'], xt['y'])
+                                    await asyncio.sleep(0.3)
+                                    log("   URL effacee via X")
+                                else:
+                                    # Fallback: triple-tap select all
+                                    await _clear_and_type(driver, log, "")
+                                # Type the new URL
+                                await driver.ht.type_text(url)
+                                await asyncio.sleep(0.5)
                                 log("   URL saisie: '%s'" % url[:40])
                             else:
                                 log("   ! champ URL non trouve")
@@ -954,7 +967,14 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                                     tap = title_f.get('tap', {})
                                     await driver.ht.tap(tap['x'], tap['y'])
                                     await asyncio.sleep(0.5)
-                                    await _clear_and_type(driver, log, title)
+                                    # Clear existing title with X button if present
+                                    x_btn = await driver.find_element("Effacer le texte", clickable=True, refresh=True)
+                                    if x_btn:
+                                        xt = x_btn.get('tap', {})
+                                        await driver.ht.tap(xt['x'], xt['y'])
+                                        await asyncio.sleep(0.3)
+                                    await driver.ht.type_text(title)
+                                    await asyncio.sleep(0.5)
                                     log("   titre saisi: '%s'" % title[:30])
 
                             # Tap "C'est fait" — no popup, just loading 3-5s then back to links list
@@ -982,9 +1002,14 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                             domain = domain_match.group(1) if domain_match else url
                             found = False
                             for e in all_els:
-                                t = (e.get('text', '') or '').lower()
-                                if domain.lower() in t or url.lower() in t:
-                                    log("   ✓ lien verifie: '%s'" % e.get('text', '')[:40])
+                                t = (e.get('text', '') or '').strip().lower()
+                                r = e.get('rect', {})
+                                # Only check elements in the links list area (y > 100)
+                                if r.get('y', 0) < 100:
+                                    continue
+                                # Exact match: the link text must BE the domain/URL, not just contain it
+                                if t == domain.lower() or t == url.lower() or t == ('https://' + url).lower():
+                                    log("   ✓ lien verifie: '%s' (y=%d)" % (e.get('text', '')[:40], r.get('y', 0)))
                                     found = True
                                     results["link"] = True
                                     break
