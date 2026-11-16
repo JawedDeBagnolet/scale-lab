@@ -7,7 +7,7 @@ et nettoie apres publication.
 Le flow validé (testé et fonctionnel) :
   1. VPS telecharge depuis R2 (avec auth Bearer) vers /tmp local VPS
   2. SCP vers iPhone via tunnel SSH (port 2223)
-  3. MTOUCH /import sur port 8091 (via SSH curl) → Camera Roll
+  3. MTOUCH /import — appel HTTP direct du VPS vers 127.0.0.1:8191 (tunnel) → Camera Roll
   4. Le script de publish selectionne le 1er media (le plus recent)
   5. Cleanup : rm fichier + suppression galerie
 
@@ -29,7 +29,8 @@ logger = logging.getLogger("ig_iphone.media")
 IPHONE_TMP = "/var/mobile/Media/th_media"
 LOCAL_TMP = "/tmp/th_media_staging"
 SPOOF_SERVER = "http://127.0.0.1:8502"  # VPS localhost
-MTOUCH_PORT = 8191  # MTOUCH/gallery port ON the iPhone (called via SSH curl)
+MTOUCH_PORT_IPHONE = 8091  # MTOUCH port sur l'iPhone
+MTOUCH_PORT_VPS = 8191     # MTOUCH tunnel sur le VPS (127.0.0.1:8191 → iPhone:8091)
 
 # SSH tunnel ports (VPS → iPhone via reverse tunnel)
 DEFAULT_SSH_PORT = 2223
@@ -120,36 +121,61 @@ async def _scp_to_iphone(local_path: str, remote_path: str,
 
 async def _mtouch_import(iphone_path: str, ssh_port: int = DEFAULT_SSH_PORT,
                           log=logger.info) -> bool:
-    """Importe un fichier dans la galerie iOS via MTOUCH /import (SSH curl)."""
-    from app.services.dispatch import _ssh_exec
+    """Importe un fichier dans la galerie iOS via MTOUCH /import.
 
+    Methode principale : appel HTTP direct du VPS vers 127.0.0.1:8191 (tunnel).
+    Fallback : SSH curl vers iPhone localhost:8091 (ne marche pas sur tous les iPhones).
+    """
+    import httpx
     import json
-    payload = json.dumps({"path": iphone_path})
-    # Escape single quotes for shell
-    payload_escaped = payload.replace("'", "'\\''")
-    cmd = (
-        "curl -s --max-time 15 -X POST http://127.0.0.1:%d/import "
-        "-H 'Content-Type: application/json' "
-        "-d '%s'" % (MTOUCH_PORT, payload_escaped)
-    )
 
-    ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
-    if not ok:
-        log("   [gallery] MTOUCH SSH echoue: %s" % str(output)[:80])
-        return False
+    url = "http://127.0.0.1:%d/import" % MTOUCH_PORT_VPS
+    payload = {"path": iphone_path}
 
+    # ── Methode 1 : appel HTTP direct depuis le VPS ──
     try:
-        if not isinstance(output, str):
-            output = output.decode("utf-8", errors="replace")
-        data = json.loads(output)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, json=payload)
+        data = resp.json()
         if data.get("ok"):
             log("   [gallery] MTOUCH import OK (%s)" % data.get("type", "?"))
             return True
         else:
-            log("   [gallery] MTOUCH import KO: %s" % data.get("error", output[:60]))
+            log("   [gallery] MTOUCH import KO: %s" % data.get("error", str(data)[:60]))
             return False
-    except Exception:
-        log("   [gallery] MTOUCH reponse invalide: %s" % str(output)[:80])
+    except httpx.ConnectError:
+        log("   [gallery] MTOUCH tunnel 8191 injoignable, essai SSH fallback...")
+    except Exception as e:
+        log("   [gallery] MTOUCH direct erreur: %s — essai SSH fallback..." % str(e)[:80])
+
+    # ── Methode 2 (fallback) : SSH curl vers iPhone ──
+    try:
+        from app.services.dispatch import _ssh_exec
+
+        payload_json = json.dumps(payload)
+        payload_escaped = payload_json.replace("'", "'\\''")
+        cmd = (
+            "curl -s --max-time 15 -X POST http://127.0.0.1:%d/import "
+            "-H 'Content-Type: application/json' "
+            "-d '%s'" % (MTOUCH_PORT_IPHONE, payload_escaped)
+        )
+
+        ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
+        if not ok:
+            log("   [gallery] MTOUCH SSH fallback echoue: %s" % str(output)[:80])
+            return False
+
+        if not isinstance(output, str):
+            output = output.decode("utf-8", errors="replace")
+        data = json.loads(output)
+        if data.get("ok"):
+            log("   [gallery] MTOUCH import OK via SSH (%s)" % data.get("type", "?"))
+            return True
+        else:
+            log("   [gallery] MTOUCH SSH KO: %s" % data.get("error", output[:60]))
+            return False
+    except Exception as e:
+        log("   [gallery] MTOUCH SSH fallback erreur: %s" % str(e)[:80])
         return False
 
 
@@ -326,31 +352,55 @@ async def cleanup_media_batch(driver, iphone_paths, log=print):
 
 async def cleanup_gallery_via_mtouch(count: int, ssh_port: int = DEFAULT_SSH_PORT,
                                       log=logger.info) -> bool:
-    """Supprime les N photos les plus recentes via MTOUCH /delete."""
-    from app.services.dispatch import _ssh_exec
+    """Supprime les N photos les plus recentes via MTOUCH /delete.
+
+    Methode principale : HTTP direct VPS → 127.0.0.1:8191
+    Fallback : SSH curl vers iPhone localhost:8091
+    """
+    import httpx
     import json
 
     log("   [gallery] suppression de %d photo(s)..." % count)
-    payload = json.dumps({"count": count}).replace("'", "'\\''")
-    cmd = (
-        "curl -s --max-time 15 -X POST http://127.0.0.1:%d/delete "
-        "-H 'Content-Type: application/json' "
-        "-d '%s'" % (MTOUCH_PORT, payload)
-    )
-    ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
-    if not ok:
-        log("   [gallery] suppression SSH echoue")
-        return False
+    url = "http://127.0.0.1:%d/delete" % MTOUCH_PORT_VPS
+    payload = {"count": count}
 
+    # ── Methode 1 : HTTP direct ──
     try:
-        data = json.loads(output if isinstance(output, str) else output.decode())
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, json=payload)
+        data = resp.json()
         if data.get("ok"):
             log("   [gallery] %d photo(s) supprimee(s)" % data.get("deleted", count))
             return True
         log("   [gallery] suppression KO: %s" % data.get("error", "?"))
         return False
-    except Exception:
-        log("   [gallery] reponse invalide: %s" % str(output)[:60])
+    except httpx.ConnectError:
+        log("   [gallery] MTOUCH tunnel 8191 injoignable, essai SSH fallback...")
+    except Exception as e:
+        log("   [gallery] MTOUCH direct erreur: %s — essai SSH fallback..." % str(e)[:80])
+
+    # ── Methode 2 (fallback) : SSH curl ──
+    try:
+        from app.services.dispatch import _ssh_exec
+
+        payload_json = json.dumps(payload).replace("'", "'\\''")
+        cmd = (
+            "curl -s --max-time 15 -X POST http://127.0.0.1:%d/delete "
+            "-H 'Content-Type: application/json' "
+            "-d '%s'" % (MTOUCH_PORT_IPHONE, payload_json)
+        )
+        ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
+        if not ok:
+            log("   [gallery] suppression SSH fallback echoue")
+            return False
+        data = json.loads(output if isinstance(output, str) else output.decode())
+        if data.get("ok"):
+            log("   [gallery] %d photo(s) supprimee(s) via SSH" % data.get("deleted", count))
+            return True
+        log("   [gallery] suppression SSH KO: %s" % data.get("error", "?"))
+        return False
+    except Exception as e:
+        log("   [gallery] suppression SSH fallback erreur: %s" % str(e)[:60])
         return False
 
 
