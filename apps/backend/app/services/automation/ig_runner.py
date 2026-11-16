@@ -76,17 +76,16 @@ async def _ensure_healthy(sess: DeviceSession, log: Callable) -> tuple[bool, str
     return None
 
 
-# ── Session extraction (smart: only when needed) ──────────────────────
+# ── Session extraction after login ─────────────────────────────────────
 
 async def _maybe_extract_session(sess, log):
-    """Extract and store the API session if missing or expired.
+    """After login, extract and store the API session for all comptes.
 
-    Called on every run. Checks if session_data already exists and is
-    still valid before doing anything. This way:
-    - First login: session gets extracted and stored
-    - Subsequent runs: no-op (session already present)
-    - Session expired/lost: automatically re-extracted from the iPhone
-      (ScaleTweak keeps /tmp/scale_session.json up to date)
+    ScaleTweak writes /tmp/scale_session.json 15s after app launch.
+    We read it, verify it, and store it in Compte.session_data so:
+    - Scraper comptes: IGScraperClient can use it for private API calls
+    - Regular comptes: profile-live can use the account's own session
+      for accurate pro status, category, etc.
     """
     try:
         from app.db import AsyncSessionLocal
@@ -99,24 +98,7 @@ async def _maybe_extract_session(sess, log):
 
         is_scraper = compte.is_scraper
         tag = "[scraper]" if is_scraper else "[session]"
-        sd = compte.session_data or {}
-
-        # Check if we already have a usable session
-        has_session = bool(sd.get("sessionid") or sd.get("authorization"))
-
-        if has_session:
-            # Verify the session is still valid (lightweight check)
-            try:
-                from app.services.session_extract import verify_session
-                check = await verify_session(sd, platform=compte.plateforme or "ig")
-                if check.get("valid"):
-                    return  # Session OK, nothing to do
-                log(f"   {tag} session expirée (status={check.get('status')}) — ré-extraction...")
-            except Exception as e:
-                log(f"   {tag} vérification session échouée ({e}) — ré-extraction...")
-        else:
-            log(f"   {tag} pas de session stockée — extraction...")
-
+        log(f"   {tag} extraction de session après login...")
         from app.services.session_extract import extract_and_store
         session = await extract_and_store(
             str(sess.compte_id),
@@ -130,9 +112,9 @@ async def _maybe_extract_session(sess, log):
             from app.services.comptes import _log as emit_log
             await emit_log("comptes", "session", "success", compte.handle, f"Session extraite — ds_user_id={session.get('ds_user_id', '?')}")
         else:
-            log(f"   {tag} ⚠ extraction de session échouée — sera réessayé au prochain run")
+            log(f"   {tag} ⚠ extraction de session échouée — sera réessayé au prochain login")
             from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "warning", compte.handle, "Extraction de session échouée — réessai au prochain run", code="SESSION_EXTRACT_FAILED")
+            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée après login", code="SESSION_EXTRACT_FAILED")
             # Only mark scraper accounts as needing reconnection
             if is_scraper:
                 async with AsyncSessionLocal() as db2:
@@ -189,7 +171,7 @@ async def run_ig_task(
             # Ensure login
             await sess.ensure_login(drv, None)
 
-            # Extract session if missing or expired (smart: no-op if valid)
+            # Extract & store session for scraper accounts (auto after login)
             await _maybe_extract_session(sess, log)
 
             _check_abort(abort_event)
@@ -444,6 +426,91 @@ async def _login(drv, nav, sess, values, log):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Photo push helper (profile photo → Camera Roll)
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def _push_profile_photo(photo_url: str, sess, log) -> bool:
+    """Download profile photo from R2 and push to iPhone Camera Roll.
+
+    Flow: R2 (via gateway auth) → VPS /tmp → SCP to iPhone → MTOUCH import
+
+    Args:
+        photo_url: Full URL to the media (e.g. https://api.scalelab.win/media/...)
+        sess: DeviceSession with ctx containing mcp_port, ssh_port
+        log: Logging callable
+
+    Returns:
+        True if the photo was successfully imported into Camera Roll.
+    """
+    import os
+    import uuid as _uuid
+
+    from app.config import settings
+    from app.services.media_pipeline import transfer_to_iphone, import_to_gallery
+    from app.services.dispatch import DEFAULT_SSH_PORT, DEFAULT_MCP_PORT
+
+    mcp_port = sess.ctx.get("mcp_port", DEFAULT_MCP_PORT)
+    ssh_port = sess.ctx.get("ssh_port", DEFAULT_SSH_PORT)
+
+    # 1. Download from R2 via gateway (needs Bearer auth)
+    tmp_dir = "/tmp/scale_media"
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    ext = ".jpg"
+    if ".png" in photo_url.lower():
+        ext = ".png"
+    elif ".webp" in photo_url.lower():
+        ext = ".webp"
+    local_path = f"{tmp_dir}/pp_{_uuid.uuid4().hex[:8]}{ext}"
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30, verify=False) as client:
+            headers = {"Authorization": f"Bearer {settings.api_secret}"}
+            resp = await client.get(photo_url, headers=headers, follow_redirects=True)
+            if resp.status_code != 200:
+                log("   [photo] download failed HTTP %d from %s" % (resp.status_code, photo_url[:60]))
+                return False
+            with open(local_path, "wb") as f:
+                f.write(resp.content)
+
+        size_kb = os.path.getsize(local_path) / 1024
+        log("   [photo] downloaded %.0f KB" % size_kb)
+
+        if size_kb < 1:
+            log("   [photo] file too small (%.0f KB), aborting" % size_kb)
+            return False
+
+        # 2. Transfer to iPhone via SSH tunnel
+        iphone_path = await transfer_to_iphone(local_path, ssh_port)
+        if not iphone_path:
+            log("   [photo] transfer to iPhone failed")
+            return False
+        log("   [photo] on iPhone: %s" % iphone_path)
+
+        # 3. Import to Camera Roll via gallery service (port 8191) + MTOUCH fallback
+        imported = await import_to_gallery(iphone_path, mcp_port, ssh_port)
+        if imported:
+            log("   [photo] ✓ imported to Camera Roll")
+            await asyncio.sleep(2)  # let Photos index the new asset
+            return True
+        else:
+            log("   [photo] ⚠ MTOUCH import failed")
+            return False
+
+    except Exception as e:
+        log("   [photo] error: %s" % str(e)[:150])
+        return False
+    finally:
+        # Cleanup VPS temp file
+        try:
+            if os.path.isfile(local_path):
+                os.remove(local_path)
+        except OSError:
+            pass
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  CONFIG
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -452,7 +519,33 @@ async def _config(drv, nav, sess, values, log):
     """Apply profile config changes."""
     from app.services.automation.ig_iphone.config.profile_config import configure_profile
     config = values.get("config", values)
+
+    # photo_url is handled inside configure_profile (push to gallery + spoof + UI selection)
+    # Inject spoof context (market, phone_id) so configure_profile can pass them to the spoofer
+    if isinstance(config, dict) and config.get("photo_url"):
+        try:
+            from app.db import async_session
+            from app.models.compte import Compte
+            from app.models.persona import Persona
+            async with async_session() as db:
+                compte = await db.get(Compte, sess.compte_id)
+                if compte and compte.persona_id:
+                    persona = await db.get(Persona, compte.persona_id)
+                    if persona and persona.market:
+                        config["market"] = persona.market
+                config["phone_id"] = str(sess.compte_id)
+        except Exception:
+            pass  # defaults to FR in configure_profile
+
     requested = list(config.keys()) if isinstance(config, dict) else []
+    # Remove spoof context keys from requested (they're not profile fields)
+    for _k in ("market", "phone_id", "device"):
+        if _k in requested:
+            requested.remove(_k)
+    # photo_url will become photo_index inside configure_profile — track it as photo_url
+    if "photo_index" in requested:
+        requested.remove("photo_index")
+        requested.append("photo")
     result = await configure_profile(drv, nav, log=log, **values)
     if result:
         # Check actual values — False means the field was attempted but failed

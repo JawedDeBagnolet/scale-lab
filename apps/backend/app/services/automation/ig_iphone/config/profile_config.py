@@ -1015,17 +1015,24 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
         if key in config:
             edit_fields[key] = config[key]
 
-    # photo_url → push to gallery first, then select as photo_index=0
+    # photo_url → push to gallery first (with EXIF spoof), then select as photo_index=0
     if "photo_url" in edit_fields and edit_fields["photo_url"]:
         photo_url = edit_fields.pop("photo_url")
-        log("   [0] push photo vers galerie: %s" % str(photo_url)[:60])
+        # Spoof params from config (market, device, phone_id)
+        spoof_market = config.get("market", "FR")
+        spoof_device = config.get("device")
+        spoof_phone_id = config.get("phone_id")
+        log("   [0] push photo vers galerie (spoof=%s): %s" % (spoof_market, str(photo_url)[:60]))
         try:
             from app.services.automation.ig_iphone.media import push_media_to_gallery
             from app.config import settings
             result = await push_media_to_gallery(
                 photo_url,
                 auth_header="Bearer %s" % settings.api_secret,
-                spoof=False,  # pas de spoof pour les photos de profil
+                spoof=True,
+                market=spoof_market,
+                device=spoof_device,
+                phone_id=spoof_phone_id,
                 log=log,
             )
             if result.get("success"):
