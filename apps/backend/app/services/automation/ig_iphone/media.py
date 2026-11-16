@@ -239,8 +239,8 @@ async def push_media_to_gallery(
             if phone_id:
                 download_url += "&phone_id=%s" % urllib.parse.quote(phone_id, safe="")
             log("   [media] via spoofer (phone_id=%s)" % (phone_id or device or "random"))
-            # Le spoof server est en local sur le VPS, pas besoin d'auth
-            dl_ok = await _vps_download(download_url, local_path, log=log)
+            # Forward auth header to spoof server so it can download from R2
+            dl_ok = await _vps_download(download_url, local_path, auth_header=auth_header, log=log)
             if not dl_ok:
                 log("   [media] ⚠ spoofer echoue, fallback download direct")
 
