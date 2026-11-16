@@ -152,7 +152,8 @@ async def _dispatch_auto_login(compte_id: UUID, plateforme: str) -> None:
     """
     from app.services.engine import LogCollector
 
-    collector = LogCollector()
+    runner_log = logging.getLogger("automation.ig_runner")
+    collector = LogCollector(upstream=runner_log.info)
     try:
         if plateforme == "ig":
             from app.services.automation.ig_runner import run_ig_task
@@ -185,6 +186,9 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
     configure_profile kwargs (bio, name, link, etc.) and captures session logs.
     """
     from app.services.engine import LogCollector
+
+    runner_log = logging.getLogger("automation.ig_runner")
+    collector = LogCollector(upstream=runner_log.info)
 
     # Map frontend fields to configure_profile kwargs
     FIELD_MAP = {
