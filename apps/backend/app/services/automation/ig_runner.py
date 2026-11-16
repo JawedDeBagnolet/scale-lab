@@ -562,6 +562,20 @@ async def _config(drv, nav, sess, values, log):
     return False, "ig_config: aucun champ configuré (demandés: %s)" % requested
 
 
+@_handler("ig_screen_dump")
+async def _screen_dump(drv, nav, sess, values, log):
+    """Dump accessibility tree of all key screens for atlas building."""
+    mode = values.get("mode", "current")
+    if mode == "all":
+        from app.services.automation.ig_iphone.config.screen_atlas import dump_all_screens
+        results = await dump_all_screens(drv, nav, log=log)
+        return True, "Atlas: %d écrans dumpés" % len(results)
+    else:
+        from app.services.automation.ig_iphone.config.screen_atlas import dump_current_screen
+        await dump_current_screen(drv, nav, log=log)
+        return True, "Dump écran courant OK"
+
+
 @_handler("ig_switch_pro")
 async def _switch_pro(drv, nav, sess, values, log):
     """Switch to professional account."""
