@@ -222,6 +222,7 @@ async def get_own_profile(compte) -> dict | None:
         headers["Authorization"] = authorization
 
     try:
+        import httpx
         async with httpx.AsyncClient(timeout=15, verify=False, proxy=proxy_url) as client:
             url = "https://i.instagram.com/api/v1/accounts/current_user/?edit=true"
             resp = await client.get(url, headers=headers)
