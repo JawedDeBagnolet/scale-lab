@@ -556,40 +556,99 @@ async def add_link(driver, navigator, url, title=None, log: Callable = print) ->
 
 
 async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = print) -> bool:
-    """Change la photo de profil."""
+    """Change la photo de profil avec vérification à chaque étape."""
     log("-> Config: photo de profil (index=%d)" % photo_index)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+
+    # 1. Trouver et taper "Modifier la photo"
+    el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
     if not el:
-        log("   ! bouton photo profil non trouve")
+        log("   ! bouton photo profil non trouvé")
+        await _dump_screen(driver, log, "edit_profile")
         await _go_back(driver, navigator, log)
         return False
     tap = el.get('tap', {})
+    log("   tap 'Modifier la photo' (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # 2. Vérifier menu d'action + taper galerie
+    gallery = None
+    for attempt in range(3):
+        gallery = await driver.find_element("Choisir dans la", contains=True, clickable=True, refresh=True)
+        if not gallery:
+            gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
+        if not gallery:
+            gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
+        if gallery:
+            break
+        log("   [retry %d] menu photo pas visible" % (attempt + 1))
+        await asyncio.sleep(1)
+
+    if not gallery:
+        log("   ! menu galerie non trouvé")
+        await _dump_screen(driver, log, "menu_photo")
+        await _go_back(driver, navigator, log)
+        return False
+
+    tap = gallery.get('tap', {})
+    log("   tap '%s' (y=%d)" % (gallery.get('text', '')[:30], tap.get('y', 0)))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # 3. Vérifier galerie chargée
+    photos = None
+    for attempt in range(3):
+        photos = await driver.find_elements("Miniature", contains=True, clickable=True, refresh=True)
+        if not photos:
+            photos = await driver.find_elements("Photo", contains=True, clickable=True, refresh=True)
+        if photos:
+            break
+        log("   [retry %d] galerie pas chargée" % (attempt + 1))
+        await asyncio.sleep(1.5)
+
+    if not photos or photo_index >= len(photos):
+        log("   ! galerie vide ou index hors limites (photos=%d, index=%d)" % (len(photos) if photos else 0, photo_index))
+        await _go_back(driver, navigator, log)
+        await _go_back(driver, navigator, log)
+        return False
+
+    # 4. Sélectionner la photo
+    log("   galerie: %d photos, sélection index=%d" % (len(photos), photo_index))
+    tap = photos[photo_index].get('tap', {})
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
-    await asyncio.sleep(1.5)
-    gallery = await driver.find_element(contains="galerie", clickable=True, refresh=True)
-    if not gallery:
-        gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
-    if not gallery:
-        gallery = await driver.find_element(contains="Nouvelle photo", clickable=True, refresh=True)
-    if gallery:
-        tap = gallery.get('tap', {})
-        await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(random.uniform(1.0, 2.0))
-        await asyncio.sleep(2)
-        photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-        if photos and photo_index < len(photos):
-            tap = photos[photo_index].get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(random.uniform(1.0, 2.0))
-            await asyncio.sleep(1)
-            await _tap_done(driver, log)
-            await asyncio.sleep(2)
+
+    # 5. Valider (Terminé/C'est fait)
+    done_found = False
+    for attempt in range(3):
+        done_found = await _tap_done(driver, log)
+        if done_found:
+            break
+        log("   [retry %d] bouton validation non trouvé" % (attempt + 1))
+        await _dump_screen(driver, log, "crop")
+        await asyncio.sleep(1.5)
+
+    if not done_found:
+        log("   ! impossible de valider la photo")
+        await _go_back(driver, navigator, log)
+        await _go_back(driver, navigator, log)
+        return False
+
+    # 6. Attendre retour edit_profile
+    log("   attente chargement photo...")
+    for _ in range(15):
+        await asyncio.sleep(1)
+        screen = await _detect_screen(driver, log)
+        if screen in ("edit_profile", "own_profile"):
+            log("   ✓ photo de profil modifiée")
+            await _go_back(driver, navigator, log)
+            return True
+
+    log("   ⚠ timeout chargement photo")
     await _go_back(driver, navigator, log)
-    log("   photo de profil modifiee")
-    return True
+    return False
 
 
 async def set_private(driver, navigator, private=True, log: Callable = print) -> bool:
@@ -1293,41 +1352,113 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "photo_index" in edit_fields:
             log("   [6] photo de profil")
-            el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+            photo_ok = False
+
+            # 6a. Trouver bouton "Modifier la photo de profil"
+            el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
             if not el:
                 await driver.scroll_up('normal')
                 await asyncio.sleep(0.5)
-                el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
-            if el:
+                el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
+            if not el:
+                log("   ! bouton 'Modifier la photo' non trouvé")
+                await _dump_screen(driver, log, "edit_profile")
+            else:
                 tap = el.get('tap', {})
+                log("   tap 'Modifier la photo' (y=%d)" % tap.get('y', 0))
                 await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(random.uniform(1.0, 2.0))
-                await asyncio.sleep(1.5)
-                gallery = await driver.find_element(contains="Choisir dans la", clickable=True, refresh=True)
+                await asyncio.sleep(random.uniform(1.5, 2.5))
+
+                # 6b. Vérifier que le menu d'action est apparu
+                gallery = None
+                for attempt in range(3):
+                    gallery = await driver.find_element("Choisir dans la", contains=True, clickable=True, refresh=True)
+                    if not gallery:
+                        gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
+                    if not gallery:
+                        gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
+                    if gallery:
+                        break
+                    log("   [retry %d] menu photo pas encore visible" % (attempt + 1))
+                    await asyncio.sleep(1)
+
                 if not gallery:
-                    gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
-                if gallery:
+                    log("   ! menu photo (galerie/bibliotheque) non trouvé")
+                    await _dump_screen(driver, log, "menu_photo")
+                    # Essayer de revenir
+                    await _go_back(driver, navigator, log)
+                else:
                     tap = gallery.get('tap', {})
-                    log("   choisir dans la bibliotheque")
+                    log("   tap '%s' (y=%d)" % (gallery.get('text', '')[:30], tap.get('y', 0)))
                     await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(random.uniform(1.0, 2.0))
-                    await asyncio.sleep(2)
-                    photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-                    idx = edit_fields["photo_index"]
-                    if photos and idx < len(photos):
-                        tap = photos[idx].get('tap', {})
-                        await driver.ht.tap(tap['x'], tap['y'])
-                        await asyncio.sleep(random.uniform(1.0, 2.0))
-                        await asyncio.sleep(1)
-                        await _tap_done(driver, log)
-                        log("   attente chargement photo...")
-                        for _ in range(15):
-                            await asyncio.sleep(1)
-                            check = await driver.find_element(contains="Modifier le profil", refresh=True)
-                            if check:
-                                log("   photo chargee")
-                                break
-                results["photo"] = True
+                    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+                    # 6c. Vérifier que la galerie est ouverte (miniatures visibles)
+                    photos = None
+                    for attempt in range(3):
+                        photos = await driver.find_elements("Miniature", contains=True, clickable=True, refresh=True)
+                        if not photos:
+                            photos = await driver.find_elements("Photo", contains=True, clickable=True, refresh=True)
+                        if photos:
+                            break
+                        log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
+                        await asyncio.sleep(1.5)
+
+                    if not photos:
+                        log("   ! galerie vide ou non chargee")
+                        await _dump_screen(driver, log, "galerie")
+                        await _go_back(driver, navigator, log)
+                    else:
+                        idx = edit_fields["photo_index"]
+                        log("   galerie: %d photos visibles, selection index=%d" % (len(photos), idx))
+                        if idx >= len(photos):
+                            log("   ! index %d hors limites (max=%d)" % (idx, len(photos) - 1))
+                            await _go_back(driver, navigator, log)
+                        else:
+                            tap = photos[idx].get('tap', {})
+                            log("   tap photo[%d] (y=%d, x=%d)" % (idx, tap.get('y', 0), tap.get('x', 0)))
+                            await driver.ht.tap(tap['x'], tap['y'])
+                            await asyncio.sleep(random.uniform(1.0, 2.0))
+
+                            # 6d. Vérifier qu'on est sur l'écran de crop/preview
+                            # Chercher "Terminé" ou "Choisir" ou "Enregistrer"
+                            done_found = False
+                            for attempt in range(3):
+                                done_found = await _tap_done(driver, log)
+                                if done_found:
+                                    break
+                                # Peut-être que la photo n'est pas encore chargée
+                                log("   [retry %d] bouton validation non trouvé après sélection photo" % (attempt + 1))
+                                await _dump_screen(driver, log, "crop_preview")
+                                await asyncio.sleep(1.5)
+
+                            if not done_found:
+                                log("   ! impossible de valider la photo — skip")
+                                await _go_back(driver, navigator, log)
+                            else:
+                                # 6e. Attendre le chargement et vérifier retour à edit_profile
+                                log("   attente chargement photo...")
+                                loaded = False
+                                for wait_i in range(15):
+                                    await asyncio.sleep(1)
+                                    screen = await _detect_screen(driver, log)
+                                    if screen == "edit_profile":
+                                        log("   ✓ photo chargee, retour edit_profile confirmé")
+                                        loaded = True
+                                        photo_ok = True
+                                        break
+                                    elif screen == "own_profile":
+                                        log("   ✓ photo chargee, retour profil")
+                                        loaded = True
+                                        photo_ok = True
+                                        break
+                                if not loaded:
+                                    log("   ⚠ timeout chargement photo (15s)")
+                                    await _dump_screen(driver, log, "apres_photo")
+
+            results["photo"] = photo_ok
+            if not photo_ok and "photo_url" not in results:
+                results["photo_url"] = False
 
         # Fermer l'edit profil
         await _go_back(driver, navigator, log)
