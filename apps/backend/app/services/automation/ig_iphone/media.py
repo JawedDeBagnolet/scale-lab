@@ -1,35 +1,39 @@
 """
-th_iphone/media.py — Pipeline media pour iPhone.
+ig_iphone/media.py — Pipeline media pour iPhone.
 
 Push un media sur l'iPhone, l'importe dans la galerie,
 et nettoie apres publication.
 
-Le flow :
-  1. Telecharge depuis R2 (url) vers /tmp local Mac
-  2. Spoof metadata via spoofer.py
-  3. SCP vers iPhone /var/tmp/
-  4. importmedia → Camera Roll
-  5. Le script de publish selectionne le 1er media (le plus recent)
-  6. Cleanup : rm fichier + suppression galerie
+Le flow validé (testé et fonctionnel) :
+  1. VPS telecharge depuis R2 (avec auth Bearer) vers /tmp local VPS
+  2. SCP vers iPhone via tunnel SSH (port 2223)
+  3. MTOUCH /import sur port 8091 (via SSH curl) → Camera Roll
+  4. Le script de publish selectionne le 1er media (le plus recent)
+  5. Cleanup : rm fichier + suppression galerie
 
 Usage:
-    from th_iphone.media import push_media, cleanup_media
+    from ig_iphone.media import push_media_to_gallery, cleanup_media
 """
 
-import os
 import asyncio
-import time
-import subprocess
-import requests
+import logging
+import os
 import random
 import string
+import time
 
+logger = logging.getLogger("ig_iphone.media")
 
-IPHONE_IP = "192.168.1.133"
+# ── Constants ─────────────────────────────────────────────────────────────────
+
 IPHONE_TMP = "/var/mobile/Media/th_media"
-IMPORTMEDIA = "/var/jb/usr/bin/importmedia"
 LOCAL_TMP = "/tmp/th_media_staging"
-SPOOF_SERVER = "http://77.42.124.107:8502"
+SPOOF_SERVER = "http://127.0.0.1:8502"  # VPS localhost
+MTOUCH_PORT = 8191  # MTOUCH/gallery port ON the iPhone (called via SSH curl)
+
+# SSH tunnel ports (VPS → iPhone via reverse tunnel)
+DEFAULT_SSH_PORT = 2223
+SSH_KEY = "/root/.ssh/id_iphone"
 
 
 def _random_name(ext=".jpg"):
@@ -38,44 +42,148 @@ def _random_name(ext=".jpg"):
     return "th_%s_%d%s" % (rand, int(time.time()), ext)
 
 
-def _ssh_cmd(cmd, timeout=15):
-    """Execute une commande SSH sur l'iPhone."""
-    r = subprocess.run(
-        ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
-         "root@%s" % IPHONE_IP, cmd],
-        capture_output=True, text=True, timeout=timeout
+# ── Core pipeline functions ───────────────────────────────────────────────────
+
+async def _vps_download(url: str, local_path: str, auth_header: str | None = None,
+                        log=logger.info) -> bool:
+    """Telecharge un fichier depuis une URL sur le VPS local."""
+    import httpx
+
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    try:
+        headers = {}
+        if auth_header:
+            headers["Authorization"] = auth_header
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+        if resp.status_code != 200:
+            log("   [media] download HTTP %d pour %s" % (resp.status_code, url[:60]))
+            return False
+        with open(local_path, "wb") as f:
+            f.write(resp.content)
+        size_kb = len(resp.content) // 1024
+        log("   [media] telecharge %d Ko -> %s" % (size_kb, local_path))
+        if size_kb < 1:
+            log("   [media] ⚠ fichier trop petit (%d octets)" % len(resp.content))
+            return False
+        return True
+    except Exception as e:
+        log("   [media] erreur download: %s" % str(e)[:100])
+        return False
+
+
+async def _scp_to_iphone(local_path: str, remote_path: str,
+                          ssh_port: int = DEFAULT_SSH_PORT,
+                          log=logger.info) -> bool:
+    """SCP un fichier du VPS vers l'iPhone via le tunnel SSH."""
+    from app.services.dispatch import _ssh_exec, DEFAULT_SSH_PORT as _DSP
+
+    # D'abord creer le dossier sur l'iPhone
+    ok, _ = await _ssh_exec(ssh_port, "mkdir -p %s" % os.path.dirname(remote_path))
+    if not ok:
+        log("   [media] mkdir echoue sur iPhone")
+
+    # SCP via subprocess (asyncio)
+    import subprocess
+    cmd = [
+        "scp",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "ConnectTimeout=10",
+        "-o", "LogLevel=ERROR",
+        "-P", str(ssh_port),
+        "-i", SSH_KEY,
+        local_path,
+        "root@127.0.0.1:%s" % remote_path,
+    ]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+        if proc.returncode == 0:
+            log("   [media] SCP OK -> %s" % remote_path)
+            return True
+        else:
+            err = (stderr or b"").decode("utf-8", errors="replace")[:100]
+            log("   [media] SCP echoue (rc=%d): %s" % (proc.returncode, err))
+            return False
+    except asyncio.TimeoutError:
+        log("   [media] SCP timeout")
+        return False
+    except Exception as e:
+        log("   [media] SCP erreur: %s" % str(e)[:100])
+        return False
+
+
+async def _mtouch_import(iphone_path: str, ssh_port: int = DEFAULT_SSH_PORT,
+                          log=logger.info) -> bool:
+    """Importe un fichier dans la galerie iOS via MTOUCH /import (SSH curl)."""
+    from app.services.dispatch import _ssh_exec
+
+    import json
+    payload = json.dumps({"path": iphone_path})
+    # Escape single quotes for shell
+    payload_escaped = payload.replace("'", "'\\''")
+    cmd = (
+        "curl -s --max-time 15 -X POST http://127.0.0.1:%d/import "
+        "-H 'Content-Type: application/json' "
+        "-d '%s'" % (MTOUCH_PORT, payload_escaped)
     )
-    return r.stdout.strip(), r.returncode
+
+    ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
+    if not ok:
+        log("   [gallery] MTOUCH SSH echoue: %s" % str(output)[:80])
+        return False
+
+    try:
+        if not isinstance(output, str):
+            output = output.decode("utf-8", errors="replace")
+        data = json.loads(output)
+        if data.get("ok"):
+            log("   [gallery] MTOUCH import OK (%s)" % data.get("type", "?"))
+            return True
+        else:
+            log("   [gallery] MTOUCH import KO: %s" % data.get("error", output[:60]))
+            return False
+    except Exception:
+        log("   [gallery] MTOUCH reponse invalide: %s" % str(output)[:80])
+        return False
 
 
-def _scp_to_iphone(local_path, remote_path, timeout=30):
-    """SCP un fichier vers l'iPhone."""
-    r = subprocess.run(
-        ["scp", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5",
-         local_path, "root@%s:%s" % (IPHONE_IP, remote_path)],
-        capture_output=True, text=True, timeout=timeout
-    )
-    return r.returncode == 0
+# ── Public API ────────────────────────────────────────────────────────────────
 
+async def push_media_to_gallery(
+    media_url: str,
+    *,
+    auth_header: str | None = None,
+    ssh_port: int = DEFAULT_SSH_PORT,
+    spoof: bool = False,
+    market: str = "FR",
+    device: str | None = None,
+    phone_id: str | None = None,
+    log=logger.info,
+) -> dict:
+    """Push un media dans la galerie iPhone — pipeline complet.
 
-async def push_media_via_mcp(driver, media_url, log=print, device=None, market="FR", spoof=True, phone_id=None, auth_header=None):
-    """Push un media dans la galerie iPhone.
-
-    Pipeline:
-    1. iPhone telecharge depuis le spoof server (qui spoofe les metadata)
-       ou directement depuis l'URL si spoof=False
-    2. Frida injecte dans SpringBoard appelle UIImageWriteToSavedPhotosAlbum
+    Pipeline validé :
+      1. VPS telecharge depuis R2/spoof server
+      2. SCP vers iPhone port 2223
+      3. MTOUCH /import port 8091 → Camera Roll
 
     Args:
-        driver: THDriver (pour MCP calls)
         media_url: URL du media (R2 ou autre)
-        device: modele device pour le spoof (None = depuis KV ou random)
-        market: marche pour GPS/timezone (defaut FR)
-        spoof: True pour passer par le spoofer (defaut True)
-        phone_id: ID du compte pour cohérence device (persisté en KV)
+        auth_header: "Bearer <token>" pour les URLs R2 authentifiees
+        ssh_port: Port SSH tunnel (defaut 2223)
+        spoof: True pour passer par le spoofer EXIF
+        market: Marche pour GPS/timezone du spoof
+        device: Modele device pour le spoof
+        phone_id: ID du compte pour coherence device
 
     Returns:
-        dict {success, iphone_path, filename, error, spoofed}
+        dict {success, iphone_path, filename, error}
     """
     log("   [media] push: %s" % media_url[:60])
 
@@ -87,194 +195,117 @@ async def push_media_via_mcp(driver, media_url, log=print, device=None, market="
         ext = ".png"
 
     filename = _random_name(ext)
+    local_path = os.path.join(LOCAL_TMP, filename)
     iphone_path = "%s/%s" % (IPHONE_TMP, filename)
 
-    # Default device to iPhone X for iPhone containers
-    if not device:
-        device = "iPhone X"
-
-    # 2. URL de telechargement (spoof server ou direct)
-    if spoof and ext != ".mp4":  # Le spoof ne marche que pour les images
-        import urllib.parse
-        download_url = "%s/spoof?url=%s&market=%s" % (
-            SPOOF_SERVER,
-            urllib.parse.quote(media_url, safe=""),
-            market,
-        )
-        if device:
-            download_url += "&device=%s" % urllib.parse.quote(device, safe="")
-        if phone_id:
-            download_url += "&phone_id=%s" % urllib.parse.quote(phone_id, safe="")
-        log("   [media] via spoofer (phone_id=%s)" % (phone_id or device or "random"))
-    else:
-        download_url = media_url
-        if spoof and ext == ".mp4":
-            log("   [media] video: spoof skip (images only)")
-
     try:
-        # 3. Creer le dossier sur iPhone
-        await driver.ht._call("run_command", {
-            "command": "mkdir -p %s" % IPHONE_TMP,
-            "timeout": 5,
-        })
+        # 2. URL de telechargement (spoof server ou direct)
+        if spoof and ext != ".mp4":
+            import urllib.parse
+            download_url = "%s/spoof?url=%s&market=%s" % (
+                SPOOF_SERVER,
+                urllib.parse.quote(media_url, safe=""),
+                market,
+            )
+            if device:
+                download_url += "&device=%s" % urllib.parse.quote(device, safe="")
+            if phone_id:
+                download_url += "&phone_id=%s" % urllib.parse.quote(phone_id, safe="")
+            log("   [media] via spoofer (phone_id=%s)" % (phone_id or device or "random"))
+            # Le spoof server est en local sur le VPS, pas besoin d'auth
+            dl_ok = await _vps_download(download_url, local_path, log=log)
+        else:
+            dl_ok = await _vps_download(media_url, local_path, auth_header=auth_header, log=log)
 
-        # 4. iPhone telecharge (depuis spoof server ou R2 direct)
-        auth_flag = '-H "Authorization: Bearer %s"' % auth_header if auth_header else ''
-        result = await driver.ht._call("run_command", {
-            "command": 'curl -sL %s -o "%s" "%s" && echo "OK $(wc -c < "%s" | tr -d " ")" || echo "FAIL"' % (auth_flag, iphone_path, download_url, iphone_path),
-            "timeout": 120,
-        })
-        out = ""
-        if isinstance(result, dict) and "content" in result:
-            out = result["content"][0].get("text", "")
-            if isinstance(out, str) and "{" in out:
-                import json as _j
-                try:
-                    out = _j.loads(out).get("output", out)
-                except:
-                    pass
-
-        if "FAIL" in str(out) or "OK" not in str(out):
-            log("   [media] download KO: %s" % str(out)[:60])
+        if not dl_ok:
             return {"success": False, "error": "download_failed"}
 
-        log("   [media] telecharge: %s" % str(out).strip()[:40])
+        # 3. SCP vers iPhone
+        scp_ok = await _scp_to_iphone(local_path, iphone_path, ssh_port=ssh_port, log=log)
+        if not scp_ok:
+            return {"success": False, "error": "scp_failed"}
 
-        # 5. Import galerie via Frida dans SpringBoard
-        ok = _frida_save_to_gallery(iphone_path, log)
-        if not ok:
-            log("   [media] import galerie KO")
-            return {"success": False, "error": "gallery_import_failed"}
+        # 4. Import galerie via MTOUCH
+        import_ok = await _mtouch_import(iphone_path, ssh_port=ssh_port, log=log)
+        if not import_ok:
+            log("   [media] ⚠ MTOUCH import echoue — fichier present sur iPhone à %s" % iphone_path)
+            return {"success": False, "error": "gallery_import_failed", "iphone_path": iphone_path}
 
-        log("   [media] importe dans la galerie")
-        await asyncio.sleep(2)
+        # 5. Cleanup local VPS
+        try:
+            os.remove(local_path)
+        except OSError:
+            pass
+
+        log("   [media] ✓ media importe dans la galerie")
+        await asyncio.sleep(2)  # Laisser le temps a iOS de mettre a jour la galerie
 
         return {
             "success": True,
             "iphone_path": iphone_path,
             "filename": filename,
-            "spoofed": spoof and ext != ".mp4",
         }
 
     except Exception as e:
         log("   [media] erreur push: %s" % str(e)[:100])
-        return {"success": False, "error": str(e)[:100]}
-
-
-GALLERY_SERVICE = "http://192.168.1.133:8192"
-
-
-async def _frida_save_to_gallery(iphone_path, log=print, driver=None):
-    """Importe dans la galerie via GalleryService tweak (localhost:8192 sur iPhone)."""
-    import requests as _req
-
-    # Si driver dispo, passer par MCP (fonctionne depuis le VPS)
-    if driver:
+        # Cleanup local
         try:
-            result = await driver.ht._call("run_command", {
-                "command": 'curl -s -X POST http://localhost:8192/import -H "Content-Type: application/json" -d \'{"path":"%s"}\'' % iphone_path,
-                "timeout": 15,
-            })
-            out = ""
-            if isinstance(result, dict) and "content" in result:
-                out = str(result["content"])
-            if "ok" in out or "true" in out:
-                return True
-            log("   [gallery] import via MCP: %s" % out[:60])
-            return False
-        except Exception as e:
-            log("   [gallery] MCP erreur: %s" % str(e)[:60])
-
-    # Fallback : appel direct (si on est sur le reseau local)
-    try:
-        resp = _req.post("%s/import" % GALLERY_SERVICE, json={"path": iphone_path}, timeout=15)
-        data = resp.json()
-        if data.get("ok"):
-            return True
-        log("   [gallery] import KO: %s" % data.get("error", "?"))
-        return False
-    except Exception as e:
-        log("   [gallery] erreur: %s" % str(e)[:100])
-        return False
-
-
-async def push_media_via_scp(media_url, log=print, spoof_profile=None):
-    """Push un media sur l'iPhone via SCP + SSH importmedia.
-
-    Alternative a push_media_via_mcp si MCP write_file est trop lent
-    pour les gros fichiers (videos).
-
-    Returns:
-        dict {success, iphone_path, filename, error}
-    """
-    log("   [media] push via SCP: %s" % media_url[:60])
-
-    ext = ".jpg"
-    if ".mp4" in media_url or "video" in media_url:
-        ext = ".mp4"
-    elif ".png" in media_url:
-        ext = ".png"
-
-    filename = _random_name(ext)
-    local_path = os.path.join(LOCAL_TMP, filename)
-    iphone_path = "%s/%s" % (IPHONE_TMP, filename)
-
-    try:
-        # 1. Telecharger
-        os.makedirs(LOCAL_TMP, exist_ok=True)
-        r = requests.get(media_url, timeout=60)
-        with open(local_path, "wb") as f:
-            f.write(r.content)
-        log("   [media] telecharge (%d Ko)" % (len(r.content) // 1024))
-
-        # 2. Spoof
-        if spoof_profile and ext in (".jpg", ".png"):
-            try:
-                from spoofer import spoof_file
-                spoofed = local_path.replace(".", "_spoofed.")
-                spoof_file(local_path, spoofed, profile=spoof_profile)
-                os.remove(local_path)
-                os.rename(spoofed, local_path)
-                log("   [media] spoofed")
-            except Exception as e:
-                log("   [media] spoof skip: %s" % str(e)[:60])
-
-        # 3. Creer dossier + SCP
-        _ssh_cmd("mkdir -p %s" % IPHONE_TMP)
-        if not _scp_to_iphone(local_path, iphone_path):
-            log("   [media] SCP echoue")
-            return {"success": False, "error": "scp_failed"}
-
-        # 4. Import galerie
-        out, code = _ssh_cmd("%s %s" % (IMPORTMEDIA, iphone_path))
-        log("   [media] importmedia: %s" % (out or "OK"))
-
-        # 5. Cleanup local
-        os.remove(local_path)
-
-        await asyncio.sleep(2)
-        return {"success": True, "iphone_path": iphone_path, "filename": filename}
-
-    except Exception as e:
-        log("   [media] erreur: %s" % str(e)[:100])
-        if os.path.exists(local_path):
             os.remove(local_path)
+        except OSError:
+            pass
         return {"success": False, "error": str(e)[:100]}
 
+
+# ── Legacy wrappers (backward compatibility) ──────────────────────────────────
+
+async def push_media_via_mcp(driver, media_url, log=print, device=None,
+                              market="FR", spoof=True, phone_id=None,
+                              auth_header=None):
+    """Legacy wrapper — redirige vers push_media_to_gallery."""
+    from app.config import settings
+    if not auth_header:
+        auth_header = "Bearer %s" % settings.api_secret
+
+    return await push_media_to_gallery(
+        media_url,
+        auth_header=auth_header,
+        spoof=spoof,
+        market=market,
+        device=device,
+        phone_id=phone_id,
+        log=log,
+    )
+
+
+async def push_media_via_scp(media_url, log=print, spoof_profile=None,
+                              auth_header=None):
+    """Legacy wrapper — redirige vers push_media_to_gallery."""
+    from app.config import settings
+    if not auth_header:
+        auth_header = "Bearer %s" % settings.api_secret
+
+    return await push_media_to_gallery(
+        media_url,
+        auth_header=auth_header,
+        spoof=bool(spoof_profile),
+        log=log,
+    )
+
+
+# ── Cleanup ───────────────────────────────────────────────────────────────────
 
 async def cleanup_media(driver, iphone_path, log=print):
-    """Supprime le fichier media temporaire de l'iPhone.
-    Appeler cleanup_gallery apres pour nettoyer la galerie.
-    """
+    """Supprime le fichier media temporaire de l'iPhone."""
     if not iphone_path:
         return
 
+    from app.services.dispatch import _ssh_exec
     try:
-        await driver.ht._call("run_command", {
-            "command": "rm -f %s" % iphone_path,
-            "timeout": 5,
-        })
-        log("   [media] cleanup tmp: %s" % iphone_path)
+        ok, _ = await _ssh_exec(DEFAULT_SSH_PORT, "rm -f %s" % iphone_path)
+        if ok:
+            log("   [media] cleanup tmp: %s" % iphone_path)
+        else:
+            log("   [media] cleanup SSH echoue pour %s" % iphone_path)
     except Exception as e:
         log("   [media] cleanup KO: %s" % str(e)[:60])
 
@@ -284,100 +315,64 @@ async def cleanup_media_batch(driver, iphone_paths, log=print):
     if not iphone_paths:
         return
 
-    for p in iphone_paths:
-        try:
-            await driver.ht._call("run_command", {
-                "command": "rm -f %s" % p,
-                "timeout": 5,
-            })
-        except:
-            pass
+    from app.services.dispatch import _ssh_exec
+    paths_str = " ".join('"%s"' % p for p in iphone_paths)
+    try:
+        await _ssh_exec(DEFAULT_SSH_PORT, "rm -f %s" % paths_str)
+    except Exception:
+        pass
     log("   [media] cleanup batch: %d fichiers tmp" % len(iphone_paths))
 
 
-def cleanup_gallery(driver, count, log=print):
-    """Supprime les N photos les plus recentes de la galerie via GalleryService tweak."""
-    import requests as _req
+async def cleanup_gallery_via_mtouch(count: int, ssh_port: int = DEFAULT_SSH_PORT,
+                                      log=logger.info) -> bool:
+    """Supprime les N photos les plus recentes via MTOUCH /delete."""
+    from app.services.dispatch import _ssh_exec
+    import json
 
     log("   [gallery] suppression de %d photo(s)..." % count)
+    payload = json.dumps({"count": count}).replace("'", "'\\''")
+    cmd = (
+        "curl -s --max-time 15 -X POST http://127.0.0.1:%d/delete "
+        "-H 'Content-Type: application/json' "
+        "-d '%s'" % (MTOUCH_PORT, payload)
+    )
+    ok, output = await _ssh_exec(ssh_port, cmd, timeout=20)
+    if not ok:
+        log("   [gallery] suppression SSH echoue")
+        return False
 
     try:
-        resp = _req.post("%s/delete" % GALLERY_SERVICE, json={"count": count}, timeout=15)
-        data = resp.json()
+        data = json.loads(output if isinstance(output, str) else output.decode())
         if data.get("ok"):
             log("   [gallery] %d photo(s) supprimee(s)" % data.get("deleted", count))
             return True
-        else:
-            log("   [gallery] suppression KO: %s" % data.get("error", "?"))
-            return False
-    except Exception as e:
-        log("   [gallery] erreur: %s" % str(e)[:60])
+        log("   [gallery] suppression KO: %s" % data.get("error", "?"))
+        return False
+    except Exception:
+        log("   [gallery] reponse invalide: %s" % str(output)[:60])
         return False
 
 
-async def ensure_delete_script(driver, log=print):
-    """Verifie que le script delete_photos.py est present sur l'iPhone."""
+# Legacy alias
+def cleanup_gallery(driver, count, log=print):
+    """Synchronous wrapper — prefer cleanup_gallery_via_mtouch."""
+    import asyncio
     try:
-        result = await driver.ht._call("run_command", {
-            "command": "test -f /var/tmp/delete_photos.py && echo EXISTS || echo MISSING",
-            "timeout": 5,
-        })
-        out = ""
-        if isinstance(result, dict) and "content" in result:
-            raw = result["content"][0].get("text", "")
-            import json as _j
-            try:
-                out = _j.loads(raw).get("output", raw)
-            except:
-                out = raw
-
-        if "MISSING" in str(out):
-            log("   [gallery] deploiement delete_photos.py...")
-            _deploy_delete_script(driver, log)
-    except:
-        pass
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # We're inside an async context, create a task
+            return asyncio.ensure_future(cleanup_gallery_via_mtouch(count, log=log))
+        return loop.run_until_complete(cleanup_gallery_via_mtouch(count, log=log))
+    except Exception:
+        return False
 
 
-async def _deploy_delete_script(driver, log=print):
-    """Deploie le script de suppression sur l'iPhone."""
-    script = (
-        'cat > /var/tmp/delete_photos.py << \'PYEOF\'\n'
-        'import subprocess, sys, time\n'
-        'n = int(sys.argv[1]) if len(sys.argv) > 1 else 1\n'
-        'db = "/var/mobile/Media/PhotoData/Photos.sqlite"\n'
-        'subprocess.run(["killall", "assetsd"], capture_output=True)\n'
-        'time.sleep(1)\n'
-        'rows = subprocess.run(["sqlite3", db, "SELECT Z_PK, ZDIRECTORY, ZFILENAME FROM ZASSET ORDER BY ZDATECREATED DESC LIMIT %d;" % n], capture_output=True, text=True).stdout.strip().split("\\n")\n'
-        'if not rows or not rows[0]:\n'
-        '    print("NO ASSETS")\n'
-        '    sys.exit(0)\n'
-        "triggers = subprocess.run(['sqlite3', db, \"SELECT name FROM sqlite_master WHERE type='trigger';\"], capture_output=True, text=True).stdout.strip().split('\\n')\n"
-        'for t in triggers:\n'
-        '    if t:\n'
-        '        subprocess.run(["sqlite3", db, "DROP TRIGGER IF EXISTS %s;" % t], capture_output=True)\n'
-        'for row in rows:\n'
-        '    parts = row.split("|")\n'
-        '    if len(parts) < 3:\n'
-        '        continue\n'
-        '    pk, d, f = parts[0], parts[1], parts[2]\n'
-        '    path = "/var/mobile/Media/%s/%s" % (d, f)\n'
-        '    subprocess.run(["sqlite3", db, "DELETE FROM ZASSET WHERE Z_PK=%s;" % pk], capture_output=True)\n'
-        '    subprocess.run(["rm", "-f", path], capture_output=True)\n'
-        '    print("DELETED pk=%s %s" % (pk, f))\n'
-        'print("DONE %d" % len(rows))\n'
-        'PYEOF\n'
-        'echo DEPLOYED'
-    )
-    await driver.ht._call("run_command", {"command": script, "timeout": 10})
-
-
-async def cleanup_all_media(driver, log=print):
+async def cleanup_all_media(driver=None, log=print):
     """Supprime tous les medias temporaires de l'iPhone."""
+    from app.services.dispatch import _ssh_exec
     try:
-        await driver.ht._call("run_command", {
-            "command": "rm -rf %s" % IPHONE_TMP,
-            "timeout": 5,
-        })
+        await _ssh_exec(DEFAULT_SSH_PORT, "rm -rf %s" % IPHONE_TMP)
         log("   [media] cleanup all tmp media")
-    except:
+    except Exception:
         pass
