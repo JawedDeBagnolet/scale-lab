@@ -76,16 +76,15 @@ async def _ensure_healthy(sess: DeviceSession, log: Callable) -> tuple[bool, str
     return None
 
 
-# ── Session extraction for scraper comptes ───────────────────────────────
+# ── Session extraction after login ─────────────────────────────────────
 
 async def _maybe_extract_session(sess, log):
-    """After login, extract and store the API session for scraper comptes.
+    """After login, extract and store the API session for all comptes.
 
     ScaleTweak writes /tmp/scale_session.json 15s after app launch.
-    We read it, verify it, and store it in Compte.session_data so the
-    IGScraperClient can use it for private API calls via Scrapigo proxy.
-
-    Only runs for comptes with is_scraper=True.
+    We read it, verify it, and store it in Compte.session_data so:
+    - Scraper comptes: IGScraperClient can use it for private API calls
+    - Regular comptes: profile-live can read own profile with own session
     """
     try:
         from app.db import AsyncSessionLocal
@@ -93,10 +92,12 @@ async def _maybe_extract_session(sess, log):
 
         async with AsyncSessionLocal() as db:
             compte = await db.get(Compte, sess.compte_id)
-            if not compte or not compte.is_scraper:
-                return  # Not a scraper account, skip
+            if not compte:
+                return
 
-        log("   [scraper] compte scraper détecté — extraction de session...")
+        is_scraper = compte.is_scraper
+        tag = "[scraper]" if is_scraper else "[session]"
+        log(f"   {tag} extraction de session après login...")
         from app.services.session_extract import extract_and_store
         session = await extract_and_store(
             str(sess.compte_id),
@@ -106,22 +107,23 @@ async def _maybe_extract_session(sess, log):
             platform="ig",
         )
         if session:
-            log(f"   [scraper] ✓ session extraite et stockée (ds_user_id={session.get('ds_user_id', '?')})")
+            log(f"   {tag} ✓ session extraite et stockée (ds_user_id={session.get('ds_user_id', '?')})")
             from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "success", compte.handle, f"Session scraper extraite — ds_user_id={session.get('ds_user_id', '?')}")
+            await emit_log("comptes", "session", "success", compte.handle, f"Session extraite — ds_user_id={session.get('ds_user_id', '?')}")
         else:
-            log("   [scraper] ⚠ extraction de session échouée — le compte sera réessayé au prochain login")
+            log(f"   {tag} ⚠ extraction de session échouée — sera réessayé au prochain login")
             from app.services.comptes import _log as emit_log
-            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée — le compte est connecté mais inutilisable pour le scraping", code="SESSION_EXTRACT_FAILED")
-            # Update status to reflect the account needs reconnection
-            async with AsyncSessionLocal() as db2:
-                c = await db2.get(Compte, sess.compte_id)
-                if c:
-                    c.status = "session"
-                    await db2.commit()
-                    log(f"   [scraper] statut mis à jour → session (à reconnecter)")
+            await emit_log("comptes", "session", "error", compte.handle, "Extraction de session échouée après login", code="SESSION_EXTRACT_FAILED")
+            # Only mark scraper accounts as needing reconnection
+            if is_scraper:
+                async with AsyncSessionLocal() as db2:
+                    c = await db2.get(Compte, sess.compte_id)
+                    if c:
+                        c.status = "session"
+                        await db2.commit()
+                        log(f"   {tag} statut mis à jour → session (à reconnecter)")
     except Exception as e:
-        log(f"   [scraper] ⚠ erreur extraction session: {str(e)[:150]}")
+        log(f"   [session] ⚠ erreur extraction session: {str(e)[:150]}")
         try:
             from app.services.comptes import _log as emit_log
             await emit_log("comptes", "session", "error", str(sess.compte_id), f"Erreur extraction session: {str(e)[:150]}", code="SESSION_EXTRACT_ERROR")
