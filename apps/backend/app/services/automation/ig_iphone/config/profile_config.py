@@ -121,20 +121,20 @@ async def _ensure_screen(driver, navigator, log, target: str, max_retries: int =
 
 async def _dismiss_meta_popup(driver, log):
     """Gere le popup 'Votre Compte Meta est disponible'."""
-    meta = await driver.find_element(contains="Compte Meta", refresh=True)
+    meta = await driver.find_element("Compte Meta", contains=True, refresh=True)
     if not meta:
-        meta = await driver.find_element(contains="Compte Meta", refresh=True)
+        meta = await driver.find_element("Compte Meta", contains=True, refresh=True)
     if not meta:
         return  # pas de popup
     log("   [popup] Compte Meta detecte")
     # Tap "Examiner le compte"
-    btn = await driver.find_element(contains="Examiner", clickable=True, refresh=True)
+    btn = await driver.find_element("Examiner", contains=True, clickable=True, refresh=True)
     if btn:
         tap = btn.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(2)
     # Tap "Termine" sur l'ecran suivant
-    done = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+    done = await driver.find_element("Termin", contains=True, clickable=True, refresh=True)
     if done:
         tap = done.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -168,7 +168,7 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
         # Try dismiss buttons one at a time, break after first match
         dismissed = False
         for label in ["Termin", "Plus tard", "Ignorer", "Fermer"]:
-            btn = await driver.find_element(contains=label, clickable=True, refresh=True)
+            btn = await driver.find_element(label, contains=True, clickable=True, refresh=True)
             if btn:
                 tap = btn.get('tap', {})
                 log("   [popup] tap '%s'" % label)
@@ -193,9 +193,9 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
     await asyncio.sleep(1)
 
     # 4. Verify we're on the edit screen
-    check = await driver.find_element(contains="nom", refresh=True)
+    check = await driver.find_element("nom", contains=True, refresh=True)
     if not check:
-        check = await driver.find_element(contains="Bio", refresh=True)
+        check = await driver.find_element("Bio", contains=True, refresh=True)
     if not check:
         log("   ! pas sur l'ecran de modification apres tap")
         return False
@@ -207,9 +207,9 @@ async def _open_settings(driver, navigator, log) -> bool:
     """Ouvre l'ecran Parametres et activite."""
     await navigator.go_profile()
     await asyncio.sleep(1)
-    el = await driver.find_element(contains="param", clickable=True, refresh=True)
+    el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="activit", clickable=True, refresh=True)
+        el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton parametres non trouve")
         return False
@@ -355,7 +355,7 @@ def _looks_like_url(text: str) -> bool:
 async def _dismiss_popup(driver, log, wait=1.5):
     """Gere les popups de confirmation apres modification."""
     await asyncio.sleep(wait)
-    confirm = await driver.find_element(contains="Modifier le", clickable=True, refresh=True)
+    confirm = await driver.find_element("Modifier le", contains=True, clickable=True, refresh=True)
     if confirm:
         r = confirm.get('rect', {})
         if r.get('width', 0) >= 200:
@@ -506,7 +506,7 @@ async def set_gender(driver, navigator, gender, log: Callable = print) -> bool:
     if not await _tap_field(driver, log, "Genre"):
         await _go_back(driver, navigator, log)
         return False
-    option = await driver.find_element(contains=gender, clickable=True, refresh=True)
+    option = await driver.find_element(gender, contains=True, clickable=True, refresh=True)
     if option:
         tap = option.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -525,15 +525,15 @@ async def add_link(driver, navigator, url, title=None, log: Callable = print) ->
     if not await _tap_field(driver, log, "Ajouter des liens"):
         await _go_back(driver, navigator, log)
         return False
-    el = await driver.find_element(contains="lien externe", clickable=True, refresh=True)
+    el = await driver.find_element("lien externe", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Ajouter un lien", clickable=True, refresh=True)
+        el = await driver.find_element("Ajouter un lien", contains=True, clickable=True, refresh=True)
     if el:
         tap = el.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(random.uniform(1.0, 2.0))
         await asyncio.sleep(1)
-        url_field = await driver.find_element(contains="URL", clickable=True, refresh=True)
+        url_field = await driver.find_element("URL", contains=True, clickable=True, refresh=True)
         if url_field:
             tap = url_field.get('tap', {})
             await driver.ht.tap(tap['x'], tap['y'])
@@ -541,7 +541,7 @@ async def add_link(driver, navigator, url, title=None, log: Callable = print) ->
             await driver.ht._call("input_text", {"text": url})
             await asyncio.sleep(0.5)
         if title:
-            title_field = await driver.find_element(contains="Titre", clickable=True, refresh=True)
+            title_field = await driver.find_element("Titre", contains=True, clickable=True, refresh=True)
             if title_field:
                 tap = title_field.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
@@ -560,7 +560,7 @@ async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = pr
     log("-> Config: photo de profil (index=%d)" % photo_index)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-    el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+    el = await driver.find_element("Modifier la photo de profil", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton photo profil non trouve")
         await _go_back(driver, navigator, log)
@@ -569,11 +569,11 @@ async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = pr
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
     await asyncio.sleep(1.5)
-    gallery = await driver.find_element(contains="galerie", clickable=True, refresh=True)
+    gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
     if not gallery:
-        gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
+        gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
     if not gallery:
-        gallery = await driver.find_element(contains="Nouvelle photo", clickable=True, refresh=True)
+        gallery = await driver.find_element("Nouvelle photo", contains=True, clickable=True, refresh=True)
     if gallery:
         tap = gallery.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -631,7 +631,7 @@ async def set_private(driver, navigator, private=True, log: Callable = print) ->
     await asyncio.sleep(random.uniform(1.0, 2.0))
     await asyncio.sleep(2)
 
-    check = await driver.find_element(contains="Compte priv", refresh=True)
+    check = await driver.find_element("Compte priv", contains=True, refresh=True)
     if not check:
         log("   ! pas sur l'ecran confidentialite")
         await _go_back(driver, navigator, log)
@@ -655,7 +655,7 @@ async def set_private(driver, navigator, private=True, log: Callable = print) ->
         return True
 
     # Toggle
-    toggle = await driver.find_element(contains="Compte priv", clickable=True, refresh=True)
+    toggle = await driver.find_element("Compte priv", contains=True, clickable=True, refresh=True)
     if toggle:
         rect = toggle.get('rect', {})
         switch_x = rect.get('x', 0) + rect.get('width', 375) - 40
@@ -1265,7 +1265,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
             await driver.scroll_down('light')
             await asyncio.sleep(0.5)
             if await _tap_field(driver, log, "Genre"):
-                option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
+                option = await driver.find_element(edit_fields["gender"], contains=True, clickable=True, refresh=True)
                 if option:
                     tap = option.get('tap', {})
                     log("   selectionne %s" % edit_fields["gender"])
@@ -1278,19 +1278,19 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "photo_index" in edit_fields:
             log("   [6] photo de profil")
-            el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+            el = await driver.find_element("Modifier la photo de profil", contains=True, clickable=True, refresh=True)
             if not el:
                 await driver.scroll_up('normal')
                 await asyncio.sleep(0.5)
-                el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+                el = await driver.find_element("Modifier la photo de profil", contains=True, clickable=True, refresh=True)
             if el:
                 tap = el.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
                 await asyncio.sleep(random.uniform(1.0, 2.0))
                 await asyncio.sleep(1.5)
-                gallery = await driver.find_element(contains="Choisir dans la", clickable=True, refresh=True)
+                gallery = await driver.find_element("Choisir dans la", contains=True, clickable=True, refresh=True)
                 if not gallery:
-                    gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
+                    gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
                 if gallery:
                     tap = gallery.get('tap', {})
                     log("   choisir dans la bibliotheque")
@@ -1308,7 +1308,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                         log("   attente chargement photo...")
                         for _ in range(15):
                             await asyncio.sleep(1)
-                            check = await driver.find_element(contains="Modifier le profil", refresh=True)
+                            check = await driver.find_element("Modifier le profil", contains=True, refresh=True)
                             if check:
                                 log("   photo chargee")
                                 break
