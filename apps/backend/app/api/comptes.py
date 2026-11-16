@@ -170,8 +170,11 @@ async def bulk_create_scrapers(body: ScraperBulkRequest, db: AsyncSession = Depe
 async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
     """Fetch real-time profile data for a compte via the IG private API.
 
-    Uses a scraper account's session + Scrapigo proxy to fetch profile
-    info, stats, bio, highlights etc. for the given account's handle.
+    Strategy:
+    1. Try the account's own session (current_user endpoint) — most accurate
+       for pro status, category, account_type, email, phone etc.
+    2. Fallback to scraper account if no own session available.
+    Both use Scrapigo proxy to avoid VPS IP blocks.
     """
     compte = await service.get_compte(db, compte_id)
     if not compte:
@@ -181,41 +184,75 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "profile-live only supports Instagram for now")
 
     from app.services.comptes import _log as emit_log
-    await emit_log("comptes", "scrape", "info", compte.handle, f"Lecture profil live @{compte.handle} via API privée")
+    profile = None
 
-    try:
-        from app.services.ig_api_scraper import IGScraperClient
-        client = await IGScraperClient.from_db(db)
-        if not client:
-            await emit_log("comptes", "scrape", "error", compte.handle, "Aucun compte scraper avec session valide", code="NO_SCRAPER")
-            raise HTTPException(503, "Aucun compte scraper avec session valide")
+    # Strategy 1: Use the account's own session (most accurate for pro fields)
+    if compte.session_data and compte.session_data.get("sessionid"):
+        try:
+            from app.services.session_extract import get_own_profile
+            await emit_log("comptes", "scrape", "info", compte.handle,
+                f"Lecture profil live @{compte.handle} via session propre")
+            own = await get_own_profile(compte)
+            if own and own.get("username"):
+                profile = own
+                logger.info("profile-live: %s via own session (is_business=%s, category=%s)",
+                    compte.handle, own.get("is_business"), own.get("category"))
+        except Exception as e:
+            logger.warning("profile-live: own session failed for %s: %s", compte.handle, e)
 
-        profile = await client.get_user_profile_full(compte.handle)
-        if not profile:
-            await emit_log("comptes", "scrape", "warning", compte.handle, f"Profil @{compte.handle} introuvable via l'API privée")
-            raise HTTPException(404, f"Profil @{compte.handle} introuvable via l'API privée")
+    # Strategy 2: Fallback to scraper
+    if not profile:
+        await emit_log("comptes", "scrape", "info", compte.handle,
+            f"Lecture profil live @{compte.handle} via scraper")
+        try:
+            from app.services.ig_api_scraper import IGScraperClient
+            client = await IGScraperClient.from_db(db)
+            if not client:
+                await emit_log("comptes", "scrape", "error", compte.handle,
+                    "Aucun compte scraper avec session valide", code="NO_SCRAPER")
+                raise HTTPException(503, "Aucun compte scraper avec session valide")
 
-        hl_count = len(profile.get("highlights", []))
-        await emit_log("comptes", "scrape", "success", compte.handle,
-            f"Profil @{compte.handle} récupéré — {profile.get('follower_count', 0)} followers, {profile.get('media_count', 0)} posts, {hl_count} highlights")
+            profile = await client.get_user_profile_full(compte.handle)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("profile-live scraper error for %s", compte.handle)
+            await emit_log("comptes", "scrape", "error", compte.handle,
+                f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
+            raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
 
-        # Persist live profile data in DB
-        compte.profile_data = profile
-        await db.commit()
+    if not profile:
+        await emit_log("comptes", "scrape", "warning", compte.handle,
+            f"Profil @{compte.handle} introuvable")
+        raise HTTPException(404, f"Profil @{compte.handle} introuvable")
 
-        # Merge with internal config (age_limit, pro_type, etc. — not from API)
-        config = compte.profile_config or {}
-        result = {**profile}
-        result["_config"] = config  # internal fields the frontend should preserve
+    # Fetch highlights separately (own session doesn't return them)
+    if "highlights" not in profile:
+        try:
+            from app.services.ig_api_scraper import IGScraperClient
+            client = await IGScraperClient.from_db(db)
+            if client and profile.get("pk"):
+                highlights = await client.get_user_highlights(str(profile["pk"]))
+                profile["highlights"] = highlights
+        except Exception:
+            profile["highlights"] = []
 
-        return result
+    hl_count = len(profile.get("highlights", []))
+    await emit_log("comptes", "scrape", "success", compte.handle,
+        f"Profil @{compte.handle} récupéré — {profile.get('follower_count', 0)} followers, "
+        f"{profile.get('media_count', 0)} posts, {hl_count} highlights, "
+        f"pro={'oui' if profile.get('is_business') else 'non'}")
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("profile-live error for %s", compte.handle)
-        await emit_log("comptes", "scrape", "error", compte.handle, f"Erreur API privée: {str(e)[:150]}", code="SCRAPE_ERROR")
-        raise HTTPException(502, f"Erreur API privée: {str(e)[:150]}")
+    # Persist live profile data in DB
+    compte.profile_data = profile
+    await db.commit()
+
+    # Merge with internal config
+    config = compte.profile_config or {}
+    result = {**profile}
+    result["_config"] = config
+
+    return result
 
 
 
