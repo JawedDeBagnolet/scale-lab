@@ -1176,6 +1176,10 @@ class Component extends DCLogic {
               d.profile[pk].bio = p.biography || '';
               d.profile[pk].link = p.external_url || '';
               d.profile[pk].category = p.category || '';
+              // Sync pro status from live data (is_business covers business + creator accounts)
+              if (p.is_business != null) d.profile[pk].pro = !!p.is_business;
+              if (p.category) d.profile[pk].proCat = p.category;
+              if (p.is_private != null) d.profile[pk].privacy = p.is_private ? 'private' : 'public';
               // Replace highlights with live data (empty array if none on real profile)
               d.profile[pk].highlights = (p.highlights || []).map(h => h.title || 'Sans titre');
             });
@@ -1742,8 +1746,8 @@ class Component extends DCLogic {
       liveFollowers: _fmtN(lp.follower_count),
       liveFollowing: _fmtN(lp.following_count),
       livePosts: _fmtN(lp.media_count),
-      liveStatusLabel: lp.is_private ? 'Privé' : lp.is_verified ? 'Vérifié' : 'Public',
-      liveStatusColor: lp.is_private ? '#f5c77e' : lp.is_verified ? '#7dd3fc' : '#2dd4a8',
+      liveStatusLabel: lp.is_private ? 'Privé' : lp.is_business ? 'Pro' : lp.is_verified ? 'Vérifié' : 'Public',
+      liveStatusColor: lp.is_private ? '#f5c77e' : lp.is_business ? '#a78bfa' : lp.is_verified ? '#7dd3fc' : '#2dd4a8',
       livePicUrl: lp.hd_profile_pic_url || lp.profile_pic_url || '',
       hasLivePic: !!(lp.hd_profile_pic_url || lp.profile_pic_url),
       liveBio: lp.biography || '',
