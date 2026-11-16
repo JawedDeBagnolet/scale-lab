@@ -1182,6 +1182,14 @@ class Component extends DCLogic {
               if (p.is_private != null) d.profile[pk].privacy = p.is_private ? 'private' : 'public';
               // Replace highlights with live data (empty array if none on real profile)
               d.profile[pk].highlights = (p.highlights || []).map(h => h.title || 'Sans titre');
+              // Restore age_limit from backend config (persisted after successful automation)
+              const cfg = p._config || {};
+              if (cfg.age_limit) {
+                d.profile[pk].ageLimit = true;
+                d.profile[pk].ageMin = cfg.age_limit; // "18+" or "21+"
+              } else {
+                d.profile[pk].ageLimit = false;
+              }
             });
             this.setState({ liveLoading: false, liveProfile: p });
           }).catch(e => {
