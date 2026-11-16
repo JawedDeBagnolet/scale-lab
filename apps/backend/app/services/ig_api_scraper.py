@@ -303,6 +303,15 @@ class IGScraperClient:
         user = data.get("user")
         if not user:
             return None
+        # IG has multiple "pro" flags: is_business (business account),
+        # is_professional (creator account), account_type (2=personal, 3=business/creator).
+        # A "Blog personnel" is a creator account (is_professional=True, is_business=False).
+        is_pro = (
+            user.get("is_business", False)
+            or user.get("is_professional", False)
+            or user.get("account_type", 1) >= 3
+            or bool(user.get("category_name") or user.get("category"))
+        )
         return {
             "pk": user.get("pk"),
             "username": user.get("username"),
@@ -312,12 +321,14 @@ class IGScraperClient:
             "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
             "is_verified": user.get("is_verified", False),
             "is_private": user.get("is_private", False),
-            "is_business": user.get("is_business", False),
+            "is_business": is_pro,
+            "is_professional": user.get("is_professional", False),
+            "account_type": user.get("account_type"),
             "follower_count": user.get("follower_count", 0),
             "following_count": user.get("following_count", 0),
             "media_count": user.get("media_count", 0),
             "external_url": user.get("external_url", ""),
-            "category": user.get("category", ""),
+            "category": user.get("category_name", user.get("category", "")),
         }
 
     async def get_user_highlights(self, user_pk: str) -> list[dict]:
@@ -378,7 +389,12 @@ class IGScraperClient:
             highlights = []
 
         if not info:
-            # Fallback: use data from web_profile_info
+            # Fallback: use data from search result
+            is_pro = (
+                user.get("is_business", False)
+                or user.get("is_professional", False)
+                or bool(user.get("category_name") or user.get("category"))
+            )
             info = {
                 "pk": pk,
                 "username": user.get("username", username),
@@ -388,7 +404,7 @@ class IGScraperClient:
                 "hd_profile_pic_url": (user.get("hd_profile_pic_url_info", {}) or {}).get("url", ""),
                 "is_verified": user.get("is_verified", False),
                 "is_private": user.get("is_private", False),
-                "is_business": user.get("is_business", False),
+                "is_business": is_pro,
                 "follower_count": user.get("edge_followed_by", {}).get("count", user.get("follower_count", 0)),
                 "following_count": user.get("edge_follow", {}).get("count", user.get("following_count", 0)),
                 "media_count": user.get("edge_owner_to_timeline_media", {}).get("count", user.get("media_count", 0)),
