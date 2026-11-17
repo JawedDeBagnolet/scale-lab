@@ -265,7 +265,8 @@ async def get_own_profile(compte) -> dict | None:
                 "category": user.get("category_name", user.get("category", "")),
                 "phone_number": user.get("phone_number", ""),
                 "email": user.get("email", ""),
-                "gender": user.get("gender"),  # 1=Homme, 2=Femme, 3=Personnalisé
+                "gender": user.get("gender"),  # 1=Homme, 2=Femme, 3=Custom
+                "custom_gender": user.get("custom_gender", ""),  # texte libre quand gender=3
             }
 
     except Exception as e:

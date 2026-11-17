@@ -1274,7 +1274,11 @@ class Component extends DCLogic {
         d.profile[pk].highlights = (p.highlights || []).map(h => h.title || 'Sans titre');
         // Gender: IG returns int (1=male, 2=female, 3=custom), map to labels
         const genderMap = {1: 'Homme', 2: 'Femme', 3: 'Personnalisé'};
-        if (p.gender != null) d.profile[pk].gender = genderMap[p.gender] || '';
+        if (p.gender != null) {
+          var gLabel = genderMap[p.gender] || '';
+          if (p.gender === 3 && p.custom_gender) gLabel = p.custom_gender;
+          d.profile[pk].gender = gLabel;
+        }
         const cfg = p._config || {};
         if (cfg.age_limit) {
           d.profile[pk].ageLimit = true;

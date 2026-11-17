@@ -218,7 +218,7 @@ async def get_profile_live(compte_id: UUID, db: AsyncSession = Depends(get_db)):
             # Override pro-related fields with own session data (more accurate)
             for key in ("is_business", "is_professional", "account_type", "category",
                         "phone_number", "email", "full_name", "biography", "external_url",
-                        "gender"):
+                        "gender", "custom_gender"):
                 if key in own_profile and own_profile[key]:
                     profile[key] = own_profile[key]
     elif own_profile:
