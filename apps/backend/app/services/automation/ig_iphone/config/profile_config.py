@@ -1689,6 +1689,16 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
             # so the runner sees photo_url as succeeded too
             if photo_ok:
                 results["photo_url"] = True
+                # Auto-cleanup: supprimer la photo de la galerie après usage
+                try:
+                    from app.services.automation.ig_iphone.media import cleanup_gallery_via_mtouch
+                    cleanup_ok = await cleanup_gallery_via_mtouch(1, log=log)
+                    if cleanup_ok:
+                        log("   ✓ photo supprimee de la galerie (auto-cleanup)")
+                    else:
+                        log("   ⚠ auto-cleanup galerie echoue (non bloquant)")
+                except Exception as e:
+                    log("   ⚠ auto-cleanup erreur: %s (non bloquant)" % str(e)[:80])
             elif "photo_url" not in results:
                 results["photo_url"] = False
 
