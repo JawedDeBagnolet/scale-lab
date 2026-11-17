@@ -710,14 +710,19 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ isIG }}" hint-placeholder-val="{{ true }}">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid rgba(255,255,255,.06)">
 <div style="display:flex;align-items:flex-start;gap:12px;min-width:0"><span style="width:32px;height:32px;flex:none;border-radius:9px;background:rgba(255,255,255,.05);color:#aab0c5;display:flex;align-items:center;justify-content:center"><i class="ph ph-gender-intersex" style="font-size:16px"></i></span><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">Genre</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">Non affiché publiquement sur le profil</div></div></div>
-<select value="{{ pv.gender }}" onChange="{{ on.pGender }}" style="height:32px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none;cursor:pointer;min-width:140px">
-<option value="">Non renseigné</option>
-<option value="Femme">Femme</option>
-<option value="Homme">Homme</option>
-<option value="Non binaire">Non binaire</option>
-<option value="Personnalisé">Personnalisé</option>
-<option value="Non spécifié">Préfère ne pas répondre</option>
-</select>
+<div style="{{ genderSel.wrapStyle }}">
+<div onClick="{{ genderSel.toggle }}" style="{{ genderSel.btnStyle }}"><span style="{{ genderSel.valueStyle }}">{{ genderSel.value }}</span><i class="ph ph-caret-down" style="{{ genderSel.caretStyle }}"></i></div>
+<sc-if value="{{ genderSel.open }}">
+<div style="{{ genderSel.popStyle }}">
+<sc-for list="{{ genderSel.options }}" as="o" hint-placeholder-count="5">
+<div onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer" style-hover="background:rgba(124,108,246,.14)">
+<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:#e8eaf3">{{ o.label }}</div></div>
+<sc-if value="{{ o.on }}"><i class="ph ph-check" style="font-size:13px;color:#a5a0f5"></i></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
 </div>
 </sc-if>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid rgba(255,255,255,.06)">
@@ -1824,8 +1829,28 @@ class Component extends DCLogic {
       caretStyle: { fontSize: 13, color: '#8a91a8', transform: catOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' },
       menuStyle: { position: 'absolute', top: 40, left: 0, right: 0, maxHeight: 300, overflow: 'auto', padding: 6, borderRadius: 12, background: '#151827', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 18px 44px rgba(0,0,0,.55)' }
     };
+    const genderOpts = [
+      { v: '', l: 'Non renseigné', muted: true },
+      { v: 'Femme', l: 'Femme' },
+      { v: 'Homme', l: 'Homme' },
+      { v: 'Non binaire', l: 'Non binaire' },
+      { v: 'Personnalisé', l: 'Personnalisé' },
+      { v: 'Non spécifié', l: 'Préfère ne pas répondre' }
+    ];
+    const gCur = genderOpts.find(o => o.v === (prof.gender || '')) || genderOpts[0];
+    const gOpen = fm === 'gender';
+    const genderSel = {
+      value: gCur.l, open: gOpen,
+      wrapStyle: { position: 'relative', zIndex: gOpen ? 30 : 'auto', minWidth: 160 },
+      btnStyle: { display: 'flex', alignItems: 'center', gap: 9, height: 32, padding: '0 10px', borderRadius: 9, cursor: 'pointer', background: gOpen ? 'rgba(124,108,246,.1)' : 'rgba(255,255,255,.035)', border: '1px solid ' + (gOpen ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)'), boxShadow: gOpen ? '0 0 0 3px rgba(124,108,246,.15)' : 'none' },
+      valueStyle: { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 12.5, color: gCur.muted ? '#8a91a8' : '#e8eaf3' },
+      caretStyle: { fontSize: 13, color: '#8a91a8', transform: gOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' },
+      popStyle: { position: 'absolute', right: 0, ...(s.fmenuUp ? { bottom: 38 } : { top: 38 }), minWidth: 200, maxHeight: s.fmenuMax || 280, overflow: 'auto', padding: 6, borderRadius: 12, background: '#151827', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 18px 44px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', gap: 1 },
+      toggle: e => { if (gOpen) { this.setState({ fmenu: null }); return; } const btn = e.currentTarget.getBoundingClientRect(); const sc = e.currentTarget.closest('[data-modal-scroll]'); const box = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight }; const foot = sc ? 76 : 0; const want = Math.min(280, genderOpts.length * 42 + 14); const below = box.bottom - foot - btn.bottom - 12; const above = btn.top - box.top - 12; const up = below < want && above > below; this.setState({ fmenu: 'gender', fmenuUp: up, fmenuMax: Math.max(140, Math.min(280, up ? above : below)) }); },
+      options: genderOpts.map(o => ({ label: o.l, on: o.v === (prof.gender || ''), pick: () => { this.setState({ fmenu: null }); this.upd(x => { x.profile[pk].gender = o.v; }); } }))
+    };
     const profExtra = {
-      catSel,
+      catSel, genderSel,
       profUsername: prof.username ?? handle,
       privSeg2: this.seg([{ v: 'public', label: 'Public', icon: 'ph ph-globe-simple' }, { v: 'private', label: 'Privé', icon: 'ph ph-lock-simple' }], privV, v => this.upd(x => { x.profile[pk].privacy = v; })),
       proSw: sw(pro, false), togglePro: () => this.upd(x => { const pp = x.profile[pk]; pp.pro = !pp.pro; if (!pp.pro) pp.ageLimit = false; }),

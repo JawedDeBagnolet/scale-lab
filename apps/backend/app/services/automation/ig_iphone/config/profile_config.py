@@ -1469,19 +1469,30 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
         if "gender" in edit_fields:
             log("   [5] genre -> '%s'" % edit_fields["gender"])
-            await driver.scroll_down('light')
-            await asyncio.sleep(0.5)
-            if await _tap_field(driver, log, "Genre"):
-                option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
-                if option:
-                    tap = option.get('tap', {})
-                    log("   selectionne %s" % edit_fields["gender"])
-                    await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(0.5)
-                await _tap_done(driver, log)
-                await _dismiss_popup(driver, log)
-                await _verify_on_edit_screen(driver, log)
-                results["gender"] = True
+            if not await _ensure_screen(driver, navigator, log, "edit_profile"):
+                log("   ! abort genre: pas sur edit_profile")
+            else:
+                await driver.scroll_down('light')
+                await asyncio.sleep(0.5)
+                if await _tap_field(driver, log, "Genre"):
+                    # Vérifier qu'on est sur l'écran de genre
+                    screen = await _detect_screen(driver, log)
+                    log("   ecran apres tap Genre: '%s'" % screen)
+                    option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
+                    if option:
+                        tap = option.get('tap', {})
+                        log("   selectionne '%s' (y=%d)" % (edit_fields["gender"], tap.get('y', 0)))
+                        await driver.ht.tap(tap['x'], tap['y'])
+                        await asyncio.sleep(0.8)
+                    else:
+                        log("   ! option genre '%s' non trouvee" % edit_fields["gender"])
+                    await _tap_done(driver, log)
+                    await asyncio.sleep(1)
+                    await _dismiss_popup(driver, log)
+                    await _verify_on_edit_screen(driver, log)
+                    results["gender"] = True
+                else:
+                    log("   ! champ Genre non trouve sur edit_profile")
 
         if "photo_index" in edit_fields:
             log("   [6] photo de profil")
@@ -1598,20 +1609,35 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 results["photo_url"] = False
 
         # Fermer l'edit profil
-        await _go_back(driver, navigator, log)
+        try:
+            await _go_back(driver, navigator, log)
+        except Exception:
+            log("   ! erreur retour apres edit_profile (non bloquant)")
 
     # ── Phase 2 : switch pro ────
     if config.get("pro"):
-        from .switch_pro import switch_to_pro
-        results["pro"] = await switch_to_pro(driver, navigator, log=log)
+        try:
+            from .switch_pro import switch_to_pro
+            results["pro"] = await switch_to_pro(driver, navigator, log=log)
+        except Exception as e:
+            log("   ! erreur phase 2 (switch pro): %s" % str(e)[:150])
+            results["pro"] = False
 
     # ── Phase 3 : confidentialite ───────────────────────
     if "private" in config:
-        results["private"] = await set_private(driver, navigator, config["private"], log)
+        try:
+            results["private"] = await set_private(driver, navigator, config["private"], log)
+        except Exception as e:
+            log("   ! erreur phase 3 (confidentialite): %s" % str(e)[:150])
+            results["private"] = False
 
     # ── Phase 4 : limite d'âge ─────────────────────────
     if "age_limit" in config:
-        results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
+        try:
+            results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
+        except Exception as e:
+            log("   ! erreur phase 4 (age_limit): %s" % str(e)[:150])
+            results["age_limit"] = False
 
     log("=" * 50)
     log("CONFIG TERMINEE: %s" % results)

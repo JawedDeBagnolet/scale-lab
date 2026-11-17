@@ -171,8 +171,10 @@ async def run_ig_task(
             # Ensure login
             await sess.ensure_login(drv, None)
 
-            # Extract & store session for scraper accounts (auto after login)
-            await _maybe_extract_session(sess, log)
+            # Extract & store session ONLY on explicit login tasks (not every run)
+            # Avoids consuming proxy credits for session extraction on routine tasks
+            if action_type == "ig_login":
+                await _maybe_extract_session(sess, log)
 
             _check_abort(abort_event)
 
