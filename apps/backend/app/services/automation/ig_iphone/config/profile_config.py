@@ -1498,25 +1498,24 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 log("   [5] genre -> '%s'" % edit_fields["gender"])
                 if not await _ensure_screen(driver, navigator, log, "edit_profile"):
                     log("   ! abort genre: pas sur edit_profile")
-                elif await _tap_field(driver, log, "Genre"):
-                        # Vérifier qu'on est sur l'écran de genre
-                        screen = await _detect_screen(driver, log)
-                        log("   ecran apres tap Genre: '%s'" % screen)
-                        option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
-                        if option:
-                            tap = option.get('tap', {})
-                            log("   selectionne '%s' (y=%d)" % (edit_fields["gender"], tap.get('y', 0)))
-                            await driver.ht.tap(tap['x'], tap['y'])
-                            await asyncio.sleep(0.8)
-                        else:
-                            log("   ! option genre '%s' non trouvee" % edit_fields["gender"])
-                        await _tap_done(driver, log)
-                        await asyncio.sleep(1)
-                        await _dismiss_popup(driver, log)
-                        await _verify_on_edit_screen(driver, log)
-                        results["gender"] = True
+                elif not await _tap_field(driver, log, "Genre"):
+                    log("   ! champ Genre non trouve sur edit_profile")
+                else:
+                    screen = await _detect_screen(driver, log)
+                    log("   ecran apres tap Genre: '%s'" % screen)
+                    option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
+                    if option:
+                        tap = option.get('tap', {})
+                        log("   selectionne '%s' (y=%d)" % (edit_fields["gender"], tap.get('y', 0)))
+                        await driver.ht.tap(tap['x'], tap['y'])
+                        await asyncio.sleep(0.8)
                     else:
-                        log("   ! champ Genre non trouve sur edit_profile")
+                        log("   ! option genre '%s' non trouvee" % edit_fields["gender"])
+                    await _tap_done(driver, log)
+                    await asyncio.sleep(1)
+                    await _dismiss_popup(driver, log)
+                    await _verify_on_edit_screen(driver, log)
+                    results["gender"] = True
             except Exception as e:
                 log("   ! erreur genre: %s" % str(e)[:150])
                 results["gender"] = False
