@@ -1013,21 +1013,47 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
 
     else:
         # SET age limit
-        # Tap "Ajouter ou supprimer" to open the picker
-        add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
-        if not add_remove:
-            # First-time setup — no "Ajouter ou supprimer" button
-            add_remove = await driver.find_element("Ajouter", contains=True, clickable=True)
-        if not add_remove:
-            log("   ! bouton ajouter non trouvé")
-            for _ in range(3):
-                await _go_back(driver, navigator, log)
-            return False
+        if current_age:
+            # Age already set — tap the displayed number to open the picker
+            all_els2 = await driver.find_elements(refresh=True)
+            age_el = None
+            for e in all_els2:
+                t = (e.get('text', '') or '').strip()
+                r = e.get('rect', {})
+                if t.isdigit() and int(t) == current_age and r.get('y', 0) > 200:
+                    age_el = e
+                    break
+            if age_el:
+                tap = age_el.get('tap', {})
+                log("   tap age affiche '%s' (y=%d) pour modifier" % (current_age, tap.get('y', 0)))
+                await driver.ht.tap(tap['x'], tap['y'])
+                await asyncio.sleep(random.uniform(1.5, 2.5))
+            else:
+                log("   ! valeur age '%s' non trouvee, fallback Ajouter ou supprimer" % current_age)
+                add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
+                if add_remove:
+                    tap = add_remove.get('tap', {})
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(random.uniform(1.5, 2.5))
+                else:
+                    for _ in range(3):
+                        await _go_back(driver, navigator, log)
+                    return False
+        else:
+            # No age set — tap "Ajouter ou supprimer" to open the picker
+            add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
+            if not add_remove:
+                add_remove = await driver.find_element("Ajouter", contains=True, clickable=True)
+            if not add_remove:
+                log("   ! bouton ajouter non trouvé")
+                for _ in range(3):
+                    await _go_back(driver, navigator, log)
+                return False
 
-        tap = add_remove.get('tap', {})
-        log("   tap '%s' (y=%d)" % (add_remove.get('text', '')[:25], tap.get('y', 0)))
-        await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(random.uniform(1.5, 2.5))
+            tap = add_remove.get('tap', {})
+            log("   tap '%s' (y=%d)" % (add_remove.get('text', '')[:25], tap.get('y', 0)))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(1.5, 2.5))
 
         # Step 6: Picker bottom sheet should be open
         # Elements: "Âge par défaut", "Enregistrer", picker with current value, "Fermer"
