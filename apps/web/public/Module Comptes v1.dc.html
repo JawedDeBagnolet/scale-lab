@@ -707,6 +707,19 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </div>
 </sc-if>
+<sc-if value="{{ isIG }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid rgba(255,255,255,.06)">
+<div style="display:flex;align-items:flex-start;gap:12px;min-width:0"><span style="width:32px;height:32px;flex:none;border-radius:9px;background:rgba(255,255,255,.05);color:#aab0c5;display:flex;align-items:center;justify-content:center"><i class="ph ph-gender-intersex" style="font-size:16px"></i></span><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">Genre</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">Non affiché publiquement sur le profil</div></div></div>
+<select value="{{ pv.gender }}" onChange="{{ on.pGender }}" style="height:32px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none;cursor:pointer;min-width:140px">
+<option value="">Non renseigné</option>
+<option value="Femme">Femme</option>
+<option value="Homme">Homme</option>
+<option value="Non binaire">Non binaire</option>
+<option value="Personnalisé">Personnalisé</option>
+<option value="Non spécifié">Préfère ne pas répondre</option>
+</select>
+</div>
+</sc-if>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid rgba(255,255,255,.06)">
 <div style="display:flex;align-items:flex-start;gap:12px;min-width:0"><span style="width:32px;height:32px;flex:none;border-radius:9px;background:rgba(255,255,255,.05);color:#aab0c5;display:flex;align-items:center;justify-content:center"><i class="ph ph-shield-check" style="font-size:16px"></i></span><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">Limite d'âge</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">{{ ageSub }}</div></div></div>
 <div style="display:flex;align-items:center;gap:12px">
@@ -1254,6 +1267,9 @@ class Component extends DCLogic {
         if (p.category) d.profile[pk].proCat = p.category;
         if (p.is_private != null) d.profile[pk].privacy = p.is_private ? 'private' : 'public';
         d.profile[pk].highlights = (p.highlights || []).map(h => h.title || 'Sans titre');
+        // Gender: IG returns int (1=male, 2=female, 3=custom), map to labels
+        const genderMap = {1: 'Homme', 2: 'Femme', 3: 'Personnalisé'};
+        if (p.gender != null) d.profile[pk].gender = genderMap[p.gender] || '';
         const cfg = p._config || {};
         if (cfg.age_limit) {
           d.profile[pk].ageLimit = true;
@@ -1306,6 +1322,7 @@ class Component extends DCLogic {
         if (prof.ageLimit != null) profilePayload.age_limit = prof.ageLimit ? (prof.ageMin || '18+') : null;
         if (prof.proType) profilePayload.pro_type = prof.proType;
         if (prof.proCat) profilePayload.pro_category = prof.proCat;
+        if (prof.gender) profilePayload.gender = prof.gender;
         if (prof.photoUrl) profilePayload.photo_url = prof.photoUrl;
         SD.apiAsync('POST', '/comptes/' + real.id + '/profile-update', profilePayload).then(r => {
           if (r && r.ig_changes && Object.keys(r.ig_changes).length) {
@@ -1616,7 +1633,7 @@ class Component extends DCLogic {
       persona: e => { const v = e.target.value; const np = this.P(v); this.upd(x => { x.persona = v; x.niche = np.niche; }); },
       tagInput: e => this.setState({ tagInput: e.target.value }),
       tagKey: e => { if (e.key === 'Enter') { e.preventDefault(); const t = s.tagInput.trim().toLowerCase(); if (t && d.tags.indexOf(t) < 0) this.upd(x => { x.tags.push(t); }); this.setState({ tagInput: '' }); } },
-      pName: PF('displayName'), pBio: PF('bio'), pLink: PF('link'), pUser: PF('username'), pCat: PF('proCat'), pLoc: PF('location')
+      pName: PF('displayName'), pBio: PF('bio'), pLink: PF('link'), pUser: PF('username'), pCat: PF('proCat'), pLoc: PF('location'), pGender: PF('gender')
     };
     const ct = s.ctab || 'single';
     const langOf = m => m === 'FR' ? 'Français' : m === 'ES' ? 'Espagnol' : 'Anglais';
@@ -1824,7 +1841,7 @@ class Component extends DCLogic {
     const pv = {
       platIcon: this.platIcon(pk), platLabel: this.platLabel(pk),
       username: (prof.username ?? handle) || handle, displayName: prof.displayName || (prof.username ?? handle) || handle,
-      isPro: pro, proCat: prof.proCat ?? 'Créatrice de contenu digital', hasAge: ageOn, ageLabel: 'Limite ' + (prof.ageMin || '18+'), reach30: this.compact(acc ? acc.follows * 9 + 1200 : 0),
+      isPro: pro, proCat: prof.proCat ?? 'Créatrice de contenu digital', gender: prof.gender || '', hasAge: ageOn, ageLabel: 'Limite ' + (prof.ageMin || '18+'), reach30: this.compact(acc ? acc.follows * 9 + 1200 : 0),
       hasTags: (prof.interests || []).length > 0, thTags: (prof.interests || []).slice(0, 5).map(t => ({ t: t.toLowerCase() })), thMore: (prof.interests || []).length > 5, thMoreLabel: '+ ' + Math.max(0, (prof.interests || []).length - 5),
       views: this.compact(acc ? Math.round(acc.follows * 7.5 + 900) : 0),
       thMedia: [0, 1, 2].map(i => ({ style: { width: 118, height: 150, flex: 'none', borderRadius: 10, background: this.photo(p.color, (i * 3 + 2) % 8), opacity: .8 } })), bio: prof.bio, link: prof.link, hasLink: !!prof.link,

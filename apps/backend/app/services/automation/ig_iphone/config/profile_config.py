@@ -30,6 +30,7 @@ SCREENS = [
     ("photo_menu",      {"body": ["Choisir dans la", "biblioth"]}),
     ("creation_menu",   {"body": ["Reel", "Publication", "Story", "Fermer"]}),
     # ── Écrans d'édition ──
+    ("edit_gender",     {"title": ["Genre"], "body": ["Femme", "Homme"]}),
     ("edit_field",      {"body": ["fait", "Champ de texte"]}),
     ("edit_bio",        {"title": ["Retour"], "body": ["Bio", "fait"]}),
     ("edit_profile",    {"title": ["Modifier le profil"], "body": ["nom", "Bio"]}),

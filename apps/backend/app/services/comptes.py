@@ -200,6 +200,7 @@ async def _dispatch_profile_edit(compte_id: UUID, plateforme: str, fields: dict,
         "is_private": "private",
         "is_business": "pro",
         "age_limit": "age_limit",
+        "gender": "gender",
         "photo_url": "photo_url",
     }
 
