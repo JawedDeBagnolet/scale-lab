@@ -23,7 +23,7 @@ SCREENS = [
     ("age_picker",      {"title": ["ge par d"], "body": ["Enregistrer", "Fermer"]}),
     ("age_limit",       {"title": ["ge minimum"], "body": ["Par d", "Ajouter ou supprimer"]}),
     ("other_tools",     {"title": ["Autre"], "body": ["Prospects", "ge minimum"]}),
-    ("account_type",    {"title": ["Type de compte et outils"], "body": ["Statistiques", "Autre"]}),
+    ("account_type",    {"title": ["Type de"], "body": ["Statistiques", "Autre"]}),
     ("edit_link",       {"title": ["Modifier le lien"], "body": ["Effacer le texte"]}),
     ("links_list",      {"title": ["Liens"], "body": ["Ajouter un lien"]}),
     ("photo_gallery",   {"body": ["Miniature", "Photos"]}),
@@ -879,19 +879,21 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     if not await _open_settings(driver, navigator, log):
         return False
 
-    # Step 2: Find "Type de compte et outils" (section "Votre compte", near the top)
-    # Settings opens at the top — a small scroll or two should reveal it
+    # Step 2: Find "Type de profil et outils" (or "Type de compte et outils")
+    # D'après les dumps : "Type de profil et outils" (comptes pro)
     el = None
     for attempt in range(5):
-        el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
+        el = await driver.find_element("Type de profil", contains=True, clickable=True, refresh=True)
+        if not el:
+            el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
         if el:
             break
         log("   scroll paramètres (%d/5)" % (attempt + 1))
-        await driver.ht.swipe(187, 450, 187, 300, 250)
-        await asyncio.sleep(1.0)
+        await driver.ht.swipe(187, 650, 187, 250, 350)
+        await asyncio.sleep(1.5)
 
     if not el:
-        log("   ! 'Type de compte et outils' non trouvé après 5 scrolls")
+        log("   ! 'Type de profil/compte et outils' non trouvé après 5 scrolls")
         screen = await _detect_screen(driver, log)
         log("   écran détecté: '%s'" % screen)
         await _dump_screen(driver, log, "settings_no_type_compte")
@@ -1503,16 +1505,31 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 else:
                     screen = await _detect_screen(driver, log)
                     log("   ecran apres tap Genre: '%s'" % screen)
-                    option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
+                    # Find the option — MUST be below title bar (y > 100) to avoid tapping the header
+                    all_els = await driver.find_elements(refresh=True)
+                    option = None
+                    for e in all_els:
+                        t = (e.get('text', '') or '').strip()
+                        r = e.get('rect', {})
+                        if edit_fields["gender"].lower() in t.lower() and r.get('y', 0) > 100:
+                            option = e
+                            break
                     if option:
                         tap = option.get('tap', {})
-                        log("   selectionne '%s' (y=%d)" % (edit_fields["gender"], tap.get('y', 0)))
+                        log("   selectionne '%s' (y=%d)" % (option.get('text', ''), tap.get('y', 0)))
                         await driver.ht.tap(tap['x'], tap['y'])
                         await asyncio.sleep(0.8)
                     else:
-                        log("   ! option genre '%s' non trouvee" % edit_fields["gender"])
-                    await _tap_done(driver, log)
-                    await asyncio.sleep(1)
+                        log("   ! option genre '%s' non trouvee (y>100)" % edit_fields["gender"])
+                    # Sur l'écran genre IG, le bouton est "C'est fait" pas "Terminé"
+                    done = await driver.find_element("fait", contains=True, clickable=True, refresh=True)
+                    if done and done.get('rect', {}).get('y', 0) < 80:
+                        tap = done.get('tap', {})
+                        log("   tap 'C'est fait' (y=%d)" % tap.get('y', 0))
+                        await driver.ht.tap(tap['x'], tap['y'])
+                        await asyncio.sleep(1.5)
+                    else:
+                        await _go_back(driver, navigator, log)
                     await _dismiss_popup(driver, log)
                     await _verify_on_edit_screen(driver, log)
                     results["gender"] = True
