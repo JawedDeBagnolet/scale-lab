@@ -879,33 +879,19 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     if not await _open_settings(driver, navigator, log):
         return False
 
-    # Step 2: Find "Type de compte et outils"
-    # It's in the "Votre compte" section near the TOP of settings.
-    # Settings may open scrolled to a previous position, so scroll UP first.
-    el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
-    if not el:
-        # Scroll to top first (3 big upward swipes)
-        log("   scroll vers le haut des paramètres")
-        for _ in range(3):
-            await driver.ht.swipe(187, 200, 187, 700, 300)
-            await asyncio.sleep(0.8)
-        await asyncio.sleep(0.5)
-
-        # Now look for "Votre compte" section then "Type de compte"
-        for attempt in range(5):
-            el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
-            if el:
-                break
-            # Also try via "Votre compte" section header as landmark
-            votre = await driver.find_element("Votre compte", contains=True, refresh=True)
-            if votre:
-                log("   section 'Votre compte' trouvée (y=%d), scroll léger" % votre.get('rect', {}).get('y', 0))
-            log("   scroll paramètres (%d/5)" % (attempt + 1))
-            await driver.ht.swipe(187, 500, 187, 300, 300)
-            await asyncio.sleep(1.2)
+    # Step 2: Find "Type de compte et outils" (section "Votre compte", near the top)
+    # Settings opens at the top — a small scroll or two should reveal it
+    el = None
+    for attempt in range(5):
+        el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
+        if el:
+            break
+        log("   scroll paramètres (%d/5)" % (attempt + 1))
+        await driver.ht.swipe(187, 450, 187, 300, 250)
+        await asyncio.sleep(1.0)
 
     if not el:
-        log("   ! 'Type de compte et outils' non trouvé après scroll haut+bas")
+        log("   ! 'Type de compte et outils' non trouvé après 5 scrolls")
         screen = await _detect_screen(driver, log)
         log("   écran détecté: '%s'" % screen)
         await _dump_screen(driver, log, "settings_no_type_compte")
@@ -1512,17 +1498,7 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                 log("   [5] genre -> '%s'" % edit_fields["gender"])
                 if not await _ensure_screen(driver, navigator, log, "edit_profile"):
                     log("   ! abort genre: pas sur edit_profile")
-                else:
-                    # Genre is at the bottom of edit_profile — scroll to find it
-                    genre_field = None
-                    for scroll_try in range(3):
-                        await driver.scroll_down('light')
-                        await asyncio.sleep(0.5)
-                        genre_field = await driver.find_element("Genre", clickable=True, refresh=True)
-                        if genre_field:
-                            break
-                        log("   Genre non visible, scroll (%d/3)" % (scroll_try + 1))
-                    if genre_field and await _tap_field(driver, log, "Genre"):
+                elif await _tap_field(driver, log, "Genre"):
                         # Vérifier qu'on est sur l'écran de genre
                         screen = await _detect_screen(driver, log)
                         log("   ecran apres tap Genre: '%s'" % screen)
