@@ -175,9 +175,9 @@ class ScrapigoClient:
 
     # ── Stats ────────────────────────────────────────────────────────────
 
-    async def get_usage_summary(self) -> dict | None:
+    async def get_usage_summary(self, period: str = "30d") -> dict | None:
         """Get usage stats: bytes up/down, sessions, per product."""
-        return await self._request("GET", "/stats/summary")
+        return await self._request("GET", f"/stats/summary?period={period}")
 
     async def get_usage_breakdown(self, group_by: str = "credential") -> dict | None:
         """Get usage breakdown by country, credential, or product."""
