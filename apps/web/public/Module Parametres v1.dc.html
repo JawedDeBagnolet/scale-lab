@@ -321,8 +321,8 @@ class Component extends DCLogic {
       var vBase = 'font-size:15px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
       var subBase = 'font-size:11px;margin-top:4px;';
       // Usage from Scrapigo API /stats/summary?period=30d
-      var usgBytes = parseInt(usg.totalBytes || '0', 10);
-      var usgSessions = parseInt(usg.sessionCount || '0', 10);
+      var usgBytes = parseInt(usg.bytesTotal || '0', 10);
+      var usgSessions = parseInt(usg.sessions || '0', 10);
       var facts = [
         { label: 'Comptes scraper actifs', v: ok + ' / ' + tot, hasBar: true, bar: 'width:' + barPct + '%;height:100%;border-radius:99px;background:linear-gradient(90deg,#2dd4a8,#38bdf8)', sub: recon ? (recon + ' session' + (recon > 1 ? 's' : '') + ' à reconnecter') : 'toutes les sessions valides', vStyle: vBase + 'color:' + (warnRecon ? '#f5c77e' : '#f2f3fa'), subStyle: subBase + 'color:' + (warnRecon ? '#f5c77e' : '#6b7289') },
         { label: 'Consommation', v: fmtB(usgBytes), hasBar: false, bar: '', sub: '30 derniers jours · ' + nf(usgSessions) + ' sessions', vStyle: vBase + 'color:#f2f3fa', subStyle: subBase + 'color:#6b7289' },
