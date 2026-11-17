@@ -255,6 +255,21 @@ async def _open_settings(driver, navigator, log) -> bool:
     """Ouvre l'ecran Parametres et activite avec vérification."""
     # D'abord s'assurer qu'on est sur le profil
     screen = await _detect_screen(driver, log)
+    if screen in ("edit_profile", "edit_field", "edit_bio", "edit_gender", "edit_link", "links_list"):
+        # On est dans l'édition de profil — fermer d'abord
+        log("   [nav] écran '%s' → fermeture edit profil" % screen)
+        # Chercher le bouton "Retour" ou "Modifier le profil" en titre (y < 80)
+        back = await driver.find_element("Retour", clickable=True, refresh=True)
+        if back and back.get('rect', {}).get('y', 0) < 80:
+            tap = back.get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2)
+        else:
+            await navigator.go_back()
+            await asyncio.sleep(2)
+        screen = await _detect_screen(driver, log)
+        log("   [nav] écran après fermeture: '%s'" % screen)
+
     if screen not in ("own_profile", "settings", "settings_deep"):
         log("   [nav] écran '%s' → navigation vers profil" % screen)
         # Essayer le tab profil dans la barre du bas
