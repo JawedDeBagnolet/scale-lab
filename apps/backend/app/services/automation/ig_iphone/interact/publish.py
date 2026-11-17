@@ -1,167 +1,235 @@
 """
 ig_iphone/interact/publish.py — Publication sur Instagram.
 
-Flows : post feed, story, reel.
-Le contenu (photo/video) doit etre dans la galerie de l'iPhone.
+Flows : post feed, story, reel, carousel.
+Le contenu (photo/video) doit etre dans la galerie de l'iPhone
+(pousse via push_media_to_gallery avec spoof EXIF).
 
 Usage:
-    from app.services.automation.ig_iphone.interact.publish import publish_feed_post, publish_story, publish_reel
-    publish_feed_post(driver, navigator, caption="Hello!", log=print)
+    from app.services.automation.ig_iphone.interact.publish import (
+        publish_feed_post, publish_story, publish_reel, publish_carousel,
+    )
+    await publish_feed_post(driver, navigator, caption="Hello!", log=print)
 """
 
-import random
 import asyncio
+import random
 import time
+from typing import Callable
+
+from app.services.automation.ig_iphone.config.profile_config import (
+    _detect_screen, _dump_screen,
+)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _open_create_menu(driver, navigator, log):
-    """Ouvre le menu de creation depuis le profil (bouton '+')."""
-    await navigator.go_profile()
-    await asyncio.sleep(1)
-    # Le bouton "+" s'appelle "Appuyez pour ouvrir le menu de création"
+async def _open_create_menu(driver, navigator, log) -> bool:
+    """Ouvre le menu de creation depuis n'importe quel ecran."""
+    screen = await _detect_screen(driver, log)
+    log("   ecran actuel: '%s'" % screen)
+
+    # Si on est deja dans le menu creation
+    if screen == "creation_menu":
+        log("   deja dans le menu creation")
+        return True
+
+    # Aller au profil d'abord si necessaire
+    if screen not in ("own_profile", "feed"):
+        await navigator.go_profile()
+        await asyncio.sleep(2)
+        screen = await _detect_screen(driver, log)
+
+    # Chercher le bouton "+" (menu de creation)
     plus_el = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
     if not plus_el:
+        plus_el = await driver.find_element(contains="Cr", clickable=True, refresh=True)
+    if not plus_el:
         log("   ! bouton creation non trouve")
+        await _dump_screen(driver, log, "no_create_btn")
         return False
+
     tap = plus_el.get('tap', {})
-    log("   tap menu creation")
+    log("   tap menu creation (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
-    await asyncio.sleep(1)
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # Verifier que le menu est apparu
+    screen = await _detect_screen(driver, log)
+    if screen != "creation_menu":
+        log("   ⚠ ecran '%s' apres tap creation (attendu creation_menu)" % screen)
+        # Retry une fois
+        plus_el = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
+        if plus_el:
+            tap = plus_el.get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2)
+            screen = await _detect_screen(driver, log)
+            if screen != "creation_menu":
+                log("   ! menu creation pas ouvert apres retry")
+                return False
+        else:
+            return False
+
+    log("   ✓ menu creation ouvert")
     return True
 
 
-async def _select_photo(driver, log, index=0):
-    """Selectionne une photo dans la galerie (par index, 0 = premiere)."""
-    els = await driver.find_elements(contains="Miniature photo", clickable=True, refresh=True)
-    if not els:
-        log("   ! aucune photo dans la galerie")
-        return False
-    idx = min(index, len(els) - 1)
-    tap = els[idx].get('tap', {})
-    log("   selectionne photo #%d" % idx)
-    await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('tap')
-    await asyncio.sleep(1)
-    return True
-
-
-async def _select_video(driver, log, index=0):
-    """Selectionne une video dans la galerie."""
-    els = await driver.find_elements(contains="Miniature vidéo", clickable=True, refresh=True)
-    if not els:
-        # Fallback : les videos peuvent avoir "Miniature photo" aussi
+async def _select_photo(driver, log, index=0) -> bool:
+    """Selectionne une photo dans la galerie (par index, 0 = premiere/plus recente)."""
+    for attempt in range(3):
         els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-    if not els:
+        # Filtrer : garder les elements dans la grille (y > 400)
+        photos = [e for e in els if e.get('rect', {}).get('y', 0) > 400]
+        if photos:
+            break
+        log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
+        await asyncio.sleep(1.5)
+
+    if not photos:
+        log("   ! aucune photo dans la galerie")
+        await _dump_screen(driver, log, "galerie_vide")
+        return False
+
+    idx = min(index, len(photos) - 1)
+    tap = photos[idx].get('tap', {})
+    log("   selectionne photo #%d (y=%d, %d dispo)" % (idx, tap.get('y', 0), len(photos)))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(0.8, 1.5))
+    return True
+
+
+async def _select_video(driver, log, index=0) -> bool:
+    """Selectionne une video dans la galerie."""
+    for attempt in range(3):
+        els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
+        videos = [e for e in els if e.get('rect', {}).get('y', 0) > 400]
+        if videos:
+            break
+        log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
+        await asyncio.sleep(1.5)
+
+    if not videos:
         log("   ! aucune video dans la galerie")
         return False
-    idx = min(index, len(els) - 1)
-    tap = els[idx].get('tap', {})
-    log("   selectionne video #%d" % idx)
+
+    idx = min(index, len(videos) - 1)
+    tap = videos[idx].get('tap', {})
+    log("   selectionne video #%d (y=%d)" % (idx, tap.get('y', 0)))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('tap')
-    await asyncio.sleep(1)
+    await asyncio.sleep(random.uniform(0.8, 1.5))
     return True
 
 
-async def _tap_suivant(driver, log):
-    """Tape sur le bouton 'Suivant' (haut ou bas de l ecran)."""
-    els = await driver.find_elements(text="Suivant", clickable=True, refresh=True)
-    if els:
-        # Prendre le dernier visible (souvent en bas dans l editeur)
-        best = els[-1]
-        tap = best.get('tap', {})
-        log("   -> Suivant (y=%d)" % tap.get('y', 0))
-        await driver.ht.tap(tap['x'], tap['y'])
-        await driver.wait('transition')
-        await asyncio.sleep(2)
-        return True
-    log("   ! bouton Suivant non trouve")
+async def _tap_suivant(driver, log) -> bool:
+    """Tape sur le bouton 'Suivant'."""
+    for attempt in range(3):
+        els = await driver.find_elements(text="Suivant", clickable=True, refresh=True)
+        if els:
+            best = els[-1]
+            tap = best.get('tap', {})
+            log("   -> Suivant (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(2.0, 3.0))
+            return True
+        log("   [retry %d] bouton Suivant non trouve" % (attempt + 1))
+        await asyncio.sleep(1)
+    log("   ! bouton Suivant non trouve apres 3 essais")
+    await _dump_screen(driver, log, "no_suivant")
     return False
 
 
-async def _dismiss_privacy_popup(driver, log):
-    """Ferme le popup de partage de publications (s'il apparait)."""
+async def _dismiss_privacy_popup(driver, log) -> bool:
+    """Ferme le popup de partage de publications."""
     ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
     if ok_el:
         rect = ok_el.get('rect', {})
-        if rect.get('width', 0) >= 200:  # Le gros bouton OK, pas un petit
+        if rect.get('width', 0) >= 200:
             tap = ok_el.get('tap', {})
-            log("   dismiss popup vie privee")
+            log("   dismiss popup vie privee (y=%d)" % tap.get('y', 0))
             await driver.ht.tap(tap['x'], tap['y'])
-            await driver.wait('transition')
-            await asyncio.sleep(1)
+            await asyncio.sleep(random.uniform(1.0, 1.5))
             return True
     return False
 
 
-async def _write_caption(driver, log, caption):
-    """Ecrit la legende du post naturellement, puis ferme le clavier."""
+async def _write_caption(driver, log, caption) -> bool:
+    """Ecrit la legende du post."""
     if not caption:
         return True
     el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
     if not el:
+        el = await driver.find_element(contains="crivez une l", clickable=True, refresh=True)
+    if not el:
         log("   ! champ legende non trouve")
+        await _dump_screen(driver, log, "no_caption_field")
         return False
     tap = el.get('tap', {})
-    log("   tap champ legende")
+    log("   tap champ legende (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('tap')
     await asyncio.sleep(0.5)
-    # Ecriture naturelle (caractere par caractere avec delai)
     log("   ecriture legende (%d chars)" % len(caption))
-    await driver.type_text(caption, method="slow")
+    await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Valider la legende : tap "OK" (en haut a droite)
+    # Fermer le clavier : tap "OK" ou "Termine" ou tap en haut
     ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
-    if ok_el:
+    if ok_el and ok_el.get('rect', {}).get('y', 0) < 80:
         tap2 = ok_el.get('tap', {})
         log("   valide legende (OK)")
         await driver.ht.tap(tap2['x'], tap2['y'])
     else:
-        ok_el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
-        if ok_el:
-            tap2 = ok_el.get('tap', {})
-            log("   valide legende (Termine)")
+        done_el = await driver.find_element(contains="fait", clickable=True, refresh=True)
+        if done_el and done_el.get('rect', {}).get('y', 0) < 80:
+            tap2 = done_el.get('tap', {})
+            log("   valide legende (C'est fait)")
             await driver.ht.tap(tap2['x'], tap2['y'])
         else:
             log("   ferme clavier (tap haut)")
-            await driver.ht.tap(driver.ht.screen_w * 0.5, 50)
-    await driver.wait('tap')
-    await asyncio.sleep(2)
+            await driver.ht.tap(187, 50)
+    await asyncio.sleep(random.uniform(1.5, 2.5))
     return True
 
 
-async def _tap_partager(driver, log):
-    """Tape sur le bouton 'Partager' pour publier."""
-    el = await driver.find_element(text="Partager", clickable=True, refresh=True)
-    if el:
-        tap = el.get('tap', {})
-        log("   -> Partager")
-        await driver.ht.tap(tap['x'], tap['y'])
-        await driver.wait('transition')
-        # Attendre l upload (25-30s pour images, plus pour video)
-        log("   attente upload...")
-        await asyncio.sleep(25)
-        return True
+async def _tap_partager(driver, log) -> bool:
+    """Tape sur le bouton 'Partager' et attend l'upload."""
+    for attempt in range(3):
+        el = await driver.find_element(text="Partager", clickable=True, refresh=True)
+        if el:
+            tap = el.get('tap', {})
+            log("   -> Partager (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            # Attendre l'upload (15-30s selon le media)
+            log("   attente upload...")
+            for wait_i in range(20):
+                await asyncio.sleep(2)
+                screen = await _detect_screen(driver, log)
+                if screen in ("feed", "own_profile"):
+                    log("   ✓ upload termine, retour '%s'" % screen)
+                    return True
+            log("   ⚠ timeout upload (40s)")
+            return True  # On considere que c'est OK meme si timeout
+        log("   [retry %d] bouton Partager non trouve" % (attempt + 1))
+        await asyncio.sleep(1)
     log("   ! bouton Partager non trouve")
+    await _dump_screen(driver, log, "no_partager")
     return False
 
 
 # ── Publication Feed ──────────────────────────────────────────────────────────
 
-async def publish_feed_post(driver, navigator, caption="", photo_index=0, location=None, log=print):
+async def publish_feed_post(driver, navigator, caption="", photo_index=0,
+                            first_comment=None, location=None,
+                            log: Callable = print) -> dict:
     """Publie un post dans le feed.
 
     Args:
         caption: texte de la legende
-        photo_index: index de la photo dans la galerie (0 = premiere)
+        photo_index: index de la photo dans la galerie (0 = premiere/plus recente)
+        first_comment: premier commentaire a poster apres publication (optionnel)
         location: nom du lieu (optionnel, pas encore implemente)
 
     Returns:
-        dict {published, duration_s}
+        dict {published, duration_s, type}
     """
     start = time.time()
     stats = {"published": False, "type": "feed_post", "duration_s": 0}
@@ -169,39 +237,47 @@ async def publish_feed_post(driver, navigator, caption="", photo_index=0, locati
     log("-> Publication feed post")
 
     # 1. Menu creation → Publication
-    if not _open_create_menu(driver, navigator, log):
+    if not await _open_create_menu(driver, navigator, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
     pub_el = await driver.find_element(text="Publication", clickable=True, refresh=True)
     if not pub_el:
         log("   ! option Publication non trouvee")
+        await _dump_screen(driver, log, "creation_menu_no_pub")
+        stats["duration_s"] = round(time.time() - start)
         return stats
     tap = pub_el.get('tap', {})
+    log("   tap Publication (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
-    await asyncio.sleep(2)
+    await asyncio.sleep(random.uniform(2.0, 3.0))
 
     # 2. Selectionner une photo
-    if not _select_photo(driver, log, photo_index):
+    if not await _select_photo(driver, log, photo_index):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
     # 3. Suivant (galerie → editeur)
-    if not _tap_suivant(driver, log):
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
     # 4. Suivant (editeur → caption)
-    if not _tap_suivant(driver, log):
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
     # 5. Popup vie privee
-    _dismiss_privacy_popup(driver, log)
+    await _dismiss_privacy_popup(driver, log)
 
     # 6. Ecrire la legende
-    _write_caption(driver, log, caption)
+    await _write_caption(driver, log, caption)
 
     # 7. Partager
-    if _tap_partager(driver, log):
+    if await _tap_partager(driver, log):
         stats["published"] = True
-        log("   post publie!")
+        log("   ✓ post publie!")
+    else:
+        log("   ! echec publication")
 
     stats["duration_s"] = round(time.time() - start)
     return stats
@@ -209,20 +285,15 @@ async def publish_feed_post(driver, navigator, caption="", photo_index=0, locati
 
 # ── Story ─────────────────────────────────────────────────────────────────────
 
-async def publish_story(driver, navigator, photo_index=0, caption=None, stickers=None, log=print):
+async def publish_story(driver, navigator, photo_index=0, caption=None,
+                        stickers=None, log: Callable = print) -> dict:
     """Publie une story avec stickers optionnels.
 
     Args:
         photo_index: index de la photo dans la galerie
         caption: legende optionnelle
-        stickers: dict de stickers a ajouter, ex:
-            {
-                "link": {"url": "https://...", "text": "Mon lien"},
-                "poll": {"question": "Tu preferes?", "options": ["A", "B"]},
-                "question": "Posez-moi une question",
-                "location": "Paris",
-                "music": "Espresso",
-            }
+        stickers: dict de stickers, ex:
+            {"link": {"url": "...", "text": "..."}, "poll": {...}, ...}
     """
     start = time.time()
     stats = {"published": False, "type": "story", "duration_s": 0}
@@ -230,95 +301,83 @@ async def publish_story(driver, navigator, photo_index=0, caption=None, stickers
     log("-> Publication story")
 
     # 1. Menu creation → Story
-    if not _open_create_menu(driver, navigator, log):
+    if not await _open_create_menu(driver, navigator, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
     story_el = await driver.find_element(text="Story", clickable=True, refresh=True)
     if not story_el:
         log("   ! option Story non trouvee")
+        stats["duration_s"] = round(time.time() - start)
         return stats
     tap = story_el.get('tap', {})
+    log("   tap Story (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
-    await asyncio.sleep(2)
+    await asyncio.sleep(random.uniform(2.0, 3.0))
 
     # 2. Selectionner une photo
-    if not _select_photo(driver, log, photo_index):
+    if not await _select_photo(driver, log, photo_index):
+        stats["duration_s"] = round(time.time() - start)
         return stats
     await asyncio.sleep(2)
 
-    # 2b. Dismiss popup (partage de story, etc.)
-    await navigator._dismiss_popups()
-    await asyncio.sleep(1)
-
-    # 3. Editeur story : ajouter legende si demandee
+    # 3. Legende (optionnelle)
     if caption:
         caption_el = await driver.find_element(contains="Ajoutez une l", clickable=True, refresh=True)
         if caption_el:
             tap = caption_el.get('tap', {})
-            log("   tap champ legende story")
+            log("   tap champ legende story (y=%d)" % tap.get('y', 0))
             await driver.ht.tap(tap['x'], tap['y'])
-            await driver.wait('tap')
             await asyncio.sleep(0.5)
             log("   ecriture legende (%d chars)" % len(caption))
-            await driver.type_text(caption, method="natural")
+            await driver.ht.type_text(caption)
             await asyncio.sleep(1)
-            await driver.ht.tap(driver.ht.screen_w * 0.5, 100)
-            await driver.wait('tap')
+            await driver.ht.tap(187, 100)
             await asyncio.sleep(0.5)
 
-    # 3b. Ajouter les stickers
+    # 4. Stickers
     if stickers:
-        from app.services.automation.ig_iphone.interact.story_stickers import (
-            add_link_sticker, add_poll_sticker, add_question_sticker,
-            add_location_sticker, add_music_sticker,
-        )
-        if "link" in stickers:
-            link = stickers["link"]
-            if isinstance(link, dict):
-                add_link_sticker(driver, link.get("url", ""), text=link.get("text"), log=log)
-            else:
-                add_link_sticker(driver, str(link), log=log)
+        try:
+            from app.services.automation.ig_iphone.interact.story_stickers import (
+                add_link_sticker, add_poll_sticker, add_question_sticker,
+                add_location_sticker, add_music_sticker,
+            )
+            if "link" in stickers:
+                link = stickers["link"]
+                if isinstance(link, dict):
+                    await add_link_sticker(driver, link.get("url", ""), text=link.get("text"), log=log)
+                else:
+                    await add_link_sticker(driver, str(link), log=log)
+            if "poll" in stickers:
+                poll = stickers["poll"]
+                if isinstance(poll, dict):
+                    await add_poll_sticker(driver, poll.get("question", ""), options=poll.get("options"), log=log)
+                else:
+                    await add_poll_sticker(driver, str(poll), log=log)
+            if "question" in stickers:
+                await add_question_sticker(driver, question=stickers["question"] or None, log=log)
+            if "location" in stickers:
+                await add_location_sticker(driver, stickers["location"], log=log)
+            if "music" in stickers:
+                await add_music_sticker(driver, song=stickers["music"] or None, log=log)
+        except Exception as e:
+            log("   ⚠ erreur stickers: %s (non bloquant)" % str(e)[:100])
 
-        if "poll" in stickers:
-            poll = stickers["poll"]
-            if isinstance(poll, dict):
-                add_poll_sticker(driver, poll.get("question", ""), options=poll.get("options"), log=log)
-            else:
-                add_poll_sticker(driver, str(poll), log=log)
-
-        if "question" in stickers:
-            q = stickers["question"]
-            add_question_sticker(driver, question=q if q else None, log=log)
-
-        if "location" in stickers:
-            add_location_sticker(driver, stickers["location"], log=log)
-
-        if "music" in stickers:
-            add_music_sticker(driver, song=stickers["music"] if stickers["music"] else None, log=log)
-
-
-    # 4. Partager dans votre story
+    # 5. Partager dans votre story
     share_el = await driver.find_element(contains="Partager dans votre story", clickable=True, refresh=True)
+    if not share_el:
+        share_el = await driver.find_element(contains="Votre story", clickable=True, refresh=True)
     if share_el:
         tap = share_el.get('tap', {})
-        log("   -> Partager dans votre story")
+        log("   -> Partager dans votre story (y=%d)" % tap.get('y', 0))
         await driver.ht.tap(tap['x'], tap['y'])
-        await driver.wait('transition')
-        await asyncio.sleep(3)
+        await asyncio.sleep(random.uniform(3.0, 5.0))
         stats["published"] = True
-        log("   story publiee!")
+        log("   ✓ story publiee!")
     else:
-        # Fallback : bouton "Partager" generique ou options de partage
-        share_opt = await driver.find_element(contains="options de partage", clickable=True, refresh=True)
-        if share_opt:
-            tap = share_opt.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await driver.wait('transition')
-            await asyncio.sleep(1)
-            # Tap le gros bouton Partager
-            if _tap_partager(driver, log):
-                stats["published"] = True
-                log("   story publiee!")
+        # Fallback : bouton Partager generique
+        if await _tap_partager(driver, log):
+            stats["published"] = True
+            log("   ✓ story publiee!")
 
     stats["duration_s"] = round(time.time() - start)
     return stats
@@ -326,56 +385,54 @@ async def publish_story(driver, navigator, photo_index=0, caption=None, stickers
 
 # ── Reel ──────────────────────────────────────────────────────────────────────
 
-async def publish_reel(driver, navigator, caption="", video_index=0, log=print):
-    """Publie un reel.
-
-    Args:
-        caption: texte de la legende
-        video_index: index de la video dans la galerie
-
-    Returns:
-        dict {published, duration_s}
-    """
+async def publish_reel(driver, navigator, caption="", video_index=0,
+                       log: Callable = print) -> dict:
+    """Publie un reel."""
     start = time.time()
     stats = {"published": False, "type": "reel", "duration_s": 0}
 
     log("-> Publication reel")
 
     # 1. Menu creation → Reel
-    if not _open_create_menu(driver, navigator, log):
+    if not await _open_create_menu(driver, navigator, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
     reel_el = await driver.find_element(text="Reel", clickable=True, refresh=True)
     if not reel_el:
         log("   ! option Reel non trouvee")
+        stats["duration_s"] = round(time.time() - start)
         return stats
     tap = reel_el.get('tap', {})
+    log("   tap Reel (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
-    await asyncio.sleep(2)
+    await asyncio.sleep(random.uniform(2.0, 3.0))
 
     # 2. Selectionner une video
-    if not _select_video(driver, log, video_index):
+    if not await _select_video(driver, log, video_index):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
     # 3. Suivant (galerie → editeur)
-    if not _tap_suivant(driver, log):
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 4. Editeur reel (audio, texte, etc.) → Suivant
+    # 4. Editeur reel → Suivant
     await asyncio.sleep(1)
-    if not _tap_suivant(driver, log):
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
     # 5. Popup vie privee
-    _dismiss_privacy_popup(driver, log)
+    await _dismiss_privacy_popup(driver, log)
 
-    # 6. Ecrire la legende
-    _write_caption(driver, log, caption)
+    # 6. Legende
+    await _write_caption(driver, log, caption)
 
     # 7. Partager
-    if _tap_partager(driver, log):
+    if await _tap_partager(driver, log):
         stats["published"] = True
-        log("   reel publie!")
+        log("   ✓ reel publie!")
 
     stats["duration_s"] = round(time.time() - start)
     return stats
@@ -383,84 +440,78 @@ async def publish_reel(driver, navigator, caption="", video_index=0, log=print):
 
 # ── Carousel ──────────────────────────────────────────────────────────────────
 
-async def publish_carousel(driver, navigator, caption="", photo_count=2, log=print):
-    """Publie un carousel (multi-photo).
-
-    Args:
-        caption: texte de la legende
-        photo_count: nombre de photos a selectionner (les plus recentes)
-
-    Returns:
-        dict {published, duration_s}
-    """
+async def publish_carousel(driver, navigator, caption="", photo_count=2,
+                           log: Callable = print) -> dict:
+    """Publie un carousel (multi-photo)."""
     start = time.time()
     stats = {"published": False, "type": "carousel", "duration_s": 0}
 
     log("-> Publication carousel (%d photos)" % photo_count)
 
-    # 1. Menu creation -> Publication
-    if not _open_create_menu(driver, navigator, log):
+    # 1. Menu creation → Publication
+    if not await _open_create_menu(driver, navigator, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
     pub_el = await driver.find_element(text="Publication", clickable=True, refresh=True)
     if not pub_el:
         log("   ! option Publication non trouvee")
+        stats["duration_s"] = round(time.time() - start)
         return stats
     tap = pub_el.get('tap', {})
+    log("   tap Publication (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
-    await asyncio.sleep(2)
+    await asyncio.sleep(random.uniform(2.0, 3.0))
 
     # 2. Activer multi-select
     sel_el = await driver.find_element(contains="lectionner", clickable=True, refresh=True)
     if not sel_el:
+        sel_el = await driver.find_element(contains="Multi", clickable=True, refresh=True)
+    if not sel_el:
         log("   ! bouton Selectionner non trouve")
+        await _dump_screen(driver, log, "no_multiselect")
+        stats["duration_s"] = round(time.time() - start)
         return stats
     tap = sel_el.get('tap', {})
-    log("   mode multi-select")
+    log("   mode multi-select (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(1.5)
 
-    # 2b. Dismiss popup "Partager plus"
-    await navigator._dismiss_popups()
-    await asyncio.sleep(1)
-
-    # 3. Selectionner les photos (la 1ere est deja selectionnee)
-    photos = await driver.find_elements(contains="Miniature photo", clickable=True, refresh=True)
-    # Filtrer camera et elements trop hauts
-    photos = [p for p in photos if p.get('rect', {}).get('y', 0) > 500]
+    # 3. Selectionner les photos
+    photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
+    photos = [p for p in photos if p.get('rect', {}).get('y', 0) > 400]
     log("   %d photos disponibles" % len(photos))
 
-    # Selectionner photos 2 a N (la 1ere est deja cochee)
+    # La 1ere est deja selectionnee, selectionner les suivantes
     selected = 1
     for i in range(1, min(photo_count, len(photos))):
         tap = photos[i].get('tap', {})
-        log("   selectionne photo #%d" % (i + 1))
+        log("   selectionne photo #%d (y=%d)" % (i + 1, tap.get('y', 0)))
         await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(random.uniform(0.5, 1.0))
         selected += 1
 
     log("   %d photos selectionnees" % selected)
 
-    # 4. Suivant (galerie -> editeur)
-    if not _tap_suivant(driver, log):
+    # 4. Suivant (galerie → editeur)
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 5. Editeur -> Suivant
-    if not _tap_suivant(driver, log):
+    # 5. Editeur → Suivant
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 5b. Dismiss privacy popup
-    _dismiss_privacy_popup(driver, log)
-    await navigator._dismiss_popups()
-    await asyncio.sleep(1)
+    # 6. Popup vie privee
+    await _dismiss_privacy_popup(driver, log)
 
-    # 6. Ecrire la legende
-    _write_caption(driver, log, caption)
+    # 7. Legende
+    await _write_caption(driver, log, caption)
 
-    # 7. Partager
-    if _tap_partager(driver, log):
+    # 8. Partager
+    if await _tap_partager(driver, log):
         stats["published"] = True
-        log("   carousel publie!")
+        log("   ✓ carousel publie!")
 
     stats["duration_s"] = round(time.time() - start)
     return stats

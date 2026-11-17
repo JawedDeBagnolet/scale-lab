@@ -113,10 +113,14 @@ class Publication(Base):
     media_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("medias.id", ondelete="SET NULL")
     )
+    media_urls: Mapped[list | None] = mapped_column(JSONB, default=list)  # R2 URLs for carousel
+    post_type: Mapped[str] = mapped_column(String(20), default="post")  # post, story, reel, carousel
     caption: Mapped[str | None] = mapped_column(Text)
+    first_comment: Mapped[str | None] = mapped_column(Text)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="planned")  # planned, published, failed, suspended
     platform_post_id: Mapped[str | None] = mapped_column(String(200))
+    stickers: Mapped[dict | None] = mapped_column(JSONB)  # story stickers config
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -1,9 +1,13 @@
+import asyncio
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+
+logger = logging.getLogger("api.posting")
 from app.schemas.posting import (
     CampagneCreate,
     CampagneOut,
@@ -248,3 +252,140 @@ async def delete_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
     if not p:
         raise HTTPException(404, "publication not found")
     await service.delete_publication(db, p)
+
+
+@router.post("/publications/{pid}/publish")
+async def dispatch_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
+    """Dispatch a publication to the iPhone for immediate execution.
+
+    Resolves: publication → compte → device → media URLs → run_ig_task.
+    """
+    from app.services.comptes import _log as emit_log
+
+    pub = await service.get_publication(db, pid)
+    if not pub:
+        raise HTTPException(404, "publication not found")
+
+    if pub.status == "published":
+        raise HTTPException(400, "Publication déjà publiée")
+
+    # Resolve compte
+    from app.models.compte import Compte
+    compte = await db.get(Compte, pub.compte_id)
+    if not compte:
+        raise HTTPException(400, "Compte introuvable")
+    if not compte.device_id:
+        raise HTTPException(400, "Pas d'iPhone assigné au compte")
+
+    # Resolve media URLs
+    media_urls = pub.media_urls or []
+    if not media_urls and pub.media_id:
+        from app.models.posting import Media
+        media = await db.get(Media, pub.media_id)
+        if media and media.url:
+            media_urls = [media.url]
+
+    if not media_urls:
+        raise HTTPException(400, "Aucun média associé à la publication")
+
+    # Resolve market from persona
+    market = "FR"
+    if compte.persona_id:
+        from app.models.persona import Persona
+        persona = await db.get(Persona, compte.persona_id)
+        if persona and persona.market:
+            market = persona.market
+
+    # Map post_type to runner action
+    post_type = pub.post_type or "post"
+    action_map = {
+        "post": "ig_post",
+        "story": "ig_story_post",
+        "reel": "ig_reel_post",
+        "carousel": "ig_post",
+    }
+    action = action_map.get(post_type, "ig_post")
+
+    # Build values for the runner
+    values = {
+        "media_urls": media_urls if action == "ig_post" else None,
+        "media_url": media_urls[0] if action != "ig_post" and media_urls else None,
+        "caption": pub.caption or "",
+        "first_comment": pub.first_comment,
+        "market": market,
+        "phone_id": str(compte.id),
+        "stickers": pub.stickers,
+    }
+    # Remove None values
+    values = {k: v for k, v in values.items() if v is not None}
+
+    # Update status
+    pub.status = "publishing"
+    await db.commit()
+
+    await emit_log("posting", "publish", "info", compte.handle,
+        f"Publication lancée — {post_type} avec {len(media_urls)} média(s)")
+
+    # Dispatch as background task
+    asyncio.create_task(
+        _run_publication(pub.id, compte.id, compte.plateforme, action, values, compte.handle),
+        name=f"publish_{compte.handle}_{pub.id}",
+    )
+
+    logger.info("dispatch_publication: %s %s for @%s", action, pub.id, compte.handle)
+    return {"ok": True, "action": action, "media_count": len(media_urls), "post_type": post_type}
+
+
+async def _run_publication(pub_id: UUID, compte_id: UUID, plateforme: str,
+                           action: str, values: dict, handle: str = ""):
+    """Background task: run the publication on the iPhone."""
+    from app.services.engine import LogCollector
+    from app.services.comptes import _log as emit_log
+
+    collector = LogCollector()
+    try:
+        if plateforme == "ig":
+            from app.services.automation.ig_runner import run_ig_task
+            ok, msg = await run_ig_task(compte_id, action, values=values, log=collector)
+        else:
+            await emit_log("posting", "publish", "warning", handle,
+                f"Pas de script de publication pour {plateforme}")
+            return
+
+        meta = {"session_logs": collector.lines}
+        if ok:
+            logger.info("publish: %s publié — %s", handle, msg)
+            await emit_log("posting", "publish", "success", handle,
+                f"Publication réussie — {msg}", meta=meta)
+            # Update publication status
+            from app.db import AsyncSessionLocal
+            from app.models.posting import Publication
+            async with AsyncSessionLocal() as db:
+                p = await db.get(Publication, pub_id)
+                if p:
+                    p.status = "published"
+                    await db.commit()
+        else:
+            logger.error("publish: %s échec — %s", handle, msg)
+            await emit_log("posting", "publish", "error", handle,
+                f"Échec publication — {msg}", code="PUBLISH_FAILED", meta=meta)
+            from app.db import AsyncSessionLocal
+            from app.models.posting import Publication
+            async with AsyncSessionLocal() as db:
+                p = await db.get(Publication, pub_id)
+                if p:
+                    p.status = "failed"
+                    await db.commit()
+    except Exception:
+        import traceback
+        logger.exception("publish: erreur inattendue pour %s", handle)
+        meta = {"session_logs": collector.lines}
+        await emit_log("posting", "publish", "error", handle,
+            f"Erreur publication: {traceback.format_exc()[-200:]}", code="PUBLISH_EXCEPTION", meta=meta)
+        from app.db import AsyncSessionLocal
+        from app.models.posting import Publication
+        async with AsyncSessionLocal() as db:
+            p = await db.get(Publication, pub_id)
+            if p:
+                p.status = "failed"
+                await db.commit()

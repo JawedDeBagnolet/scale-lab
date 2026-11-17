@@ -345,27 +345,49 @@ async def _publish_post(drv, nav, sess, values, log):
     from app.services.automation.ig_iphone.interact.publish import (
         publish_feed_post, publish_carousel,
     )
-    from app.services.automation.ig_iphone.media import push_media_via_mcp
+    from app.services.automation.ig_iphone.media import push_media_to_gallery, cleanup_gallery_via_mtouch
+    from app.config import settings
 
-    # Transfer media to iPhone if URLs provided
+    # Resolve spoof context (market from persona)
+    market = values.get("market", "FR")
+    phone_id = values.get("phone_id", str(sess.compte_id))
+    auth_header = "Bearer %s" % settings.api_secret
+
+    # Transfer media to iPhone gallery (with EXIF spoof)
     media_urls = values.get("media_urls", [])
+    media_count = 0
     if media_urls:
         for url in media_urls:
-            result = await push_media_via_mcp(drv, url, log=log)
-            if not result:
-                return False, f"ig_post: échec pipeline média"
+            result = await push_media_to_gallery(
+                url, auth_header=auth_header, spoof=True,
+                market=market, phone_id=phone_id, log=log,
+            )
+            if not result or not result.get("success"):
+                return False, f"ig_post: échec pipeline média ({url[:40]})"
+            media_count += 1
         await asyncio.sleep(2.0)
 
     caption = values.get("caption", "")
     location = values.get("location")
-    photo_count = len(media_urls) if media_urls else 1
+    first_comment = values.get("first_comment")
+    photo_count = media_count if media_count else 1
 
     if photo_count > 1:
         stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, log=log)
     else:
-        stats = await publish_feed_post(drv, nav, caption=caption, location=location, log=log)
+        stats = await publish_feed_post(drv, nav, caption=caption, first_comment=first_comment, location=location, log=log)
 
     published = stats.get("published", False)
+
+    # Auto-cleanup gallery after publication
+    if published and media_count > 0:
+        try:
+            ok = await cleanup_gallery_via_mtouch(media_count, log=log)
+            if ok:
+                log("   ✓ galerie nettoyee (%d medias)" % media_count)
+        except Exception:
+            pass
+
     msg = f"Post {'publié' if published else 'échoué'}"
     if caption:
         msg += f" ({len(caption)} chars)"
@@ -376,13 +398,20 @@ async def _publish_post(drv, nav, sess, values, log):
 async def _publish_story(drv, nav, sess, values, log):
     """Publish a story."""
     from app.services.automation.ig_iphone.interact.publish import publish_story
-    from app.services.automation.ig_iphone.media import push_media_via_mcp
+    from app.services.automation.ig_iphone.media import push_media_to_gallery, cleanup_gallery_via_mtouch
+    from app.config import settings
 
     media_url = values.get("media_url")
+    pushed = False
     if media_url:
-        result = await push_media_via_mcp(drv, media_url, log=log)
-        if not result:
+        result = await push_media_to_gallery(
+            media_url, auth_header="Bearer %s" % settings.api_secret,
+            spoof=True, market=values.get("market", "FR"),
+            phone_id=values.get("phone_id", str(sess.compte_id)), log=log,
+        )
+        if not result or not result.get("success"):
             return False, "ig_story_post: échec pipeline média"
+        pushed = True
         await asyncio.sleep(2.0)
 
     caption = values.get("text", values.get("caption"))
@@ -390,6 +419,12 @@ async def _publish_story(drv, nav, sess, values, log):
     stats = await publish_story(drv, nav, caption=caption, stickers=stickers, log=log)
 
     published = stats.get("published", False)
+    if published and pushed:
+        try:
+            await cleanup_gallery_via_mtouch(1, log=log)
+        except Exception:
+            pass
+
     return published, "Story publiée" if published else "Story : échec publication"
 
 
@@ -397,19 +432,32 @@ async def _publish_story(drv, nav, sess, values, log):
 async def _publish_reel(drv, nav, sess, values, log):
     """Publish a reel."""
     from app.services.automation.ig_iphone.interact.publish import publish_reel
-    from app.services.automation.ig_iphone.media import push_media_via_mcp
+    from app.services.automation.ig_iphone.media import push_media_to_gallery, cleanup_gallery_via_mtouch
+    from app.config import settings
 
     media_url = values.get("media_url")
+    pushed = False
     if media_url:
-        result = await push_media_via_mcp(drv, media_url, log=log)
-        if not result:
+        result = await push_media_to_gallery(
+            media_url, auth_header="Bearer %s" % settings.api_secret,
+            spoof=True, market=values.get("market", "FR"),
+            phone_id=values.get("phone_id", str(sess.compte_id)), log=log,
+        )
+        if not result or not result.get("success"):
             return False, "ig_reel_post: échec pipeline média"
+        pushed = True
         await asyncio.sleep(2.0)
 
     caption = values.get("caption", "")
     stats = await publish_reel(drv, nav, caption=caption, log=log)
 
     published = stats.get("published", False)
+    if published and pushed:
+        try:
+            await cleanup_gallery_via_mtouch(1, log=log)
+        except Exception:
+            pass
+
     msg = "Reel publié" if published else "Reel : échec publication"
     if caption and published:
         msg += f" ({len(caption)} chars)"
