@@ -2386,7 +2386,7 @@ class Component extends DCLogic {
     var SD = window.SCALE_DATA; var s = this.state;
     const add = out.addClick; const noAcc = !!(SD && SD.accounts.length === 0); out.addClick = () => { if (noAcc && (s.tab === 'pub' || s.tab === 'camp')) this.setState({ gate: true }); else if (add) add(); };
     out.gateOpen = !!s.gate; out.closeGate = () => this.setState({ gate: false }); out.gateTitle = 'Avant de créer une publication'; out.gateItems = [{ icon: 'ph ph-device-mobile', label: 'Un compte actif', sub: 'Une publication part d\'un compte Instagram, Threads ou X rattaché à une persona.', href: 'Module%20Comptes%20v1.dc.html', cta: 'Ajouter un compte', alt: false, altHref: '', altCta: '' }];
-    const dataEmpty = (s.posts || []).length + (s.camps || []).length + (s.colls || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true;
+    out.wsEmpty = false; out.wsWrap = { display: 'contents' }; out.wsFull = true;
     return out; }
   _rvE() {
     const s = this.state;
