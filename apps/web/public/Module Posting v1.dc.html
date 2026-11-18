@@ -2577,12 +2577,44 @@ class Component extends DCLogic {
   }
   doPost(asDraft) {
     const ed = this.state.ed; const sch = ed.scheduledAt;
-    const status = asDraft ? 'draft' : sch ? 'scheduled' : 'published';
+    const status = asDraft ? 'draft' : sch ? 'scheduled' : 'planned';
     const prev = ed.id ? this.state.posts.find(p => p.id === ed.id) : null;
     const obj = { id: ed.id || 'p' + Date.now(), acc: ed.account, persona: ed.persona, plat: ed.plat, type: ed.type, caption: ed.caption, lang: ed.lang, date: asDraft ? null : (sch || Date.now()), status, media: ed.media.slice(), sound: ed.sound, fc: ed.showFc ? ed.fc : '', camp: prev ? prev.camp : null, err: null };
-    const SD = window.SCALE_DATA; if (SD && SD._live) { if (ed.id) { SD.apiPatch('/posting/publications/' + ed.id, { status, caption: obj.caption, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }); } else if (obj.acc) { const res = SD.apiPost('/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }); if (res && res.id) obj.id = res.id; } }
+
+    // Resolve R2 URLs from selected media
+    const mediaUrls = ed.media.map(id => { const m = this.med(id); return m && (m.r2 || m.url); }).filter(Boolean);
+    // Map editor type to post_type
+    const postType = ed.type === 'story' ? 'story' : ed.type === 'reel' ? 'reel' : mediaUrls.length > 1 ? 'carousel' : 'post';
+    const firstComment = ed.showFc ? ed.fc : null;
+
+    const SD = window.SCALE_DATA;
+    const me = this;
+    if (SD && SD._live) {
+      if (ed.id) {
+        SD.apiPatch('/posting/publications/' + ed.id, { status, caption: obj.caption, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null });
+        // Dispatch immediately if not draft/scheduled
+        if (!asDraft && !sch) {
+          SD.apiAsync('POST', '/posting/publications/' + ed.id + '/publish').then(function(r) {
+            if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
+            else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
+          });
+        }
+      } else if (obj.acc) {
+        const res = SD.apiPost('/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null });
+        if (res && res.id) {
+          obj.id = res.id;
+          // Dispatch immediately if not draft/scheduled
+          if (!asDraft && !sch) {
+            SD.apiAsync('POST', '/posting/publications/' + res.id + '/publish').then(function(r) {
+              if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
+              else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
+            });
+          }
+        }
+      }
+    }
     this.setState(x => ({ posts: ed.id ? x.posts.map(p => p.id === ed.id ? obj : p) : [obj].concat(x.posts), ed: null, sched: null, tab: 'pub' }));
-    this.toastMsg(asDraft ? 'Brouillon enregistré' : sch ? 'Publication programmée' : 'Publication envoyée');
+    this.toastMsg(asDraft ? 'Brouillon enregistré' : sch ? 'Publication programmée' : 'Publication en cours d\'envoi...');
   }
   saveTpl() {
     const ed = this.state.ed; if (!ed.persona || !ed.plat || !ed.type) { this.toastMsg('Choisis une persona, une plateforme et un type'); return; }
@@ -3655,7 +3687,7 @@ class Component extends DCLogic {
       const uupd = p => this.setState(x => ({ upload: { ...x.upload, ...p } }));
       const plats = ['th', 'ig', 'x'].filter(p => u.plats[p]);
       const types = Object.keys(u.types).filter(t => u.types[t] && plats.indexOf(this.typeOf(t).plat) >= 0);
-      const addFiles = fl => { const arr = Array.from(fl || []).map((f, i) => ({ id: 'f' + Date.now() + i, name: f.name, url: URL.createObjectURL(f), kind: (f.type || '').indexOf('video') === 0 ? 'video' : (f.type || '').indexOf('audio') === 0 ? 'audio' : 'image' })); this.setState(x => ({ upload: { ...x.upload, files: x.upload.files.concat(arr), drag: false } })); };
+      const addFiles = fl => { const arr = Array.from(fl || []).map((f, i) => ({ id: 'f' + Date.now() + i, name: f.name, url: URL.createObjectURL(f), raw: f, kind: (f.type || '').indexOf('video') === 0 ? 'video' : (f.type || '').indexOf('audio') === 0 ? 'audio' : 'image' })); this.setState(x => ({ upload: { ...x.upload, files: x.upload.files.concat(arr), drag: false } })); };
       const hint = !plats.length ? 'Choisis une plateforme' : !types.length ? 'Choisis un type de contenu' : !u.persona ? 'Choisis une persona' : !u.files.length ? 'Ajoute au moins un fichier' : '';
       const total = u.files.length * types.length;
       Object.assign(out, {
@@ -3676,10 +3708,30 @@ class Component extends DCLogic {
         upKnob: { position: 'absolute', top: 3, left: u.ai ? 19 : 3, width: 16, height: 16, borderRadius: 99, background: '#ffffff', transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,.4)' },
         upHint: hint, upAddLabel: 'Ajouter' + (total && !hint ? ' (' + total + ')' : ''),
         upAddStyle: { display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 10, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: hint ? 'not-allowed' : 'pointer', opacity: hint ? .45 : 1 },
-        upAdd: () => {
+        upAdd: async () => {
           if (hint) { this.toastMsg(hint); return; }
+          const SD = window.SCALE_DATA;
           const stamp = Date.now(); const neu = [];
-          types.forEach(t => u.files.forEach((f, j) => neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: f.kind === 'image' ? f.url : null, name: f.name, dur: '0:15' })));
+          this.toastMsg('Upload en cours...');
+
+          // Upload each file to R2
+          for (let j = 0; j < u.files.length; j++) {
+            const f = u.files[j];
+            let r2Url = f.url; // fallback to blob URL
+            if (SD && SD._live && f.raw) {
+              try {
+                const res = await SD.apiUploadAsync(f.raw, u.persona);
+                if (res && res.url) {
+                  r2Url = res.url;
+                  // Also create Media record in DB
+                  const mediaType = f.kind === 'video' ? 'video' : f.kind === 'audio' ? 'audio' : 'image';
+                  SD.apiPost('/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, filename: f.name, folder: types[0] || 'post' });
+                }
+              } catch (e) { console.warn('Upload failed for', f.name, e); }
+            }
+            types.forEach(t => neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, name: f.name, dur: '0:15', r2: r2Url }));
+          }
+
           const first = neu[0];
           this.setState(x => ({ extraMedia: x.extraMedia.concat(neu), upload: null, mPath: [first.persona, first.plat, first.type], mediaSub: 'medias', kill: false, sel: {} }));
           this.toastMsg(neu.length + ' média' + (neu.length > 1 ? 's' : '') + ' ajouté' + (neu.length > 1 ? 's' : '') + (u.ai ? ' · descriptions IA en cours' : ''));

@@ -143,10 +143,14 @@ class PublicationBase(BaseModel):
     compte_id: UUID
     campagne_id: UUID | None = None
     media_id: UUID | None = None
+    media_urls: list[str] | None = None
+    post_type: str = Field(default="post", max_length=20)
     caption: str | None = None
+    first_comment: str | None = None
     scheduled_at: datetime | None = None
     status: str = Field(default="planned", max_length=20)
     platform_post_id: str | None = Field(default=None, max_length=200)
+    stickers: dict | None = None
 
 
 class PublicationCreate(PublicationBase):
@@ -156,10 +160,14 @@ class PublicationCreate(PublicationBase):
 class PublicationUpdate(BaseModel):
     campagne_id: UUID | None = None
     media_id: UUID | None = None
+    media_urls: list[str] | None = None
+    post_type: str | None = Field(default=None, max_length=20)
     caption: str | None = None
+    first_comment: str | None = None
     scheduled_at: datetime | None = None
     status: str | None = Field(default=None, max_length=20)
     platform_post_id: str | None = Field(default=None, max_length=200)
+    stickers: dict | None = None
 
 
 class PublicationOut(PublicationBase):
