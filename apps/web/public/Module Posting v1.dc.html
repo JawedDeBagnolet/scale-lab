@@ -2123,7 +2123,7 @@ class Component extends DCLogic {
     location: ['map-pin', 'Lieu', 'Lieu', 'Paris, France', '#38bdf8'], music: ['music-notes', 'Musique', 'Musique', 'Midnight Drive · Nova Lane', '#a5a0f5']
   };
   SW = ['#ffffff', '#16171f', '#8b7cf6', '#5b8def', '#2dd4a8', '#f5b04c', '#f472b6', '#fb7185', '#38bdf8'];
-  seedDescs() { const d = {}; this.mediaLib().forEach(m => { if (m.seed % 3 === 0) d[m.id] = this.descText(m); }); return d; }
+  seedDescs() { if (window.SCALE_DATA && window.SCALE_DATA._live) return {}; const d = {}; this.mediaLib().forEach(m => { if (m.seed % 3 === 0) d[m.id] = this.descText(m); }); return d; }
   descText(m) {
     const p = this.P(m.persona) || this.pers()[0]; const i = m.seed || 0; const t = this.typeOf(m.type);
     const scene = ['en intérieur, lumière naturelle douce venant de la gauche', 'en extérieur en fin de journée, lumière dorée', 'dans une pièce lumineuse aux murs clairs', 'dans un café, arrière-plan flou', 'sur un rooftop, ciel dégagé'][i % 5];
@@ -2168,6 +2168,19 @@ class Component extends DCLogic {
   typeOf(id) { if (id === 'th_img' || id === 'th_car') id = 'th_media'; if (id === 'post') id = 'car'; for (const pl of ['th', 'ig', 'x']) { const t = this.TYPES[pl].find(x => x[0] === id); if (t) return { id: t[0], label: t[1], mode: t[2], plat: pl }; } return null; }
   mediaLib() {
     if (this._m) return this.withExtra();
+    if (window.SCALE_DATA && window.SCALE_DATA._live) {
+      window.SCALE_DATA.loadModule('posting');
+      const SD = window.SCALE_DATA;
+      this._m = (SD.medias || []).map(m => ({
+        id: m.id, persona: m.persona || null, plat: m.plat || 'ig',
+        type: m.folder || m.media_type || 'post',
+        seed: 0, video: m.media_type === 'video',
+        kind: m.media_type || 'image',
+        url: m.url || null, r2: m.url || null,
+        name: m.filename || '', dur: '0:15'
+      }));
+      return this.withExtra();
+    }
     const out = [];
     this.pers().forEach((p, pi) => ['ig', 'th', 'x'].forEach((pl, li) => this.TYPES[pl].filter(t => t[2]).forEach((t, ti) => {
       const n = 5 + ((pi * 3 + li * 2 + ti) % 5);
@@ -2386,7 +2399,7 @@ class Component extends DCLogic {
     var SD = window.SCALE_DATA; var s = this.state;
     const add = out.addClick; const noAcc = !!(SD && SD.accounts.length === 0); out.addClick = () => { if (noAcc && (s.tab === 'pub' || s.tab === 'camp')) this.setState({ gate: true }); else if (add) add(); };
     out.gateOpen = !!s.gate; out.closeGate = () => this.setState({ gate: false }); out.gateTitle = 'Avant de créer une publication'; out.gateItems = [{ icon: 'ph ph-device-mobile', label: 'Un compte actif', sub: 'Une publication part d\'un compte Instagram, Threads ou X rattaché à une persona.', href: 'Module%20Comptes%20v1.dc.html', cta: 'Ajouter un compte', alt: false, altHref: '', altCta: '' }];
-    out.wsEmpty = false; out.wsWrap = { display: 'contents' }; out.wsFull = true;
+    const dataEmpty = (s.posts || []).length + (s.camps || []).length + (s.colls || []).length === 0; out.wsEmpty = dataEmpty; out.wsWrap = out.wsEmpty ? { height: 0, minHeight: 0, flex: 'none', overflow: 'hidden', margin: '-16px 0 0' } : { display: 'contents' }; out.wsFull = true;
     return out; }
   _rvE() {
     const s = this.state;
