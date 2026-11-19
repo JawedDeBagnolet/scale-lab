@@ -2609,6 +2609,7 @@ class Component extends DCLogic {
     const SD = window.SCALE_DATA;
     const me = this;
     const isUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    console.log('[Posting] doPost:', { acc: obj.acc, isUUID: isUUID(obj.acc || ''), live: SD && SD._live, asDraft, status, postType, mediaUrls, edId: ed.id });
     if (SD && SD._live && obj.acc && isUUID(obj.acc)) {
       const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null };
       const dispatchPub = function(pubId) { if (!asDraft && !sch) { SD.apiAsync('POST', '/posting/publications/' + pubId + '/publish').then(function(r) { if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone'); else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true); }); } };
