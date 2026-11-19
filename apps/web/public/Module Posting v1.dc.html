@@ -385,7 +385,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="6">
 <div onClick="{{ it.click }}" onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="{{ it.wrap }}">
 <div style="{{ it.bg }}"></div>
-<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}#t=0.1" preload="metadata" muted playsinline loop onplay="if(!this.dataset.hover){this.pause();this.currentTime=0.1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
+<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}#t=0.1" preload="metadata" muted playsinline loop onloadeddata="this.style.opacity=1" onplay="if(!this.dataset.hover){this.pause();this.currentTime=0.1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;opacity:0;transition:opacity .3s"></video></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 28%,transparent 52%,rgba(0,0,0,.75));pointer-events:none;z-index:2"></div>
 <sc-if value="{{ it.hasDesc }}"><span title="Description IA disponible" style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(124,108,246,.5);font-size:10px;font-weight:700;color:#ffffff"><i class="ph ph-sparkle" style="font-size:11px"></i>IA</span></sc-if>
 <sc-if value="{{ it.kill }}"><span style="{{ it.check }}"><sc-if value="{{ it.on }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
