@@ -2112,7 +2112,7 @@ class Component extends DCLogic {
   MO = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
   MOS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   VARS = ['prenom', 'nom', 'ville', 'jour', 'moment', 'salutation', 'age'];
-  TYPES = { th: [['th_text', 'Thread (texte)', 0], ['th_media', 'Thread + médias', 2]], ig: [['reel', 'Reel', 1], ['car', 'Post / Carousel', 2], ['story', 'Story', 1]], x: [['tw', 'Tweet', 0], ['tw_img', 'Tweet + médias', 2]] };
+  TYPES = { th: [['th_text', 'Thread (texte)', 0], ['th_media', 'Thread + médias', 2], ['pfp', 'Photo de profil', 2]], ig: [['reel', 'Reel', 1], ['car', 'Post / Carousel', 2], ['story', 'Story', 1], ['pfp', 'Photo de profil', 2]], x: [['tw', 'Tweet', 0], ['tw_img', 'Tweet + médias', 2], ['pfp', 'Photo de profil', 2]] };
   LIMIT = { th: 500, ig: 2200, x: 280 };
   MAXM = { th_media: 20, car: 20, tw_img: 4 };
   state = { tab: 'pub', navCollapsed: false, q: '', pubStatus: 'all', pubPlat: 'all', pubOrigin: 'all', openBatch: {}, menu: null, posts: this.seedPosts(), tpls: this.seedTpls(), camps: this.seedCamps(), ed: null, sched: null, picker: null, audio: null, wiz: null, campOpen: null, kill: false, sel: {}, confirm: null, toast: null, tplPersona: 'all', tplPlat: 'all', tplSort: 'recent', accMenu: false, accQ: '', playing: null, pvRaw: false, liked: { s2: true, s5: true, s9: true }, mediaSub: 'medias', mPath: [], extraMedia: [], delMedia: {}, upload: null, aiDesc: null, descs: this.seedDescs(), sTab: 'trend', sQ: '', sSort: 'default', sPage: 0, sSearched: false, sndMenu: null, storySub: 'templates', plans: this.seedPlans(), planEd: null, routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0, storyTpls: this.seedStories(), story: null, storyLoad: false, colls: this.seedColls(), collView: null, collPersona: 'all', collPlat: 'all', collType: 'all', coSort: 'score', coBulk: null, coNewCap: '', coEditCap: null, newColl: null, itemEd: null, groups: this.seedGroups(), grouping: null, hoverGroup: null, coHover: null, genIds: {} };
@@ -2175,7 +2175,7 @@ class Component extends DCLogic {
       const SD = window.SCALE_DATA || {};
       this._m = (SD.medias || []).map(m => ({
         id: m.id, persona: m.persona || null, plat: m.plat || 'ig',
-        type: m.folder || (m.type === 'video' ? 'reel' : m.type === 'audio' ? 'reel' : 'car'),
+        type: (m.folder === 'pp' ? 'pfp' : m.folder) || (m.type === 'video' ? 'reel' : m.type === 'audio' ? 'reel' : 'car'),
         seed: 0, video: m.type === 'video',
         kind: m.type || 'image',
         url: m.url || null, r2: m.url || null,
@@ -3106,7 +3106,7 @@ class Component extends DCLogic {
       if (pp && pl) {
         scope = lib.filter(m => m.persona === pp && m.plat === pl);
         const canGroup = true; const GT = ['th_media', 'tw_img', 'car'];
-        const secMeta = { reel: ['ph ph-film-strip', '', 'Reel'], story: ['ph ph-circle-dashed', '', 'Story'], car: ['ph ph-images', '', 'Médias'], post: ['ph ph-image-square', '', 'Post classique'], th_media: ['ph ph-images', '', 'Médias'], tw_img: ['ph ph-images', '', 'Médias'] };
+        const secMeta = { reel: ['ph ph-film-strip', '', 'Reel'], story: ['ph ph-circle-dashed', '', 'Story'], car: ['ph ph-images', '', 'Médias'], post: ['ph ph-image-square', '', 'Post classique'], th_media: ['ph ph-images', '', 'Médias'], tw_img: ['ph ph-images', '', 'Médias'], pfp: ['ph ph-user-circle', '', 'Photo de profil'] };
         const card = m => { const on = !!s.sel[m.id]; const oi = grouping ? gr.sel.indexOf(m.id) : -1; const d = s.descs[m.id]; const gen = !!(s.genIds || {})[m.id]; const hv = s.hoverMedia === m.id && !grouping && !s.kill; return {
           click: () => grouping ? (GT.indexOf(m.type) < 0 ? null : this.setState(x => { const sl = x.grouping.sel; return { grouping: { ...x.grouping, sel: sl.indexOf(m.id) >= 0 ? sl.filter(y => y !== m.id) : sl.concat([m.id]) } }; })) : s.kill ? this.setState(x => ({ sel: { ...x.sel, [m.id]: !x.sel[m.id] } })) : this.setState({ aiDesc: { id: m.id } }),
           enter: e => { this.setState({ hoverMedia: m.id }); if (m.video && m.url) { const v = e.currentTarget.querySelector('video'); if (v) { v.dataset.hover = '1'; v.play().catch(() => {}); } } },
