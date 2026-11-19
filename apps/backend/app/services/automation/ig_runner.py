@@ -636,6 +636,16 @@ async def _switch_pro(drv, nav, sess, values, log):
     return ok, "Compte pro activé" if ok else "Switch pro : échec"
 
 
+@_handler("ig_enable_hd")
+async def _enable_hd(drv, nav, sess, values, log):
+    """Active l'upload en qualité optimale dans les paramètres IG."""
+    from app.services.automation.ig_iphone.interact.settings import enable_hd_upload
+    result = await enable_hd_upload(drv, nav, log=log)
+    if result.get("already_enabled"):
+        return True, "Upload HD : déjà activé"
+    return result.get("success", False), "Upload HD : %s" % result.get("message", "inconnu")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  HIGHLIGHTS
 # ══════════════════════════════════════════════════════════════════════════════

@@ -333,3 +333,37 @@ async def update_profile(compte_id: UUID, body: ProfileUpdateRequest, db: AsyncS
 
     # _dispatch_profile_edit is now in app.services.comptes (single source of truth)
     # with LogCollector for session_logs capture in alert modals
+
+
+# ── Enable HD upload ──────────────────────────────────────────────────────
+
+@router.post("/{compte_id}/enable-hd")
+async def enable_hd_upload(compte_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Active 'Importer dans la qualité optimale' dans les paramètres IG du compte.
+
+    Dispatche la tâche ig_enable_hd sur l'iPhone assigné au compte.
+    """
+    from app.services.comptes import _log as emit_log
+
+    compte = await service.get_compte(db, compte_id)
+    if not compte:
+        raise HTTPException(404, "compte not found")
+
+    if not compte.device_id:
+        raise HTTPException(400, "Pas d'iPhone assigné à ce compte")
+
+    if compte.plateforme != "ig":
+        raise HTTPException(400, "Option disponible uniquement pour Instagram")
+
+    async def _run():
+        from app.services.automation import run_ig_task
+        from app.services.engine import LogCollector
+        collector = LogCollector(upstream=logger.info)
+        ok, msg = await run_ig_task(compte.id, "ig_enable_hd", log=collector)
+        level = "info" if ok else "error"
+        await emit_log("comptes", "config", level, compte.handle, msg)
+
+    asyncio.create_task(_run(), name=f"enable_hd_{compte.handle}")
+    logger.info("enable-hd: dispatched for @%s", compte.handle)
+
+    return {"ok": True, "message": "Activation upload HD lancée"}
