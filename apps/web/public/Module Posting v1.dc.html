@@ -2157,6 +2157,11 @@ class Component extends DCLogic {
   effSt(p) { return p.status === 'scheduled' && this.blkAcc(p.acc) ? 'held' : p.status; }
   accounts() {
     if (this._a) return this._a;
+    if (this._isLive()) {
+      const SD = window.SCALE_DATA || {};
+      this._a = (SD.accounts || []).map(a => ({ id: a.id, username: a.handle, plat: a.plat, persona: a.persona, status: a.status || 'idle' }));
+      return this._a;
+    }
     const bases = {}; (window.SCALE_DATA ? window.SCALE_DATA.accounts : []).forEach(a => { (bases[a.persona] = bases[a.persona] || []).push(a.handle); });
     const out = []; let i = 0;
     Object.keys(bases).forEach(pid => bases[pid].forEach(h => {
