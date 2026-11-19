@@ -426,27 +426,30 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 4b. Possible page "Audio suggere" → ignorer
-    await asyncio.sleep(2)
-    ignore_el = await driver.find_element(contains="Ignorer la synchro", clickable=True, refresh=True)
-    if ignore_el:
-        tap = ignore_el.get('tap', {})
-        log("   skip audio suggere (y=%d)" % tap.get('y', 0))
-        await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(2)
+    # 4b. Verifier si on est sur la page caption ou page audio
+    await asyncio.sleep(2.5)
+    caption_el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
+    if caption_el and caption_el.get('tap', {}).get('y', 0) > 300:
+        log("   ✓ page caption detectee")
     else:
-        # Verifier si on est sur la page audio (pas la caption)
-        audio_el = await driver.find_element(contains="Audio sugg", refresh=True)
-        if audio_el:
-            suivant_el = await driver.find_element(text="Suivant", clickable=True)
+        # Probablement page "Audio suggere" → chercher Ignorer ou Suivant
+        ignore_el = await driver.find_element(contains="Ignorer la synchro", clickable=True, refresh=True)
+        if ignore_el and ignore_el.get('tap', {}).get('y', 0) > 600:
+            tap = ignore_el.get('tap', {})
+            log("   skip audio (Ignorer y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(2.5)
+        else:
+            # Essayer Suivant sur la page audio
+            suivant_el = await driver.find_element(text="Suivant", clickable=True, refresh=True)
             if suivant_el:
                 tap = suivant_el.get('tap', {})
-                log("   skip page audio (Suivant y=%d)" % tap.get('y', 0))
+                log("   skip audio (Suivant y=%d)" % tap.get('y', 0))
                 await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(2)
+                await asyncio.sleep(2.5)
 
     # 5. Page caption/options — ecrire la legende
-    await asyncio.sleep(2.5)
+    await asyncio.sleep(1)
     await _write_caption(driver, log, caption)
 
     # 6. Suivant (page caption → popup "A propos de Reels")
