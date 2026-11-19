@@ -158,9 +158,19 @@ async def _write_caption(driver, log, caption) -> bool:
     """Ecrit la legende du post."""
     if not caption:
         return True
-    el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
+    # Chercher le champ legende avec y > 100 (eviter le titre "Nouveau reel")
+    els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
+    el = None
+    for e in els:
+        if e.get('tap', {}).get('y', 0) > 100:
+            el = e
+            break
     if not el:
-        el = await driver.find_element(contains="crivez une l", clickable=True, refresh=True)
+        els = await driver.find_elements(contains="gende", clickable=True, refresh=True)
+        for e in els:
+            if e.get('tap', {}).get('y', 0) > 100:
+                el = e
+                break
     if not el:
         log("   ! champ legende non trouve")
         await _dump_screen(driver, log, "no_caption_field")
@@ -168,19 +178,20 @@ async def _write_caption(driver, log, caption) -> bool:
     tap = el.get('tap', {})
     log("   tap champ legende (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(1)
     log("   ecriture legende (%d chars)" % len(caption))
     await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Fermer le clavier : tap "OK" en haut du clavier
+    # Fermer le clavier : tap "OK"
     ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
     if ok_el:
         tap2 = ok_el.get('tap', {})
         log("   valide legende OK (y=%d)" % tap2.get('y', 0))
         await driver.ht.tap(tap2['x'], tap2['y'])
     else:
-        log("   ferme clavier (tap haut)")
-        await driver.ht.tap(187, 50)
+        # Fallback: tap zone au-dessus du clavier
+        log("   ferme clavier (tap couverture)")
+        await driver.ht.tap(188, 150)
     await asyncio.sleep(random.uniform(1.5, 2.5))
     return True
 
