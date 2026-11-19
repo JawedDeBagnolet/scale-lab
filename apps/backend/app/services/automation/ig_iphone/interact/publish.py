@@ -34,8 +34,8 @@ async def _open_create_menu(driver, navigator, log) -> bool:
         log("   deja dans le menu creation")
         return True
 
-    # Aller au profil d'abord si necessaire
-    if screen not in ("own_profile", "feed"):
+    # Toujours aller au profil d'abord (le bouton "+" du feed est different)
+    if screen != "own_profile":
         await navigator.go_profile()
         await asyncio.sleep(2)
         screen = await _detect_screen(driver, log)
