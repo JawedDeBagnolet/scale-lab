@@ -159,13 +159,16 @@ async def _write_caption(driver, log, caption) -> bool:
     if not caption:
         return True
 
-    # Trouver et taper sur "Ajouter une legende..." avec retry
+    # Trouver et taper sur "Ajouter une legende..." (y > 300) avec retry
     for attempt in range(3):
-        el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
-        if not el:
-            log("   ! champ legende non trouve (tentative %d)" % (attempt + 1))
+        els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
+        candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 300]
+        if not candidates:
+            log("   ! champ legende non trouve a y>300 (tentative %d)" % (attempt + 1))
+            await _dump_screen(driver, log, "no_caption_%d" % attempt)
             await asyncio.sleep(1.5)
             continue
+        el = candidates[0]
         tap = el.get('tap', {})
         log("   tap champ legende (y=%d)" % tap.get('y', 0))
         await driver.ht.tap(tap['x'], tap['y'])
@@ -173,14 +176,13 @@ async def _write_caption(driver, log, caption) -> bool:
 
         # Verifier que le clavier s'est ouvert (header "Legende" ou "OK" visible)
         ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
-        leg_el = await driver.find_element(text="Légende", refresh=True)
-        if ok_el or leg_el:
+        leg_el = await driver.find_element(contains="gende", refresh=True)
+        if ok_el or (leg_el and leg_el.get('tap', {}).get('y', 0) < 100):
             log("   ✓ clavier ouvert")
             break
         log("   ⚠ clavier pas ouvert, retry")
     else:
         log("   ! impossible d'ouvrir le champ legende")
-        await _dump_screen(driver, log, "no_caption_keyboard")
         return False
 
     log("   ecriture legende (%d chars)" % len(caption))
@@ -426,30 +428,31 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 4b. Verifier si on est sur la page caption ou page audio
+    # 4b. Attendre la page caption ou skipper la page audio
     await asyncio.sleep(2.5)
-    caption_el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
-    if caption_el and caption_el.get('tap', {}).get('y', 0) > 300:
-        log("   ✓ page caption detectee")
-    else:
-        # Probablement page "Audio suggere" → chercher Ignorer ou Suivant
-        ignore_el = await driver.find_element(contains="Ignorer la synchro", clickable=True, refresh=True)
+    for _try in range(3):
+        els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
+        cap = [e for e in els if e.get('tap', {}).get('y', 0) > 300]
+        if cap:
+            break  # page caption trouvee
+        # Pas sur la page caption → chercher page audio
+        ignore_el = await driver.find_element(contains="Ignorer la synchro", clickable=True)
         if ignore_el and ignore_el.get('tap', {}).get('y', 0) > 600:
-            tap = ignore_el.get('tap', {})
-            log("   skip audio (Ignorer y=%d)" % tap.get('y', 0))
-            await driver.ht.tap(tap['x'], tap['y'])
+            t = ignore_el.get('tap', {})
+            log("   skip audio (Ignorer y=%d)" % t.get('y', 0))
+            await driver.ht.tap(t['x'], t['y'])
             await asyncio.sleep(2.5)
-        else:
-            # Essayer Suivant sur la page audio
-            suivant_el = await driver.find_element(text="Suivant", clickable=True, refresh=True)
-            if suivant_el:
-                tap = suivant_el.get('tap', {})
-                log("   skip audio (Suivant y=%d)" % tap.get('y', 0))
-                await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(2.5)
+            continue
+        suivant_el = await driver.find_element(text="Suivant", clickable=True)
+        if suivant_el:
+            t = suivant_el.get('tap', {})
+            log("   skip audio (Suivant y=%d)" % t.get('y', 0))
+            await driver.ht.tap(t['x'], t['y'])
+            await asyncio.sleep(2.5)
+            continue
+        await asyncio.sleep(1.5)
 
-    # 5. Page caption/options — ecrire la legende
-    await asyncio.sleep(1)
+    # 5. Page caption — taper sur le champ et ecrire
     await _write_caption(driver, log, caption)
 
     # 6. Suivant (page caption → popup "A propos de Reels")
