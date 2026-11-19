@@ -2175,11 +2175,11 @@ class Component extends DCLogic {
       const SD = window.SCALE_DATA || {};
       this._m = (SD.medias || []).map(m => ({
         id: m.id, persona: m.persona || null, plat: m.plat || 'ig',
-        type: m.folder || m.media_type || 'post',
-        seed: 0, video: m.media_type === 'video',
-        kind: m.media_type || 'image',
+        type: m.folder || m.type || 'post',
+        seed: 0, video: m.type === 'video',
+        kind: m.type || 'image',
         url: m.url || null, r2: m.url || null,
-        name: m.filename || '', dur: '0:15'
+        name: m.filename || m.name || '', dur: m.dur ? (typeof m.dur === 'number' ? '0:' + String(m.dur).padStart(2, '0') : m.dur) : '0:15'
       }));
       return this.withExtra();
     }
