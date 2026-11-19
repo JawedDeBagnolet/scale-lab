@@ -744,7 +744,10 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ isIG }}" hint-placeholder-val="{{ true }}">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid rgba(255,255,255,.06)">
 <div style="display:flex;align-items:flex-start;gap:12px;min-width:0"><span style="width:32px;height:32px;flex:none;border-radius:9px;background:rgba(255,255,255,.05);color:#aab0c5;display:flex;align-items:center;justify-content:center"><i class="ph ph-film-strip" style="font-size:16px"></i></span><div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">Upload en qualité optimale</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px;text-wrap:pretty">{{ hdSub }}</div></div></div>
-<div onClick="{{ enableHd }}" style="{{ hdBtnStyle }}"><sc-if value="{{ hdLoading }}"><i class="ph ph-spinner" style="font-size:14px;animation:spin .8s linear infinite"></i></sc-if><sc-if value="{{ hdReady }}"><i class="ph ph-check" style="font-size:14px"></i> Activé</sc-if><sc-if value="{{ hdIdle }}">Activer</sc-if></div>
+<div style="display:flex;align-items:center;gap:10px">
+<sc-if value="{{ hdLoading }}"><i class="ph ph-spinner" style="font-size:14px;color:#8a91a8;animation:spin .8s linear infinite"></i></sc-if>
+<div onClick="{{ toggleHd }}" style="{{ hdSw.track }}"><div style="{{ hdSw.knob }}"></div></div>
+</div>
 </div>
 </sc-if>
 </div>
@@ -1868,20 +1871,21 @@ class Component extends DCLogic {
       ageSw: sw(ageOn, !pro), toggleAge: () => { if (pro) this.upd(x => { x.profile[pk].ageLimit = !x.profile[pk].ageLimit; }); },
       ageSeg: this.seg([{ v: '18+', label: '18+' }, { v: '21+', label: '21+' }], prof.ageMin || '18+', v => this.upd(x => { x.profile[pk].ageMin = v; })),
       ageSub: pro ? 'Seuls les utilisateurs au-dessus de cet âge peuvent voir le profil' : 'Nécessite un compte professionnel',
-      hdSub: s.hdDone ? 'Les réels seront importés dans la meilleure résolution' : 'Active l\'import en qualité maximale dans les paramètres Instagram',
+      hdOn: !!(prof.hdUpload || s.hdDone),
+      hdSub: (prof.hdUpload || s.hdDone) ? 'Les réels sont importés dans la meilleure résolution' : 'Active l\'import en qualité maximale dans les paramètres Instagram',
       hdLoading: !!s.hdLoading,
-      hdReady: !!s.hdDone,
-      hdIdle: !s.hdLoading && !s.hdDone,
-      hdBtnStyle: s.hdDone
-        ? { display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'rgba(34,197,94,.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,.2)', cursor: 'default' }
-        : s.hdLoading
-          ? { display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'rgba(255,255,255,.04)', color: '#8a91a8', border: '1px solid rgba(255,255,255,.07)', cursor: 'wait' }
-          : { display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#fff', border: 'none', cursor: 'pointer' },
-      enableHd: () => {
-        if (s.hdLoading || s.hdDone) return;
-        const cid = d.id; if (!cid) return;
+      hdSw: sw(!!(prof.hdUpload || s.hdDone), false),
+      toggleHd: () => {
+        const cid = d.id; if (!cid || s.hdLoading) return;
+        const wasOn = !!(prof.hdUpload || s.hdDone);
+        if (wasOn) {
+          this.upd(x => { x.profile[pk].hdUpload = false; });
+          this.setState({ hdDone: false });
+          return;
+        }
         this.setState({ hdLoading: true });
         SD.apiAsync('POST', '/comptes/' + cid + '/enable-hd').then(r => {
+          this.upd(x => { x.profile[pk].hdUpload = true; });
           this.setState({ hdLoading: false, hdDone: true });
         }).catch(e => {
           console.warn('[enable-hd]', e);
