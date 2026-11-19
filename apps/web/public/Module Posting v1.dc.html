@@ -385,7 +385,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="6">
 <div onClick="{{ it.click }}" onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="{{ it.wrap }}">
 <div style="{{ it.bg }}"></div>
-<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}" preload="{{ it.videoPreload }}" muted playsinline loop onloadeddata="this.muted=true;if(!this.dataset.thumb){this.currentTime=0.1}" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
+<sc-if value="{{ it.isVideoUrl }}"><video data-autoseek="1" src="{{ it.videoUrl }}" preload="{{ it.videoPreload }}" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 28%,transparent 52%,rgba(0,0,0,.75));pointer-events:none;z-index:2"></div>
 <sc-if value="{{ it.hasDesc }}"><span title="Description IA disponible" style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(124,108,246,.5);font-size:10px;font-weight:700;color:#ffffff"><i class="ph ph-sparkle" style="font-size:11px"></i>IA</span></sc-if>
 <sc-if value="{{ it.kill }}"><span style="{{ it.check }}"><sc-if value="{{ it.on }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
@@ -1047,7 +1047,7 @@ select option { background: #151827; color: #e8eaf3; }
 
 <sc-if value="{{ pvIsIgVert }}">
 <div style="position:relative;aspect-ratio:9/16;max-height:560px;margin:0 auto;border-radius:18px;overflow:hidden;background:#11131d;border:1px solid rgba(255,255,255,.06)">
-<sc-if value="{{ pvHasMedia }}"><div style="{{ pvMain }}"></div><sc-if value="{{ pvIsVideo }}"><video src="{{ pvVideoUrl }}" muted playsinline loop onloadeddata="this.muted=true;this.currentTime=0.1" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video><div onClick="{{ pvTogglePlay }}" style="position:absolute;inset:0;z-index:2;cursor:pointer;display:flex;align-items:center;justify-content:center"><div style="{{ pvPlayBtn }}"><i class="{{ pvPlayIcon }}" style="font-size:22px;color:#ffffff;margin-left:{{ pvPlayML }}"></i></div></div></sc-if></sc-if>
+<sc-if value="{{ pvHasMedia }}"><div style="{{ pvMain }}"></div><sc-if value="{{ pvIsVideo }}"><video data-autoseek="1" src="{{ pvVideoUrl }}" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video><div onClick="{{ pvTogglePlay }}" style="position:absolute;inset:0;z-index:2;cursor:pointer;display:flex;align-items:center;justify-content:center"><div style="{{ pvPlayBtn }}"><i class="{{ pvPlayIcon }}" style="font-size:22px;color:#ffffff;margin-left:{{ pvPlayML }}"></i></div></div></sc-if></sc-if>
 <sc-if value="{{ pvMediaPh }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#3d4257"><i class="ph ph-film-slate" style="font-size:30px"></i></div></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 18%,transparent 60%,rgba(0,0,0,.6))"></div>
 <sc-if value="{{ pvIsStory }}">
@@ -1190,7 +1190,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ aiOpen }}">
 <div onClick="{{ aiClose }}" style="{{ aiOuter }}">
 <div onClick="{{ stopProp }}" data-modal-scroll="1" style="{{ aiInner }}">
-<div onClick="{{ ai.togglePlay }}" style="{{ aiPreview }}"><sc-if value="{{ ai.isVideo }}"><video src="{{ ai.videoUrl }}" muted playsinline loop onloadeddata="this.muted=true;this.currentTime=0.1" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;cursor:pointer"><div style="{{ ai.playBtn }}"><i class="{{ ai.playIcon }}" style="font-size:22px;color:#ffffff;margin-left:{{ ai.playML }}"></i></div></div></sc-if><sc-if value="{{ ai.showDur }}"><span style="position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:7px;background:rgba(8,9,16,.66);font-size:11px;font-weight:600;color:#f2f3fa;z-index:2"><i class="ph-fill ph-play" style="font-size:10px"></i>{{ ai.dur }}</span></sc-if></div>
+<div onClick="{{ ai.togglePlay }}" style="{{ aiPreview }}"><sc-if value="{{ ai.isVideo }}"><video data-autoseek="1" src="{{ ai.videoUrl }}" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;cursor:pointer"><div style="{{ ai.playBtn }}"><i class="{{ ai.playIcon }}" style="font-size:22px;color:#ffffff;margin-left:{{ ai.playML }}"></i></div></div></sc-if><sc-if value="{{ ai.showDur }}"><span style="position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:7px;background:rgba(8,9,16,.66);font-size:11px;font-weight:600;color:#f2f3fa;z-index:2"><i class="ph-fill ph-play" style="font-size:10px"></i>{{ ai.dur }}</span></sc-if></div>
 <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
 <div style="min-width:0"><div style="font-size:16px;font-weight:600;color:#f2f3fa;font-family:'Geist Mono',monospace">{{ ai.name }}</div>
@@ -2011,7 +2011,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-for list="{{ pkItems }}" as="it" hint-placeholder-count="8">
 <div onClick="{{ it.toggle }}" onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="{{ it.wrap }}">
 <div style="{{ it.bg }}"></div>
-<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}" preload="auto" muted playsinline loop onloadeddata="this.muted=true;this.currentTime=0.1" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
+<sc-if value="{{ it.isVideoUrl }}"><video data-autoseek="1" src="{{ it.videoUrl }}" preload="auto" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
 <sc-if value="{{ it.showDur }}"><span style="position:absolute;left:6px;bottom:6px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(8,9,16,.66);font-size:10px;font-weight:600;color:#f2f3fa;z-index:2"><i class="ph-fill ph-play" style="font-size:9px"></i>{{ it.dur }}</span></sc-if>
 <span style="{{ it.check }}">{{ it.order }}</span>
 </div>
@@ -2303,6 +2303,8 @@ class Component extends DCLogic {
   }
   today0() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
   photo(c, i) { return 'radial-gradient(120% 90% at ' + (18 + (i * 13) % 60) + '% ' + (15 + (i * 11) % 50) + '%, rgba(255,255,255,.34), transparent 46%), radial-gradient(70% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%), linear-gradient(' + (120 + i * 37) % 360 + 'deg,' + c + ',#1b1f33 80%)'; }
+  _vidReady(v) { if (v._init) return; v._init = true; v.muted = true; v.addEventListener('loadeddata', () => { v.currentTime = 0.1; }); v.addEventListener('seeked', () => { if (!v._playing) v.pause(); }); }
+  _initVids() { if (!this._el) return; this._el.querySelectorAll('video[data-autoseek]').forEach(v => this._vidReady(v)); }
   mediaBg(m) { if (m.url && m.video) return m.thumb ? 'center / cover no-repeat url("' + m.thumb + '")' : 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'X'; }
   platIcon(p) { return p === 'ig' ? 'ph ph-instagram-logo' : p === 'th' ? 'ph ph-threads-logo' : 'ph ph-x-logo'; }
@@ -2396,7 +2398,7 @@ class Component extends DCLogic {
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), mPath: x.mPath.map(T), ed: null }));
   }
   ensureBatches() { if (this._bi) return; this._bi = true; if (!this.state.posts.some(p => p.batch)) this.setState(x => ({ posts: x.posts.concat(this.seedBatches()) })); }
-  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); this._initVids(); }
   componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); }
 
   renderVals() { var out = this._rvE();
@@ -2616,7 +2618,7 @@ class Component extends DCLogic {
             else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
           });
         }
-      } else if (obj.acc) {
+      } else if (obj.acc && String(obj.acc).length > 10) {
         SD.apiAsync('POST', '/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }).then(function(res) {
           if (res && res.id) {
             me.setState(x => ({ posts: x.posts.map(p => p.id === obj.id ? { ...p, id: res.id } : p) }));
@@ -3116,7 +3118,7 @@ class Component extends DCLogic {
         const secMeta = { reel: ['ph ph-film-strip', '', 'Reel'], story: ['ph ph-circle-dashed', '', 'Story'], car: ['ph ph-images', '', 'Médias'], post: ['ph ph-image-square', '', 'Post classique'], th_media: ['ph ph-images', '', 'Médias'], tw_img: ['ph ph-images', '', 'Médias'], pfp: ['ph ph-user-circle', '', 'Photo de profil'] };
         const card = m => { const on = !!s.sel[m.id]; const oi = grouping ? gr.sel.indexOf(m.id) : -1; const d = s.descs[m.id]; const gen = !!(s.genIds || {})[m.id]; const hv = s.hoverMedia === m.id && !grouping && !s.kill; return {
           click: () => grouping ? (GT.indexOf(m.type) < 0 ? null : this.setState(x => { const sl = x.grouping.sel; return { grouping: { ...x.grouping, sel: sl.indexOf(m.id) >= 0 ? sl.filter(y => y !== m.id) : sl.concat([m.id]) } }; })) : s.kill ? this.setState(x => ({ sel: { ...x.sel, [m.id]: !x.sel[m.id] } })) : this.setState({ aiDesc: { id: m.id } }),
-          enter: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.muted = true; v.play().catch(() => {}); } } this.setState({ hoverMedia: m.id }); },
+          enter: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { this._vidReady(v); v.play().catch(() => {}); } } this.setState({ hoverMedia: m.id }); },
           leave: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.pause(); v.currentTime = 0.1; } } if (this.state.hoverMedia === m.id) this.setState({ hoverMedia: null }); },
           isVideoUrl: !!(m.video && m.url), videoUrl: m.url, videoPreload: m.thumb ? 'none' : 'auto',
           bg: { position: 'absolute', inset: 0, background: this.mediaBg(m), opacity: grouping && oi < 0 ? (GT.indexOf(m.type) < 0 ? .25 : .6) : 1, transition: 'opacity .15s' },
