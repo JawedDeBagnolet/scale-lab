@@ -2301,7 +2301,30 @@ class Component extends DCLogic {
   }
   today0() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
   photo(c, i) { return 'radial-gradient(120% 90% at ' + (18 + (i * 13) % 60) + '% ' + (15 + (i * 11) % 50) + '%, rgba(255,255,255,.34), transparent 46%), radial-gradient(70% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%), linear-gradient(' + (120 + i * 37) % 360 + 'deg,' + c + ',#1b1f33 80%)'; }
-  mediaBg(m) { if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
+  _posters = {};
+  _posterQ = [];
+  _posterBusy = false;
+  _videoPoster(url) {
+    if (this._posters[url]) return this._posters[url];
+    if (this._posters[url] === null) return null;
+    if (!this._posterQ.includes(url)) { this._posterQ.push(url); this._nextPoster(); }
+    return null;
+  }
+  _nextPoster() {
+    if (this._posterBusy || !this._posterQ.length) return;
+    this._posterBusy = true;
+    const url = this._posterQ.shift();
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous'; v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.style.cssText = 'position:fixed;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(v);
+    const done = r => { this._posters[url] = r; v.remove(); this._posterBusy = false; if (r) this.upd(); this._nextPoster(); };
+    v.addEventListener('seeked', () => { try { const c = document.createElement('canvas'); c.width = v.videoWidth || 320; c.height = v.videoHeight || 568; c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); done(c.toDataURL('image/jpeg', 0.55)); } catch(e) { done(null); } }, { once: true });
+    v.addEventListener('error', () => done(null), { once: true });
+    v.src = url; v.addEventListener('loadeddata', () => { v.currentTime = 0.1; }, { once: true });
+    setTimeout(() => { if (this._posterBusy && !this._posters[url]) done(null); }, 8000);
+  }
+  mediaBg(m) { if (m.url && m.video) { const p = this._videoPoster(m.url); return p ? 'center / cover no-repeat url("' + p + '")' : '#11131d'; } if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'X'; }
   platIcon(p) { return p === 'ig' ? 'ph ph-instagram-logo' : p === 'th' ? 'ph ph-threads-logo' : 'ph ph-x-logo'; }
   avStyle(c, size, r) { return { width: size, height: size, flex: 'none', borderRadius: r, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * .36), fontWeight: 600, color: '#f7f7fb', background: 'linear-gradient(135deg,' + c + ',' + c + '30)', boxShadow: 'inset 0 0 0 1px ' + c + '66' }; }
