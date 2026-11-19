@@ -388,7 +388,7 @@ async def publish_story(driver, navigator, photo_index=0, caption=None,
 
 async def publish_reel(driver, navigator, caption="", video_index=0,
                        log: Callable = print) -> dict:
-    """Publie un reel."""
+    """Publie un reel. Flow complet basé sur le dump de l'arbre UI."""
     start = time.time()
     stats = {"published": False, "type": "reel", "duration_s": 0}
 
@@ -408,30 +408,45 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(2.0, 3.0))
 
-    # 2. Selectionner une video
+    # 2. Galerie: selectionner une video
     if not await _select_video(driver, log, video_index):
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 3. Suivant (galerie → editeur)
+    # 3. Suivant (galerie → editeur video)
     if not await _tap_suivant(driver, log):
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 4. Editeur reel → Suivant
-    await asyncio.sleep(1)
+    # 4. Editeur video (Audio/Texte/Voix/Sous-titres) → Suivant (skip)
+    await asyncio.sleep(1.5)
     if not await _tap_suivant(driver, log):
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 5. Popup vie privee
-    await _dismiss_privacy_popup(driver, log)
-
-    # 6. Legende
+    # 5. Page caption/options — ecrire la legende
+    await asyncio.sleep(1.5)
     await _write_caption(driver, log, caption)
 
-    # 7. Partager
+    # 6. Suivant (page caption → popup "A propos de Reels")
+    if not await _tap_suivant(driver, log):
+        stats["duration_s"] = round(time.time() - start)
+        return stats
+
+    # 7. Popup "A propos de Reels" → tap "Partager"
+    await asyncio.sleep(1.5)
     if await _tap_partager(driver, log):
+        # 8. Possible popup Meta One → fermer
+        await asyncio.sleep(2)
+        meta_el = await driver.find_element(contains="Meta", clickable=True, refresh=True)
+        fermer_el = await driver.find_element(text="Fermer", clickable=True)
+        if not fermer_el:
+            fermer_el = await driver.find_element(contains="Non merci", clickable=True, refresh=True)
+        if fermer_el and meta_el:
+            ftap = fermer_el.get('tap', {})
+            log("   dismiss popup Meta One (y=%d)" % ftap.get('y', 0))
+            await driver.ht.tap(ftap['x'], ftap['y'])
+            await asyncio.sleep(1)
         stats["published"] = True
         log("   ✓ reel publie!")
 
