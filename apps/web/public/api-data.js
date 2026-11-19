@@ -592,9 +592,13 @@ if ('serviceWorker' in navigator) {
       acc: p.compte_id,
       camp: p.campagne_id || null,
       media: p.media_id || null,
+      mediaUrls: p.media_urls || [],
+      postType: p.post_type || 'post',
       caption: p.caption || '',
+      firstComment: p.first_comment || '',
       date: p.scheduled_at || null,
       status: p.status || 'planned',
+      stickers: p.stickers || null,
       postId: p.platform_post_id || null,
       created: p.created_at,
       updated: p.updated_at

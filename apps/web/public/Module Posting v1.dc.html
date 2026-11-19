@@ -2262,7 +2262,7 @@ class Component extends DCLogic {
       { id: 'c4', name: 'Nina · Yoga du soir', icon: 'ph ph-moon-stars', mode: 'rotation', persona: 'nina', plat: 'ig', type: 'reel', accounts: ids('nina', 'ig'), coll: 'col5', status: 'done', start: T - 30 * 864e5, from: 18, to: 22, freq: 1, published: 30, planned: 30 }
     ];
   }
-  seedPosts() { if (this._isLive()) { if (window.SCALE_DATA) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; const T = this.today0(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw', acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: p.media ? [p.media] : [], fc: 1, sound: '', at, status: p.status === 'published' ? 'pub' : p.status === 'failed' ? 'error' : p.status === 'planned' ? 'ok' : 'draft', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
+  seedPosts() { if (this._isLive()) { if (window.SCALE_DATA) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; const T = this.today0(); const lib = this.mediaLib(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; const typeMap = { reel: 'reel', story: 'story', carousel: 'car', post: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_media' : 'tw_img' }; const type = typeMap[p.postType] || (a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw'); const mediaIds = (p.mediaUrls || []).map(url => { const m = lib.find(x => x.url === url || x.r2 === url); return m ? m.id : null; }).filter(Boolean); const stMap = { published: 'pub', failed: 'error', planned: 'ok', scheduled: 'ok', draft: 'draft', publishing: 'ok' }; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type, acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: mediaIds, fc: p.firstComment || '', sound: '', date: at, status: stMap[p.status] || 'ok', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
     const T = this.today0(); const now = Date.now(); const caps = this.caps();
     const at = (d, h, m) => T + d * 864e5 + (h * 60 + m) * 6e4;
     const spec = [
@@ -2617,17 +2617,17 @@ class Component extends DCLogic {
           });
         }
       } else if (obj.acc) {
-        const res = SD.apiPost('/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null });
-        if (res && res.id) {
-          obj.id = res.id;
-          // Dispatch immediately if not draft/scheduled
-          if (!asDraft && !sch) {
-            SD.apiAsync('POST', '/posting/publications/' + res.id + '/publish').then(function(r) {
-              if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
-              else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
-            });
-          }
-        }
+        SD.apiAsync('POST', '/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }).then(function(res) {
+          if (res && res.id) {
+            me.setState(x => ({ posts: x.posts.map(p => p.id === obj.id ? { ...p, id: res.id } : p) }));
+            if (!asDraft && !sch) {
+              SD.apiAsync('POST', '/posting/publications/' + res.id + '/publish').then(function(r) {
+                if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
+                else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
+              });
+            }
+          } else { console.error('[Posting] Create publication failed:', res); me.toastMsg('Erreur création publication', true); }
+        });
       }
     }
     this.setState(x => ({ posts: ed.id ? x.posts.map(p => p.id === ed.id ? obj : p) : [obj].concat(x.posts), ed: null, sched: null, tab: 'pub' }));
