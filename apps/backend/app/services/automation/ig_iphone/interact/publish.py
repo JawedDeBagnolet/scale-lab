@@ -155,12 +155,18 @@ async def _dismiss_privacy_popup(driver, log) -> bool:
 
 
 async def _write_caption(driver, log, caption) -> bool:
-    """Ecrit la legende du post."""
+    """Ecrit la legende du post.
+
+    Utilise tap_by_text (MCP tap_element natif) pour ouvrir le champ
+    legende — les coordonnees tap_screen ne fonctionnent pas sur ce
+    champ texte sur Instagram.
+    """
     if not caption:
         return True
 
-    # Trouver et taper sur "Ajouter une legende..." (y > 300) avec retry
+    # Taper sur le champ legende via MCP tap_element natif (par texte)
     for attempt in range(3):
+        # Verifier que le champ est visible dans l'arbre
         els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
         candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 300]
         if not candidates:
@@ -168,10 +174,13 @@ async def _write_caption(driver, log, caption) -> bool:
             await _dump_screen(driver, log, "no_caption_%d" % attempt)
             await asyncio.sleep(1.5)
             continue
-        el = candidates[0]
-        tap = el.get('tap', {})
-        log("   tap champ legende (y=%d)" % tap.get('y', 0))
-        await driver.ht.tap(tap['x'], tap['y'])
+
+        log("   tap champ legende via tap_element natif (tentative %d)" % (attempt + 1))
+        tapped = await driver.ht.tap_by_text("Ajouter une l", match="contains")
+        if not tapped:
+            log("   ⚠ tap_element natif echoue, retry")
+            await asyncio.sleep(1.5)
+            continue
         await asyncio.sleep(1.5)
 
         # Verifier que le clavier s'est ouvert (header "Legende" ou "OK" visible)
@@ -188,9 +197,13 @@ async def _write_caption(driver, log, caption) -> bool:
     log("   ecriture legende (%d chars)" % len(caption))
     await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Fermer le clavier : tap OK (position fixe 348,66)
-    log("   tap OK (348,66)")
-    await driver.ht.tap(348, 66)
+    # Fermer le clavier : tap OK via tap_element natif
+    log("   tap OK via tap_element natif")
+    ok_tapped = await driver.ht.tap_by_text("OK")
+    if not ok_tapped:
+        # Fallback coordonnees connues
+        log("   ⚠ OK natif echoue, fallback coordonnees (348,66)")
+        await driver.ht.tap(348, 66)
     await asyncio.sleep(random.uniform(1.5, 2.5))
     return True
 

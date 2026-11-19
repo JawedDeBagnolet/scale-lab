@@ -237,12 +237,30 @@ class IGDriver:
 
     async def tap_element(
         self,
-        text: str,
+        text: str = "",
         *,
         contains: bool = False,
         refresh: bool = True,
+        use_native: bool = False,
     ) -> bool:
-        """Find and tap an element by text. Returns True if found and tapped."""
+        """Find and tap an element by text. Returns True if found and tapped.
+
+        Args:
+            text: exact or substring text to match.
+            contains: if True, match elements containing *text*.
+            refresh: refresh the accessibility tree first.
+            use_native: if True, skip coordinate lookup and use the
+                        MCP ``tap_element`` method directly (native iOS tap
+                        by accessibility text).  Also used as automatic
+                        fallback when the element is found in the tree but
+                        has no usable tap coordinates.
+        """
+        # ── Fast-path: native MCP tap_element ──
+        if use_native:
+            match_mode = "contains" if contains else "exact"
+            return await self.ht.tap_by_text(text, match=match_mode)
+
+        # ── Standard path: find in tree → tap_screen ──
         if refresh:
             await self.refresh_elements()
 
@@ -252,8 +270,10 @@ class IGDriver:
             el = await self.find_element(text, contains=contains)
 
         if not el:
-            self.log(f"   [ig] élément '{text}' introuvable")
-            return False
+            # Element not found in tree at all → try native MCP as last resort
+            self.log(f"   [ig] élément '{text}' introuvable dans l'arbre, essai tap_element natif")
+            match_mode = "contains" if contains else "exact"
+            return await self.ht.tap_by_text(text, match=match_mode)
 
         # MCP elements have tap coordinates in el["tap"] and size in el["visible_rect"]
         tap_info = el.get("tap", {})
@@ -262,6 +282,12 @@ class IGDriver:
         y = tap_info.get("y", rect.get("y", 0))
         w = rect.get("width", 0)
         h = rect.get("height", 0)
+
+        # If coordinates are zero/missing, fall back to native tap
+        if x == 0 and y == 0:
+            self.log(f"   [ig] coordonnées nulles pour '{text}', fallback tap_element natif")
+            match_mode = "contains" if contains else "exact"
+            return await self.ht.tap_by_text(text, match=match_mode)
 
         bounds = (w, h) if w > 0 and h > 0 else None
         await self.ht.tap(x, y, bounds=bounds)
@@ -341,22 +367,10 @@ class IGDriver:
             "Ne pas autoriser", "Plus tard", "Pas maintenant",
             "Fermer", "Ignorer", "OK", "Non merci", "Passer",
         ]
-        from app.services.dispatch import mcp_call
-        import json as _json
         for label in dismiss_labels:
-            r = await mcp_call(
-                self.ht.mcp_port, "tap_element",
-                {"text": label, "match": "contains"},
-                timeout=5, host=self.ht.host,
-            )
-            if r and r.get("content"):
-                try:
-                    tap_data = _json.loads(r["content"][0].get("text", "{}"))
-                    if tap_data.get("tapped"):
-                        self.log(f"   [ig] popup dismissé: '{label}'")
-                        return True
-                except Exception:
-                    pass
+            if await self.ht.tap_by_text(label, match="contains"):
+                self.log(f"   [ig] popup dismissé: '{label}'")
+                return True
         return False
 
     async def ensure_screen(self, target: str, max_retries: int = 3) -> bool:
@@ -387,12 +401,7 @@ class IGDriver:
 
             # Try going back
             if screen in ("post_view", "profile", "story"):
-                from app.services.dispatch import mcp_call
-                await mcp_call(
-                    self.ht.mcp_port, "tap_element",
-                    {"text": "Retour"},
-                    timeout=5, host=self.ht.host,
-                )
+                await self.ht.tap_by_text("Retour")
                 await asyncio.sleep(1.0)
 
         return False

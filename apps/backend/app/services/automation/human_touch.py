@@ -228,6 +228,42 @@ class HumanTouch:
             "y": round(y, 1),
         })
 
+    async def tap_by_text(
+        self,
+        text: str,
+        *,
+        match: str = "exact",
+    ) -> bool:
+        """Tap an element by its accessibility text via MCP tap_element.
+
+        This uses the native iOS tap_element method which searches the
+        accessibility tree AND OCR text, then performs a native tap on the
+        matched element.  Unlike tap_screen (coordinate-based), this works
+        on elements that don't respond to raw coordinate taps (e.g.
+        text fields, certain IG input areas).
+
+        Args:
+            text: accessibility label (or substring) to match.
+            match: "exact" (default) or "contains" for substring matching.
+
+        Returns:
+            True if the element was found and tapped.
+        """
+        args: dict = {"text": text}
+        if match == "contains":
+            args["match"] = "contains"
+        result = await self._call("tap_element", args, timeout=10)
+        if not result:
+            return False
+        try:
+            content = result.get("content", [])
+            if content and isinstance(content, list):
+                data = json.loads(content[0].get("text", "{}"))
+                return bool(data.get("tapped"))
+        except Exception:
+            pass
+        return False
+
     async def tap_pos(self, x_frac: float, y_frac: float):
         """Tap at a relative screen position (fractions 0-1)."""
         await self._ensure_screen()

@@ -84,13 +84,30 @@ class THDriver:
                     results.append(e)
         return results
 
-    async def tap_element(self, text=None, contains=None, refresh=True):
-        """Tape sur un element trouve par texte."""
+    async def tap_element(self, text=None, contains=None, refresh=True, use_native=False):
+        """Tape sur un element trouve par texte.
+
+        Args:
+            text: texte exact a chercher.
+            contains: sous-chaine a chercher (alternatif a text).
+            refresh: rafraichir l'arbre d'accessibilite.
+            use_native: utiliser MCP tap_element natif (par texte, pas coordonnees).
+        """
+        search_text = text or contains or ""
+
+        # Fast-path: MCP tap_element natif
+        if use_native:
+            match_mode = "contains" if contains else "exact"
+            return await self.ht.tap_by_text(search_text, match=match_mode)
+
         el = await self.find_element(text=text, contains=contains, clickable=True, refresh=refresh)
         if el and el.get("tap"):
             await self.ht.tap(el["tap"]["x"], el["tap"]["y"])
             return True
-        return False
+
+        # Fallback: MCP tap_element natif si introuvable ou sans coordonnees
+        match_mode = "contains" if contains else "exact"
+        return await self.ht.tap_by_text(search_text, match=match_mode)
 
     # ── Positions ─────────────────────────────────────────────────────────
 
