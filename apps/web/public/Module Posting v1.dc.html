@@ -2205,9 +2205,10 @@ class Component extends DCLogic {
     if (!need) return;
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), colls: (x.colls || []).map(c => ({ ...c, ptype: T(c.ptype), media: c.media.map(M), items: c.items.map(i => ({ ...i, media: i.media.map(M) })) })), ed: null }));
   }
-  migrateGroups() { if (this._isLive()) return; if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
+  migrateGroups() { if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
   lib(p, pl, t) { return this.mediaLib().filter(m => m.persona === p && m.plat === pl && m.type === t).map(m => m.id); }
   sounds() {
+    if (this._isLive()) return [];
     return this._s || (this._s = [
       ['s1', 'Midnight Drive', 'Nova Lane', 1, 94, 48200, '0:30'], ['s2', 'Soft Focus', 'Aurel', 2, 88, 41900, '0:24'],
       ['s3', 'Golden Hour Loop', 'Mira Vale', 3, 71, 36100, '0:18'], ['s4', 'Run It Back', 'KAYO', 4, 83, 30400, '0:21'],
@@ -2375,7 +2376,7 @@ class Component extends DCLogic {
   }
   componentDidMount() {
     this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const camp = H.get('camp'), q = H.get('q'); if (camp) { const c = (this.state.camps || []).find(x => x.id === camp || x.name === camp); this.setState(c ? { tab: 'camp', campOpen: c.id } : { tab: 'camp' }); } else if (q) this.setState({ tab: 'pub', q: q.replace(/^@/, '') }); }; setTimeout(this._hash, 50); window.addEventListener('hashchange', this._hash);
-    this.applyFont(); this.syncFx(); if (!this._isLive()) { this.migrate(); this.migrateColl(); this.migrateGroups(); this.migratePost(); this.migrateTplVars(); } this.migrateStoryColls(); if (!this._isLive()) { if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches(); }
+    this.applyFont(); this.syncFx(); this.migrate(); this.migrateColl(); this.migrateGroups(); this.migratePost(); this.migrateTplVars(); this.migrateStoryColls(); if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches();
     this._key = e => {
       if (e.key !== 'Escape') return; const s = this.state;
       if (s.cdNameEdit != null) this.setState({ cdNameEdit: null }); else if (s.cdIconOpen) this.setState({ cdIconOpen: false }); else if (s.wiz && s.wiz.timeOpen) this.setState(x => ({ wiz: { ...x.wiz, timeOpen: null } })); else if (s.grouping && !s.picker && !s.confirm) this.setState({ grouping: null }); else if (s.confirm) this.setState({ confirm: null }); else if (s.audio) this.setState({ audio: null, playing: null }); else if (s.picker) this.setState({ picker: null });
@@ -3443,7 +3444,6 @@ class Component extends DCLogic {
     return out;
   }
   migrateStoryColls() {
-    if (this._isLive()) { this.setState({ scVer: 2 }); return; }
     const s = this.state; if (s.scVer === 2) return; const userT = t => !/^sg\d/.test(t.id); const userC = c => /^(sc|sch)_\d+$/.test(c.id);
     const stypes = this.STYPES.map(t => ({ id: t[0], label: t[1], color: t[2], icon: t[3], personas: t[4] || this.pers().map(p => p.id) }));
     const fix = { st1: ['lea', 'question', ['soiree', 'diner']], st2: ['maya', 'question', ['matin', 'soiree']], st3: ['lea', 'cta', ['soiree']], st4: ['alba', 'lifestyle', ['midi', 'aprem']] };
