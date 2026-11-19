@@ -176,15 +176,9 @@ async def _write_caption(driver, log, caption) -> bool:
     log("   ecriture legende (%d chars)" % len(caption))
     await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Fermer le clavier : tap "OK" (visible a ~(348,66) quand clavier ouvert)
-    ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
-    if ok_el:
-        tap2 = ok_el.get('tap', {})
-        log("   valide legende OK (y=%d)" % tap2.get('y', 0))
-        await driver.ht.tap(tap2['x'], tap2['y'])
-    else:
-        log("   ferme clavier (tap couverture y=300)")
-        await driver.ht.tap(188, 300)
+    # Fermer le clavier : tap OK directement (position fixe 348,66)
+    log("   tap OK (348,66)")
+    await driver.ht.tap(348, 66)
     await asyncio.sleep(random.uniform(1.5, 2.5))
     return True
 
