@@ -158,25 +158,35 @@ async def _write_caption(driver, log, caption) -> bool:
     """Ecrit la legende du post."""
     if not caption:
         return True
-    # Chercher le champ legende — y entre 200 et 600 (eviter header et boutons bas)
-    els = await driver.find_elements(contains="gende", clickable=True, refresh=True)
-    candidates = [e for e in els if 200 < e.get('tap', {}).get('y', 0) < 600]
-    if not candidates:
-        els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
-        candidates = [e for e in els if 100 < e.get('tap', {}).get('y', 0) < 600]
-    el = candidates[0] if candidates else None
-    if not el:
-        log("   ! champ legende non trouve")
-        await _dump_screen(driver, log, "no_caption_field")
+
+    # Trouver et taper sur "Ajouter une legende..." avec retry
+    for attempt in range(3):
+        el = await driver.find_element(contains="Ajouter une l", clickable=True, refresh=True)
+        if not el:
+            log("   ! champ legende non trouve (tentative %d)" % (attempt + 1))
+            await asyncio.sleep(1.5)
+            continue
+        tap = el.get('tap', {})
+        log("   tap champ legende (y=%d)" % tap.get('y', 0))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(1.5)
+
+        # Verifier que le clavier s'est ouvert (header "Legende" ou "OK" visible)
+        ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
+        leg_el = await driver.find_element(text="Légende", refresh=True)
+        if ok_el or leg_el:
+            log("   ✓ clavier ouvert")
+            break
+        log("   ⚠ clavier pas ouvert, retry")
+    else:
+        log("   ! impossible d'ouvrir le champ legende")
+        await _dump_screen(driver, log, "no_caption_keyboard")
         return False
-    tap = el.get('tap', {})
-    log("   tap champ legende (y=%d)" % tap.get('y', 0))
-    await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(1)
+
     log("   ecriture legende (%d chars)" % len(caption))
     await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Fermer le clavier : tap OK directement (position fixe 348,66)
+    # Fermer le clavier : tap OK (position fixe 348,66)
     log("   tap OK (348,66)")
     await driver.ht.tap(348, 66)
     await asyncio.sleep(random.uniform(1.5, 2.5))
@@ -436,7 +446,7 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
                 await asyncio.sleep(2)
 
     # 5. Page caption/options — ecrire la legende
-    await asyncio.sleep(1)
+    await asyncio.sleep(2.5)
     await _write_caption(driver, log, caption)
 
     # 6. Suivant (page caption → popup "A propos de Reels")
