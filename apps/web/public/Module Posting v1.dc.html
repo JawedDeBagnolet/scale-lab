@@ -2608,27 +2608,19 @@ class Component extends DCLogic {
 
     const SD = window.SCALE_DATA;
     const me = this;
-    if (SD && SD._live) {
-      if (ed.id) {
-        SD.apiPatch('/posting/publications/' + ed.id, { status, caption: obj.caption, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null });
-        // Dispatch immediately if not draft/scheduled
-        if (!asDraft && !sch) {
-          SD.apiAsync('POST', '/posting/publications/' + ed.id + '/publish').then(function(r) {
-            if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
-            else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
-          });
-        }
-      } else if (obj.acc && String(obj.acc).length > 10) {
-        SD.apiAsync('POST', '/posting/publications', { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null }).then(function(res) {
+    const isUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (SD && SD._live && obj.acc && isUUID(obj.acc)) {
+      const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null };
+      const dispatchPub = function(pubId) { if (!asDraft && !sch) { SD.apiAsync('POST', '/posting/publications/' + pubId + '/publish').then(function(r) { if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone'); else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true); }); } };
+      if (ed.id && isUUID(ed.id)) {
+        SD.apiPatch('/posting/publications/' + ed.id, payload);
+        dispatchPub(ed.id);
+      } else {
+        SD.apiAsync('POST', '/posting/publications', payload).then(function(res) {
           if (res && res.id) {
             me.setState(x => ({ posts: x.posts.map(p => p.id === obj.id ? { ...p, id: res.id } : p) }));
-            if (!asDraft && !sch) {
-              SD.apiAsync('POST', '/posting/publications/' + res.id + '/publish').then(function(r) {
-                if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone');
-                else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true);
-              });
-            }
-          } else { console.error('[Posting] Create publication failed:', res); me.toastMsg('Erreur création publication', true); }
+            dispatchPub(res.id);
+          } else { console.error('[Posting] Create failed:', res); me.toastMsg('Erreur création publication', true); }
         });
       }
     }
