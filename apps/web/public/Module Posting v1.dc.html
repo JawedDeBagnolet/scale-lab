@@ -1047,7 +1047,7 @@ select option { background: #151827; color: #e8eaf3; }
 
 <sc-if value="{{ pvIsIgVert }}">
 <div style="position:relative;aspect-ratio:9/16;max-height:560px;margin:0 auto;border-radius:18px;overflow:hidden;background:#11131d;border:1px solid rgba(255,255,255,.06)">
-<sc-if value="{{ pvHasMedia }}"><div style="{{ pvMain }}"></div></sc-if>
+<sc-if value="{{ pvHasMedia }}"><div style="{{ pvMain }}"></div><sc-if value="{{ pvIsVideo }}"><video src="{{ pvVideoUrl }}" muted playsinline loop onloadeddata="this.muted=true;this.currentTime=0.1" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video><div onClick="{{ pvTogglePlay }}" style="position:absolute;inset:0;z-index:2;cursor:pointer;display:flex;align-items:center;justify-content:center"><div style="{{ pvPlayBtn }}"><i class="{{ pvPlayIcon }}" style="font-size:22px;color:#ffffff;margin-left:{{ pvPlayML }}"></i></div></div></sc-if></sc-if>
 <sc-if value="{{ pvMediaPh }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#3d4257"><i class="ph ph-film-slate" style="font-size:30px"></i></div></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 18%,transparent 60%,rgba(0,0,0,.6))"></div>
 <sc-if value="{{ pvIsStory }}">
@@ -2809,6 +2809,12 @@ class Component extends DCLogic {
       pvAv: this.avStyle(color, 36, 99), pvAvX: this.avStyle(color, 38, 99), pvAvSm: this.avStyle(color, 28, 99), pvAvIg: { ...this.avStyle(color, 28, 99), boxShadow: '0 0 0 2px #0c0d14, 0 0 0 3.5px ' + color },
       pvSegs: this.segs(ed.caption, c, raw), pvNoText: !ed.caption.trim(), pvHasFc: ed.showFc && !!fcView.trim(), pvFcSegs: this.segs(fcView, c, raw),
       pvHasMedia: mm.length > 0, pvMediaPh: mode > 0 && !mm.length, pvMedia,
+      pvIsVideo: !!(mm[0] && mm[0].video && mm[0].url), pvVideoUrl: mm[0] ? mm[0].url : '',
+      pvPlaying: !!s.pvPlaying,
+      pvPlayIcon: s.pvPlaying ? 'ph-fill ph-pause' : 'ph-fill ph-play',
+      pvPlayML: s.pvPlaying ? '0' : '2px',
+      pvPlayBtn: { width: 56, height: 56, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(8,9,16,.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.2)', opacity: s.pvPlaying ? 0 : 1, transition: 'opacity .2s' },
+      pvTogglePlay: e => { e.stopPropagation(); const wrap = e.currentTarget.closest('[style*="aspect-ratio"]') || e.currentTarget.parentElement; const v = wrap.querySelector('video'); if (v) { if (v.paused) { v.muted = true; v.play().catch(() => {}); this.setState({ pvPlaying: true }); } else { v.pause(); this.setState({ pvPlaying: false }); } } },
       pvMain: mm[0] ? { position: 'absolute', inset: 0, background: this.mediaBg(mm[0]) } : {},
       pvMainX: mm[0] ? { marginTop: 10, aspectRatio: '16/10', borderRadius: 14, background: this.mediaBg(mm[0]), border: '1px solid rgba(255,255,255,.08)' } : {},
       pvXGrid: { marginTop: 10, display: 'grid', gridTemplateColumns: mm.length > 1 ? '1fr 1fr' : '1fr', gridTemplateRows: mm.length > 2 ? '1fr 1fr' : '1fr', gap: 3, aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)' },
