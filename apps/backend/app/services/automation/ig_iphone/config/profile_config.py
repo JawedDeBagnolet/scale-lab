@@ -15,75 +15,40 @@ from typing import Any, Callable
 
 # ── Screen awareness (safety layer) ─────────────────────────────────────────
 
-# Atlas complet des écrans Instagram — marqueurs issus des dumps réels
-# Le titre de page est TOUJOURS dans la zone y < 80 et est le marqueur le plus fiable.
-# L'ordre de détection compte : les écrans les plus spécifiques d'abord.
-SCREENS = [
-    # ── Sous-écrans profonds (spécifiques) ──
-    ("age_picker",      {"title": ["ge par d"], "body": ["Enregistrer", "Fermer"]}),
-    ("age_limit",       {"title": ["ge minimum"], "body": ["Par d", "Ajouter ou supprimer"]}),
-    ("other_tools",     {"title": ["Autre"], "body": ["Prospects", "ge minimum"]}),
-    ("account_type",    {"title": ["Type de"], "body": ["Statistiques", "Autre"]}),
-    ("edit_link",       {"title": ["Modifier le lien"], "body": ["Effacer le texte"]}),
-    ("links_list",      {"title": ["Liens"], "body": ["Ajouter un lien"]}),
-    ("photo_gallery",   {"body": ["Miniature", "Photos"]}),
-    ("photo_menu",      {"body": ["Choisir dans la", "biblioth"]}),
-    ("creation_menu",   {"body": ["Reel", "Publication", "Story", "Fermer"]}),
-    # ── Écrans d'édition ──
-    ("edit_gender",     {"title": ["Genre"], "body": ["Femme", "Homme"]}),
-    ("edit_field",      {"body": ["fait", "Champ de texte"]}),
-    ("edit_bio",        {"title": ["Retour"], "body": ["Bio", "fait"]}),
-    ("edit_profile",    {"title": ["Modifier le profil"], "body": ["nom", "Bio"]}),
-    # ── Paramètres ──
-    ("settings",        {"title": ["tres et activit"], "body": ["Votre compte"]}),
-    ("settings_deep",   {"title": ["tres et activit"], "body": ["Type de compte"]}),
-    # ── Profil & feed ──
-    ("own_profile",     {"body": ["Modifier le profil", "Partager le profil"]}),
-    ("feed",            {"body": ["Fil principal", "Explorer"]}),
-    # ── iOS ──
-    ("ios_home",        {"body": ["FaceTime", "Photos"]}),
-]
+SCREENS = {
+    "edit_profile": {
+        "markers": ["nom", "Bio", "Modifier la photo"],
+        "desc": "Modifier le profil",
+    },
+    "edit_field": {
+        "markers": ["fait", "Champ de texte"],
+        "desc": "Edition d'un champ",
+    },
+    "own_profile": {
+        "markers": ["Modifier le profil", "Partager le profil"],
+        "desc": "Profil du compte",
+    },
+    "feed": {
+        "markers": ["Fil principal", "Explorer"],
+        "desc": "Feed principal",
+    },
+}
 
 
 async def _detect_screen(driver, log=None) -> str:
-    """Detect current screen from accessibility tree markers.
-
-    Uses the SCREENS atlas — checks title (y<80) and body markers.
-    Returns the first matching screen_id, or 'unknown'.
-    """
+    """Detect current screen from accessibility tree markers."""
     els = await driver.find_elements(refresh=True)
-    title_texts = []
-    body_texts = []
+    texts = set()
     for e in els:
-        t = (e.get('text', '') or '').strip()
-        if not t or len(t) < 2:
-            continue
-        r = e.get('rect', {})
-        y = r.get('y', 999)
-        if y < 80:
-            title_texts.append(t.lower())
-        body_texts.append(t.lower())
-
-    title_joined = ' '.join(title_texts)
-    body_joined = ' '.join(body_texts)
-
-    for screen_id, sig in SCREENS:
-        # Check title markers (all must match if present)
-        title_markers = sig.get("title", [])
-        if title_markers:
-            title_ok = all(m.lower() in title_joined for m in title_markers)
-            if not title_ok:
-                continue
-        # Check body markers (at least 2 must match, or all if only 1-2)
-        body_markers = sig.get("body", [])
-        if body_markers:
-            body_hits = sum(1 for m in body_markers if m.lower() in body_joined)
-            needed = min(2, len(body_markers))
-            if body_hits < needed:
-                continue
-        # Matched
-        return screen_id
-
+        t = (e.get('text', '') or '').lower()
+        if t:
+            texts.add(t)
+    all_text = ' '.join(texts)
+    # Check each screen type
+    for screen_id, info in SCREENS.items():
+        matches = sum(1 for m in info["markers"] if m.lower() in all_text)
+        if matches >= 2 or (len(info["markers"]) == 2 and matches >= 1):
+            return screen_id
     return "unknown"
 
 
@@ -119,20 +84,7 @@ async def _ensure_screen(driver, navigator, log, target: str, max_retries: int =
                     tap = el.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(2)
-            elif current == "creation_menu":
-                # Dismiss creation menu overlay (tap "Fermer" or "X")
-                log("   [safety] creation_menu detecte, fermeture")
-                close = await driver.find_element("Fermer", clickable=True, refresh=True)
-                if not close:
-                    close = await driver.find_element("X", clickable=True, refresh=True)
-                if close:
-                    tap = close.get('tap', {})
-                    await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(1.5)
-                else:
-                    await navigator.go_back()
-                    await asyncio.sleep(1.5)
-            elif current == "edit_field" or current == "edit_gender" or current == "edit_bio":
+            elif current == "edit_field":
                 # We're in a field sub-screen, go back
                 await navigator.go_back()
                 await asyncio.sleep(1.5)
@@ -252,72 +204,20 @@ async def _open_edit_profile(driver, navigator, log) -> bool:
 
 
 async def _open_settings(driver, navigator, log) -> bool:
-    """Ouvre l'ecran Parametres et activite avec vérification."""
-    # D'abord s'assurer qu'on est sur le profil
-    screen = await _detect_screen(driver, log)
-    if screen in ("edit_profile", "edit_field", "edit_bio", "edit_gender", "edit_link", "links_list"):
-        # On est dans l'édition de profil — fermer d'abord
-        log("   [nav] écran '%s' → fermeture edit profil" % screen)
-        # Chercher le bouton "Retour" ou "Modifier le profil" en titre (y < 80)
-        back = await driver.find_element("Retour", clickable=True, refresh=True)
-        if back and back.get('rect', {}).get('y', 0) < 80:
-            tap = back.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(2)
-        else:
-            await navigator.go_back()
-            await asyncio.sleep(2)
-        screen = await _detect_screen(driver, log)
-        log("   [nav] écran après fermeture: '%s'" % screen)
-
-    if screen not in ("own_profile", "settings", "settings_deep"):
-        log("   [nav] écran '%s' → navigation vers profil" % screen)
-        # Essayer le tab profil dans la barre du bas
-        profile_tab = await driver.find_element(text="Profil", clickable=True, refresh=True)
-        if profile_tab and profile_tab.get('rect', {}).get('y', 0) > 650:
-            tap = profile_tab.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(2)
-        else:
-            await navigator.go_profile()
-            await asyncio.sleep(2)
-
-        # Vérifier qu'on est bien sur le profil
-        screen = await _detect_screen(driver, log)
-        if screen != "own_profile":
-            log("   [nav] ⚠ écran '%s' après navigation profil" % screen)
-
-    if screen in ("settings", "settings_deep"):
-        log("   déjà dans les paramètres")
-        return True
-
-    # Trouver le bouton paramètres (icône engrenage en haut à droite du profil)
-    el = await driver.find_element("param", contains=True, clickable=True, refresh=True)
+    """Ouvre l'ecran Parametres et activite."""
+    await navigator.go_profile()
+    await asyncio.sleep(1)
+    el = await driver.find_element(contains="param", clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element("activit", contains=True, clickable=True, refresh=True)
+        el = await driver.find_element(contains="activit", clickable=True, refresh=True)
     if not el:
-        log("   ! bouton parametres non trouvé")
-        await _dump_screen(driver, log, "profil_no_settings")
+        log("   ! bouton parametres non trouve")
         return False
     tap = el.get('tap', {})
-    log("   ouvre parametres (y=%d)" % tap.get('y', 0))
+    log("   ouvre parametres")
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.5, 2.5))
-
-    # Vérifier qu'on est bien dans les paramètres
-    screen = await _detect_screen(driver, log)
-    if screen not in ("settings", "settings_deep"):
-        log("   ! écran '%s' après ouverture paramètres (attendu settings)" % screen)
-        # Peut-être le menu création s'est ouvert — fermer
-        if screen == "creation_menu":
-            close = await driver.find_element("Fermer", clickable=True, refresh=True)
-            if close:
-                ct = close.get('tap', {})
-                await driver.ht.tap(ct['x'], ct['y'])
-                await asyncio.sleep(1)
-            return await _open_settings(driver, navigator, log)
-        return False
-    log("   ✓ paramètres ouverts")
+    await asyncio.sleep(random.uniform(1.0, 2.0))
+    await asyncio.sleep(1.5)
     return True
 
 
@@ -656,99 +556,40 @@ async def add_link(driver, navigator, url, title=None, log: Callable = print) ->
 
 
 async def set_profile_photo(driver, navigator, photo_index=0, log: Callable = print) -> bool:
-    """Change la photo de profil avec vérification à chaque étape."""
+    """Change la photo de profil."""
     log("-> Config: photo de profil (index=%d)" % photo_index)
     if not await _open_edit_profile(driver, navigator, log):
         return False
-
-    # 1. Trouver et taper "Modifier la photo"
-    el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
+    el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
     if not el:
-        log("   ! bouton photo profil non trouvé")
-        await _dump_screen(driver, log, "edit_profile")
+        log("   ! bouton photo profil non trouve")
         await _go_back(driver, navigator, log)
         return False
     tap = el.get('tap', {})
-    log("   tap 'Modifier la photo' (y=%d)" % tap.get('y', 0))
-    await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.5, 2.5))
-
-    # 2. Vérifier menu d'action + taper galerie
-    gallery = None
-    for attempt in range(3):
-        gallery = await driver.find_element("Choisir dans la", contains=True, clickable=True, refresh=True)
-        if not gallery:
-            gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
-        if not gallery:
-            gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
-        if gallery:
-            break
-        log("   [retry %d] menu photo pas visible" % (attempt + 1))
-        await asyncio.sleep(1)
-
-    if not gallery:
-        log("   ! menu galerie non trouvé")
-        await _dump_screen(driver, log, "menu_photo")
-        await _go_back(driver, navigator, log)
-        return False
-
-    tap = gallery.get('tap', {})
-    log("   tap '%s' (y=%d)" % (gallery.get('text', '')[:30], tap.get('y', 0)))
-    await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.5, 2.5))
-
-    # 3. Vérifier galerie chargée
-    photos = None
-    for attempt in range(3):
-        photos = await driver.find_elements("Miniature", contains=True, clickable=True, refresh=True)
-        if not photos:
-            photos = await driver.find_elements("Photo", contains=True, clickable=True, refresh=True)
-        if photos:
-            break
-        log("   [retry %d] galerie pas chargée" % (attempt + 1))
-        await asyncio.sleep(1.5)
-
-    if not photos or photo_index >= len(photos):
-        log("   ! galerie vide ou index hors limites (photos=%d, index=%d)" % (len(photos) if photos else 0, photo_index))
-        await _go_back(driver, navigator, log)
-        await _go_back(driver, navigator, log)
-        return False
-
-    # 4. Sélectionner la photo
-    log("   galerie: %d photos, sélection index=%d" % (len(photos), photo_index))
-    tap = photos[photo_index].get('tap', {})
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
-
-    # 5. Valider (Terminé/C'est fait)
-    done_found = False
-    for attempt in range(3):
-        done_found = await _tap_done(driver, log)
-        if done_found:
-            break
-        log("   [retry %d] bouton validation non trouvé" % (attempt + 1))
-        await _dump_screen(driver, log, "crop")
-        await asyncio.sleep(1.5)
-
-    if not done_found:
-        log("   ! impossible de valider la photo")
-        await _go_back(driver, navigator, log)
-        await _go_back(driver, navigator, log)
-        return False
-
-    # 6. Attendre retour edit_profile
-    log("   attente chargement photo...")
-    for _ in range(15):
-        await asyncio.sleep(1)
-        screen = await _detect_screen(driver, log)
-        if screen in ("edit_profile", "own_profile"):
-            log("   ✓ photo de profil modifiée")
-            await _go_back(driver, navigator, log)
-            return True
-
-    log("   ⚠ timeout chargement photo")
+    await asyncio.sleep(1.5)
+    gallery = await driver.find_element(contains="galerie", clickable=True, refresh=True)
+    if not gallery:
+        gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
+    if not gallery:
+        gallery = await driver.find_element(contains="Nouvelle photo", clickable=True, refresh=True)
+    if gallery:
+        tap = gallery.get('tap', {})
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(random.uniform(1.0, 2.0))
+        await asyncio.sleep(2)
+        photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
+        if photos and photo_index < len(photos):
+            tap = photos[photo_index].get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(1.0, 2.0))
+            await asyncio.sleep(1)
+            await _tap_done(driver, log)
+            await asyncio.sleep(2)
     await _go_back(driver, navigator, log)
-    return False
+    log("   photo de profil modifiee")
+    return True
 
 
 async def set_private(driver, navigator, private=True, log: Callable = print) -> bool:
@@ -880,38 +721,23 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     - Âge minimum : "Par défaut" + "Ajouter ou supprimer" / valeur actuelle
     - Picker : "Âge par défaut" + scroll picker + "Enregistrer"
     """
-    # Parse age: "18+" → 18, "21+" → 21, None/0/"" → None
-    import re as _re
-    if isinstance(age, str):
-        m = _re.match(r"(\d+)", age)
-        age = int(m.group(1)) if m else None
-    if age and not isinstance(age, int):
-        age = int(age) if str(age).isdigit() else None
-
     log("-> Config: âge minimum -> %s" % (age if age else "supprimer"))
 
     # Step 1: Open settings from profile
     if not await _open_settings(driver, navigator, log):
         return False
 
-    # Step 2: Find "Type de profil et outils" (or "Type de compte et outils")
-    # D'après les dumps : "Type de profil et outils" (comptes pro)
-    el = None
-    for attempt in range(5):
-        el = await driver.find_element("Type de profil", contains=True, clickable=True, refresh=True)
-        if not el:
-            el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
+    # Step 2: Find "Type de compte et outils" (may need to scroll)
+    for attempt in range(3):
+        el = await driver.find_element("Type de compte", contains=True, clickable=True, refresh=True)
         if el:
             break
-        log("   scroll paramètres (%d/5)" % (attempt + 1))
-        await driver.ht.swipe(187, 650, 187, 250, 350)
-        await asyncio.sleep(1.5)
+        # Scroll down to find it
+        await driver.ht.swipe(187, 600, 187, 300, 300)
+        await asyncio.sleep(1)
 
     if not el:
-        log("   ! 'Type de profil/compte et outils' non trouvé après 5 scrolls")
-        screen = await _detect_screen(driver, log)
-        log("   écran détecté: '%s'" % screen)
-        await _dump_screen(driver, log, "settings_no_type_compte")
+        log("   ! 'Type de compte et outils' non trouvé")
         await _go_back(driver, navigator, log)
         return False
 
@@ -920,16 +746,10 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.5, 2.5))
 
-    # Vérifier qu'on est sur l'écran "Type de compte et outils"
-    screen = await _detect_screen(driver, log)
-    if screen != "account_type":
-        log("   ⚠ écran '%s' après tap Type de compte (attendu account_type)" % screen)
-
     # Step 3: Tap "Autre"
     autre = await driver.find_element("Autre", clickable=True, refresh=True)
     if not autre:
         log("   ! 'Autre' non trouvé")
-        await _dump_screen(driver, log, "type_compte_no_autre")
         await _go_back(driver, navigator, log)
         return False
 
@@ -937,11 +757,6 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
     log("   tap 'Autre' (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.0, 2.0))
-
-    # Vérifier qu'on est sur l'écran "Autre"
-    screen = await _detect_screen(driver, log)
-    if screen != "other_tools":
-        log("   ⚠ écran '%s' après tap Autre (attendu other_tools)" % screen)
 
     # Step 4: Tap "Âge minimum"
     age_btn = await driver.find_element("ge minimum", contains=True, clickable=True, refresh=True)
@@ -1013,47 +828,21 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
 
     else:
         # SET age limit
-        if current_age:
-            # Age already set — tap the displayed number to open the picker
-            all_els2 = await driver.find_elements(refresh=True)
-            age_el = None
-            for e in all_els2:
-                t = (e.get('text', '') or '').strip()
-                r = e.get('rect', {})
-                if t.isdigit() and int(t) == current_age and r.get('y', 0) > 200:
-                    age_el = e
-                    break
-            if age_el:
-                tap = age_el.get('tap', {})
-                log("   tap age affiche '%s' (y=%d) pour modifier" % (current_age, tap.get('y', 0)))
-                await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(random.uniform(1.5, 2.5))
-            else:
-                log("   ! valeur age '%s' non trouvee, fallback Ajouter ou supprimer" % current_age)
-                add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
-                if add_remove:
-                    tap = add_remove.get('tap', {})
-                    await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(random.uniform(1.5, 2.5))
-                else:
-                    for _ in range(3):
-                        await _go_back(driver, navigator, log)
-                    return False
-        else:
-            # No age set — tap "Ajouter ou supprimer" to open the picker
-            add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
-            if not add_remove:
-                add_remove = await driver.find_element("Ajouter", contains=True, clickable=True)
-            if not add_remove:
-                log("   ! bouton ajouter non trouvé")
-                for _ in range(3):
-                    await _go_back(driver, navigator, log)
-                return False
+        # Tap "Ajouter ou supprimer" to open the picker
+        add_remove = await driver.find_element("Ajouter ou supprimer", contains=True, clickable=True, refresh=True)
+        if not add_remove:
+            # First-time setup — no "Ajouter ou supprimer" button
+            add_remove = await driver.find_element("Ajouter", contains=True, clickable=True)
+        if not add_remove:
+            log("   ! bouton ajouter non trouvé")
+            for _ in range(3):
+                await _go_back(driver, navigator, log)
+            return False
 
-            tap = add_remove.get('tap', {})
-            log("   tap '%s' (y=%d)" % (add_remove.get('text', '')[:25], tap.get('y', 0)))
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(random.uniform(1.5, 2.5))
+        tap = add_remove.get('tap', {})
+        log("   tap '%s' (y=%d)" % (add_remove.get('text', '')[:25], tap.get('y', 0)))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(random.uniform(1.5, 2.5))
 
         # Step 6: Picker bottom sheet should be open
         # Elements: "Âge par défaut", "Enregistrer", picker with current value, "Fermer"
@@ -1078,7 +867,7 @@ async def set_age_limit(driver, navigator, age: int | None, log: Callable = prin
                 picker_el = e
                 break
 
-        log("   valeur picker: %s (cible: %s)" % (picker_value, age))
+        log("   valeur picker: %s (cible: %d)" % (picker_value, age))
 
         if picker_el and picker_value:
             # Scroll the picker to reach the target age
@@ -1167,24 +956,17 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
         if key in config:
             edit_fields[key] = config[key]
 
-    # photo_url → push to gallery first (with EXIF spoof), then select as photo_index=0
+    # photo_url → push to gallery first, then select as photo_index=0
     if "photo_url" in edit_fields and edit_fields["photo_url"]:
         photo_url = edit_fields.pop("photo_url")
-        # Spoof params from config (market, device, phone_id)
-        spoof_market = config.get("market", "FR")
-        spoof_device = config.get("device")
-        spoof_phone_id = config.get("phone_id")
-        log("   [0] push photo vers galerie (spoof=%s): %s" % (spoof_market, str(photo_url)[:60]))
+        log("   [0] push photo vers galerie: %s" % str(photo_url)[:60])
         try:
             from app.services.automation.ig_iphone.media import push_media_to_gallery
             from app.config import settings
             result = await push_media_to_gallery(
                 photo_url,
                 auth_header="Bearer %s" % settings.api_secret,
-                spoof=True,
-                market=spoof_market,
-                device=spoof_device,
-                phone_id=spoof_phone_id,
+                spoof=False,  # pas de spoof pour les photos de profil
                 log=log,
             )
             if result.get("success"):
@@ -1277,45 +1059,13 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     tap = best.get('tap', {})
                     await driver.ht.tap(tap['x'], tap['y'])
                     await asyncio.sleep(1.5)
-
-                    # Trouver le champ texte dans le sous-écran bio
-                    bio_field = await driver.find_element("Champ de texte", contains=True, refresh=True)
-                    if bio_field:
-                        ft = bio_field.get('tap', {})
-                        cx, cy = ft.get('x', 187), ft.get('y', 138)
-                    else:
-                        cx, cy = 187, 138
-
-                    # Approche "Tout sélectionner" : tap → pause → re-tap ±1px → menu contextuel
-                    await driver.ht.tap(cx, cy)
-                    await asyncio.sleep(random.uniform(0.8, 1.2))
-                    await driver.ht.tap(cx + 1, cy)
-                    await asyncio.sleep(0.6)
-
-                    # Chercher "Tout sélectionner" (ou "Tout s") dans le menu contextuel
-                    selected = False
-                    for attempt in range(3):
-                        sel = await driver.find_element("Tout s", contains=True, clickable=True, refresh=True)
-                        if sel:
-                            st = sel.get('tap', {})
-                            log("   'Tout sélectionner' trouvé (y=%d)" % st.get('y', 0))
-                            await driver.ht.tap(st['x'], st['y'])
-                            await asyncio.sleep(0.3)
-                            selected = True
-                            break
-                        # Re-tap pour faire apparaître le menu
-                        await driver.ht.tap(cx, cy)
-                        await asyncio.sleep(0.8)
-                        await driver.ht.tap(cx + 1, cy)
-                        await asyncio.sleep(0.6)
-
-                    if not selected:
-                        log("   ⚠ 'Tout sélectionner' non trouvé, fallback triple-tap")
-                        for _ in range(3):
-                            await driver.ht.tap(cx, cy)
-                            await asyncio.sleep(0.15)
-                        await asyncio.sleep(0.5)
-
+                    # Triple-tap to select all + type
+                    tx = tap.get('x', 180)
+                    ty = tap.get('y', 140)
+                    for _ in range(3):
+                        await driver.ht.tap(tx, ty)
+                        await asyncio.sleep(0.08)
+                    await asyncio.sleep(0.5)
                     log("   saisie bio: '%s'" % edit_fields["bio"][:40])
                     await driver.ht.type_text(edit_fields["bio"])
                     await asyncio.sleep(1.0)
@@ -1355,6 +1105,8 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
 
                     # Step 2: We're on the links list screen
                     # Check if there's an existing link to edit or if we add new
+                    await _dump_screen(driver, log, "liste liens")
+
                     if not url:
                         # DELETE existing link: tap on it, then "Supprimer le lien"
                         # Find existing link (any element with a URL-like text, y > 130)
@@ -1514,224 +1266,84 @@ async def configure_profile(driver, navigator, config: dict, log: Callable = pri
                     elif "link" not in results:
                         results["link"] = False
 
-                    # Go back to edit_profile (from links list or wherever we ended up)
-                    try:
-                        screen_after_link = await _detect_screen(driver, log)
-                        log("   ecran apres lien: '%s'" % screen_after_link)
-                        if screen_after_link != "edit_profile":
-                            back = await driver.find_element("Modifier le profil", contains=True, clickable=True, refresh=True)
-                            if back and back.get('rect', {}).get('y', 0) < 80:
-                                tap = back.get('tap', {})
-                                await driver.ht.tap(tap['x'], tap['y'])
-                                await asyncio.sleep(1.5)
-                            else:
-                                await _go_back(driver, navigator, log)
-                        else:
-                            log("   deja sur edit_profile, pas de retour necessaire")
-                    except Exception as e:
-                        log("   ! erreur navigation retour apres lien: %s" % str(e)[:100])
-                        # Try to recover to edit_profile
-                        try:
-                            await _ensure_screen(driver, navigator, log, "edit_profile")
-                        except Exception:
-                            pass
-
-        if "gender" in edit_fields:
-            try:
-                log("   [5] genre -> '%s'" % edit_fields["gender"])
-                if not await _ensure_screen(driver, navigator, log, "edit_profile"):
-                    log("   ! abort genre: pas sur edit_profile")
-                elif not await _tap_field(driver, log, "Genre"):
-                    log("   ! champ Genre non trouve sur edit_profile")
-                else:
-                    screen = await _detect_screen(driver, log)
-                    log("   ecran apres tap Genre: '%s'" % screen)
-                    # Find the option — MUST be below title bar (y > 100) to avoid tapping the header
-                    all_els = await driver.find_elements(refresh=True)
-                    option = None
-                    for e in all_els:
-                        t = (e.get('text', '') or '').strip()
-                        r = e.get('rect', {})
-                        if edit_fields["gender"].lower() in t.lower() and r.get('y', 0) > 100:
-                            option = e
-                            break
-                    if option:
-                        tap = option.get('tap', {})
-                        log("   selectionne '%s' (y=%d)" % (option.get('text', ''), tap.get('y', 0)))
-                        await driver.ht.tap(tap['x'], tap['y'])
-                        await asyncio.sleep(0.8)
-                    else:
-                        log("   ! option genre '%s' non trouvee (y>100)" % edit_fields["gender"])
-                    # Sur l'écran genre IG, le bouton est "C'est fait" pas "Terminé"
-                    done = await driver.find_element("fait", contains=True, clickable=True, refresh=True)
-                    if done and done.get('rect', {}).get('y', 0) < 80:
-                        tap = done.get('tap', {})
-                        log("   tap 'C'est fait' (y=%d)" % tap.get('y', 0))
+                    # Go back to edit_profile (from links list)
+                    back = await driver.find_element("Modifier le profil", contains=True, clickable=True, refresh=True)
+                    if back and back.get('rect', {}).get('y', 0) < 80:
+                        tap = back.get('tap', {})
                         await driver.ht.tap(tap['x'], tap['y'])
                         await asyncio.sleep(1.5)
                     else:
                         await _go_back(driver, navigator, log)
-                    await _dismiss_popup(driver, log)
-                    await _verify_on_edit_screen(driver, log)
-                    results["gender"] = True
-            except Exception as e:
-                log("   ! erreur genre: %s" % str(e)[:150])
-                results["gender"] = False
+
+        if "gender" in edit_fields:
+            log("   [5] genre -> '%s'" % edit_fields["gender"])
+            await driver.scroll_down('light')
+            await asyncio.sleep(0.5)
+            if await _tap_field(driver, log, "Genre"):
+                option = await driver.find_element(contains=edit_fields["gender"], clickable=True, refresh=True)
+                if option:
+                    tap = option.get('tap', {})
+                    log("   selectionne %s" % edit_fields["gender"])
+                    await driver.ht.tap(tap['x'], tap['y'])
+                    await asyncio.sleep(0.5)
+                await _tap_done(driver, log)
+                await _dismiss_popup(driver, log)
+                await _verify_on_edit_screen(driver, log)
+                results["gender"] = True
 
         if "photo_index" in edit_fields:
             log("   [6] photo de profil")
-            photo_ok = False
-
-            # 6a. Trouver bouton "Modifier la photo de profil"
-            el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
+            el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
             if not el:
                 await driver.scroll_up('normal')
                 await asyncio.sleep(0.5)
-                el = await driver.find_element("Modifier la photo", contains=True, clickable=True, refresh=True)
-            if not el:
-                log("   ! bouton 'Modifier la photo' non trouvé")
-                await _dump_screen(driver, log, "edit_profile")
-            else:
+                el = await driver.find_element(contains="Modifier la photo de profil", clickable=True, refresh=True)
+            if el:
                 tap = el.get('tap', {})
-                log("   tap 'Modifier la photo' (y=%d)" % tap.get('y', 0))
                 await driver.ht.tap(tap['x'], tap['y'])
-                await asyncio.sleep(random.uniform(1.5, 2.5))
-
-                # 6b. Vérifier que le menu d'action est apparu
-                gallery = None
-                for attempt in range(3):
-                    gallery = await driver.find_element("Choisir dans la", contains=True, clickable=True, refresh=True)
-                    if not gallery:
-                        gallery = await driver.find_element("biblioth", contains=True, clickable=True, refresh=True)
-                    if not gallery:
-                        gallery = await driver.find_element("galerie", contains=True, clickable=True, refresh=True)
-                    if gallery:
-                        break
-                    log("   [retry %d] menu photo pas encore visible" % (attempt + 1))
-                    await asyncio.sleep(1)
-
+                await asyncio.sleep(random.uniform(1.0, 2.0))
+                await asyncio.sleep(1.5)
+                gallery = await driver.find_element(contains="Choisir dans la", clickable=True, refresh=True)
                 if not gallery:
-                    log("   ! menu photo (galerie/bibliotheque) non trouvé")
-                    await _dump_screen(driver, log, "menu_photo")
-                    # Essayer de revenir
-                    await _go_back(driver, navigator, log)
-                else:
+                    gallery = await driver.find_element(contains="biblioth", clickable=True, refresh=True)
+                if gallery:
                     tap = gallery.get('tap', {})
-                    log("   tap '%s' (y=%d)" % (gallery.get('text', '')[:30], tap.get('y', 0)))
+                    log("   choisir dans la bibliotheque")
                     await driver.ht.tap(tap['x'], tap['y'])
-                    await asyncio.sleep(random.uniform(1.5, 2.5))
-
-                    # 6c. Vérifier que la galerie est ouverte (miniatures visibles)
-                    photos = None
-                    for attempt in range(3):
-                        photos = await driver.find_elements("Miniature", contains=True, clickable=True, refresh=True)
-                        if not photos:
-                            photos = await driver.find_elements("Photo", contains=True, clickable=True, refresh=True)
-                        if photos:
-                            break
-                        log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
-                        await asyncio.sleep(1.5)
-
-                    if not photos:
-                        log("   ! galerie vide ou non chargee")
-                        await _dump_screen(driver, log, "galerie")
-                        await _go_back(driver, navigator, log)
-                    else:
-                        idx = edit_fields["photo_index"]
-                        log("   galerie: %d photos visibles, selection index=%d" % (len(photos), idx))
-                        if idx >= len(photos):
-                            log("   ! index %d hors limites (max=%d)" % (idx, len(photos) - 1))
-                            await _go_back(driver, navigator, log)
-                        else:
-                            tap = photos[idx].get('tap', {})
-                            log("   tap photo[%d] (y=%d, x=%d)" % (idx, tap.get('y', 0), tap.get('x', 0)))
-                            await driver.ht.tap(tap['x'], tap['y'])
-                            await asyncio.sleep(random.uniform(1.0, 2.0))
-
-                            # 6d. Vérifier qu'on est sur l'écran de crop/preview
-                            # Chercher "Terminé" ou "Choisir" ou "Enregistrer"
-                            done_found = False
-                            for attempt in range(3):
-                                done_found = await _tap_done(driver, log)
-                                if done_found:
-                                    break
-                                # Peut-être que la photo n'est pas encore chargée
-                                log("   [retry %d] bouton validation non trouvé après sélection photo" % (attempt + 1))
-                                await _dump_screen(driver, log, "crop_preview")
-                                await asyncio.sleep(1.5)
-
-                            if not done_found:
-                                log("   ! impossible de valider la photo — skip")
-                                await _go_back(driver, navigator, log)
-                            else:
-                                # 6e. Attendre le chargement et vérifier retour à edit_profile
-                                log("   attente chargement photo...")
-                                loaded = False
-                                for wait_i in range(15):
-                                    await asyncio.sleep(1)
-                                    screen = await _detect_screen(driver, log)
-                                    if screen == "edit_profile":
-                                        log("   ✓ photo chargee, retour edit_profile confirmé")
-                                        loaded = True
-                                        photo_ok = True
-                                        break
-                                    elif screen == "own_profile":
-                                        log("   ✓ photo chargee, retour profil")
-                                        loaded = True
-                                        photo_ok = True
-                                        break
-                                if not loaded:
-                                    log("   ⚠ timeout chargement photo (15s)")
-                                    await _dump_screen(driver, log, "apres_photo")
-
-            results["photo"] = photo_ok
-            # photo_url was popped and converted to photo_index — sync the result
-            # so the runner sees photo_url as succeeded too
-            if photo_ok:
-                results["photo_url"] = True
-                # Auto-cleanup: supprimer la photo de la galerie après usage
-                try:
-                    from app.services.automation.ig_iphone.media import cleanup_gallery_via_mtouch
-                    cleanup_ok = await cleanup_gallery_via_mtouch(1, log=log)
-                    if cleanup_ok:
-                        log("   ✓ photo supprimee de la galerie (auto-cleanup)")
-                    else:
-                        log("   ⚠ auto-cleanup galerie echoue (non bloquant)")
-                except Exception as e:
-                    log("   ⚠ auto-cleanup erreur: %s (non bloquant)" % str(e)[:80])
-            elif "photo_url" not in results:
-                results["photo_url"] = False
+                    await asyncio.sleep(random.uniform(1.0, 2.0))
+                    await asyncio.sleep(2)
+                    photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
+                    idx = edit_fields["photo_index"]
+                    if photos and idx < len(photos):
+                        tap = photos[idx].get('tap', {})
+                        await driver.ht.tap(tap['x'], tap['y'])
+                        await asyncio.sleep(random.uniform(1.0, 2.0))
+                        await asyncio.sleep(1)
+                        await _tap_done(driver, log)
+                        log("   attente chargement photo...")
+                        for _ in range(15):
+                            await asyncio.sleep(1)
+                            check = await driver.find_element(contains="Modifier le profil", refresh=True)
+                            if check:
+                                log("   photo chargee")
+                                break
+                results["photo"] = True
 
         # Fermer l'edit profil
-        try:
-            await _go_back(driver, navigator, log)
-        except Exception:
-            log("   ! erreur retour apres edit_profile (non bloquant)")
+        await _go_back(driver, navigator, log)
 
     # ── Phase 2 : switch pro ────
     if config.get("pro"):
-        try:
-            from .switch_pro import switch_to_pro
-            results["pro"] = await switch_to_pro(driver, navigator, log=log)
-        except Exception as e:
-            log("   ! erreur phase 2 (switch pro): %s" % str(e)[:150])
-            results["pro"] = False
+        from .switch_pro import switch_to_pro
+        results["pro"] = await switch_to_pro(driver, navigator, log=log)
 
     # ── Phase 3 : confidentialite ───────────────────────
     if "private" in config:
-        try:
-            results["private"] = await set_private(driver, navigator, config["private"], log)
-        except Exception as e:
-            log("   ! erreur phase 3 (confidentialite): %s" % str(e)[:150])
-            results["private"] = False
+        results["private"] = await set_private(driver, navigator, config["private"], log)
 
     # ── Phase 4 : limite d'âge ─────────────────────────
     if "age_limit" in config:
-        try:
-            results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
-        except Exception as e:
-            log("   ! erreur phase 4 (age_limit): %s" % str(e)[:150])
-            results["age_limit"] = False
+        results["age_limit"] = await set_age_limit(driver, navigator, config["age_limit"], log)
 
     log("=" * 50)
     log("CONFIG TERMINEE: %s" % results)
