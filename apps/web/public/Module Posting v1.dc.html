@@ -2175,7 +2175,7 @@ class Component extends DCLogic {
       const SD = window.SCALE_DATA || {};
       this._m = (SD.medias || []).map(m => ({
         id: m.id, persona: m.persona || null, plat: m.plat || 'ig',
-        type: m.folder || (m.type === 'video' ? 'reel' : m.type === 'audio' ? 'reel' : 'post'),
+        type: m.folder || (m.type === 'video' ? 'reel' : m.type === 'audio' ? 'reel' : 'car'),
         seed: 0, video: m.type === 'video',
         kind: m.type || 'image',
         url: m.url || null, r2: m.url || null,
