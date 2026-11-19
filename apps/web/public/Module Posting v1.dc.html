@@ -2172,7 +2172,7 @@ class Component extends DCLogic {
   mediaLib() {
     if (this._m) return this.withExtra();
     if (this._isLive()) {
-      if (window.SCALE_DATA) window.SCALE_DATA.loadModule('posting');
+      if (window.SCALE_DATA && window.SCALE_DATA.loadModule) window.SCALE_DATA.loadModule('posting');
       const SD = window.SCALE_DATA || {};
       this._m = (SD.medias || []).map(m => ({
         id: m.id, persona: m.persona || null, plat: m.plat || 'ig',
@@ -2235,7 +2235,7 @@ class Component extends DCLogic {
       alba: ['De Madrid a Lisboa en tren. {salutation} desde el vagón', '3 rincones secretos de {ville} que nadie te cuenta', 'Mochila lista para el próximo destino']
     };
   }
-  seedTpls() { if (this._isLive()) { if (window.SCALE_DATA) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; return SD.templates.map(t => ({ id: t.id, name: t.name, persona: t.persona || null, plat: t.plat || 'ig', type: t.type || 'post', layers: t.layers || [], variables: t.variables || {}, collection: t.collection, coll: t.collection, created: t.created })); }
+  seedTpls() { if (this._isLive()) { if (window.SCALE_DATA && window.SCALE_DATA.loadModule) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; return SD.templates.map(t => ({ id: t.id, name: t.name, persona: t.persona || null, plat: t.plat || 'ig', type: t.type || 'post', layers: t.layers || [], variables: t.variables || {}, collection: t.collection, coll: t.collection, created: t.created })); }
     const rows = [
       ['t1', 'Réveil gainage', 'lea', 'ig', 'reel', 0, true, 38, 6.8, 1, ['s1', 's4'], ['Nouveau jour, nouveau défi : 20 min chrono. Tu tiens combien ?'], 2, 'FR'],
       ['t2', 'Programme 8 semaines', 'lea', 'ig', 'car', 2, true, 22, 5.1, 4, [], [], 5, 'FR'],
@@ -2262,7 +2262,7 @@ class Component extends DCLogic {
       { id: 'c4', name: 'Nina · Yoga du soir', icon: 'ph ph-moon-stars', mode: 'rotation', persona: 'nina', plat: 'ig', type: 'reel', accounts: ids('nina', 'ig'), coll: 'col5', status: 'done', start: T - 30 * 864e5, from: 18, to: 22, freq: 1, published: 30, planned: 30 }
     ];
   }
-  seedPosts() { if (this._isLive()) { if (window.SCALE_DATA) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; const T = this.today0(); const lib = this.mediaLib(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; const typeMap = { reel: 'reel', story: 'story', carousel: 'car', post: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_media' : 'tw_img' }; const type = typeMap[p.postType] || (a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw'); const mediaIds = (p.mediaUrls || []).map(url => { const m = lib.find(x => x.url === url || x.r2 === url); return m ? m.id : null; }).filter(Boolean); const stMap = { published: 'pub', failed: 'error', planned: 'ok', scheduled: 'ok', draft: 'draft', publishing: 'ok' }; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type, acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: mediaIds, fc: p.firstComment || '', sound: '', date: at, status: stMap[p.status] || 'ok', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
+  seedPosts() { if (this._isLive()) { if (window.SCALE_DATA && window.SCALE_DATA.loadModule) window.SCALE_DATA.loadModule('posting'); const SD = window.SCALE_DATA || {}; const T = this.today0(); const lib = this.mediaLib(); return SD.publications.map(p => { const a = SD.account(p.acc) || {}; const pers = a.persona ? SD.persona(a.persona) : null; const at = p.date ? new Date(p.date).getTime() : T; const typeMap = { reel: 'reel', story: 'story', carousel: 'car', post: a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_media' : 'tw_img' }; const type = typeMap[p.postType] || (a.plat === 'ig' ? 'car' : a.plat === 'th' ? 'th_text' : 'tw'); const mediaIds = (p.mediaUrls || []).map(url => { const m = lib.find(x => x.url === url || x.r2 === url); return m ? m.id : null; }).filter(Boolean); const stMap = { published: 'pub', failed: 'error', planned: 'ok', scheduled: 'ok', draft: 'draft', publishing: 'ok' }; return { id: p.id, persona: a.persona || '', plat: a.plat || 'ig', type, acc: p.acc, camp: p.camp, lang: pers ? (pers.market === 'US' ? 'en' : pers.market === 'ES' ? 'es' : 'fr') : 'fr', caption: p.caption, media: mediaIds, fc: p.firstComment || '', sound: '', date: at, status: stMap[p.status] || 'ok', origin: p.camp ? 'camp' : 'hc', batch: null, batchLabel: '', pubAt: p.status === 'published' ? at : null, run: null }; }); }
     const T = this.today0(); const now = Date.now(); const caps = this.caps();
     const at = (d, h, m) => T + d * 864e5 + (h * 60 + m) * 6e4;
     const spec = [
