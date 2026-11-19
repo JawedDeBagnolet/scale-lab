@@ -2377,7 +2377,7 @@ class Component extends DCLogic {
   }
   componentDidMount() {
     this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const camp = H.get('camp'), q = H.get('q'); if (camp) { const c = (this.state.camps || []).find(x => x.id === camp || x.name === camp); this.setState(c ? { tab: 'camp', campOpen: c.id } : { tab: 'camp' }); } else if (q) this.setState({ tab: 'pub', q: q.replace(/^@/, '') }); }; setTimeout(this._hash, 50); window.addEventListener('hashchange', this._hash);
-    this.applyFont(); this.syncFx(); this.migrate(); this.migrateColl(); this.migrateGroups(); this.migratePost(); this.migrateTplVars(); this.migrateStoryColls(); if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches();
+    this.applyFont(); this.syncFx(); if (!this._isLive()) { this.migrate(); this.migrateColl(); this.migrateGroups(); this.migratePost(); this.migrateTplVars(); this.migrateStoryColls(); if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches(); }
     this._key = e => {
       if (e.key !== 'Escape') return; const s = this.state;
       if (s.cdNameEdit != null) this.setState({ cdNameEdit: null }); else if (s.cdIconOpen) this.setState({ cdIconOpen: false }); else if (s.wiz && s.wiz.timeOpen) this.setState(x => ({ wiz: { ...x.wiz, timeOpen: null } })); else if (s.grouping && !s.picker && !s.confirm) this.setState({ grouping: null }); else if (s.confirm) this.setState({ confirm: null }); else if (s.audio) this.setState({ audio: null, playing: null }); else if (s.picker) this.setState({ picker: null });
@@ -2395,7 +2395,7 @@ class Component extends DCLogic {
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), mPath: x.mPath.map(T), ed: null }));
   }
   ensureBatches() { if (this._bi) return; this._bi = true; if (!this.state.posts.some(p => p.batch)) this.setState(x => ({ posts: x.posts.concat(this.seedBatches()) })); }
-  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); this.ensureBatches(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); }
   componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); }
 
   renderVals() { var out = this._rvE();
