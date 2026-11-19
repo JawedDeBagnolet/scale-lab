@@ -158,19 +158,12 @@ async def _write_caption(driver, log, caption) -> bool:
     """Ecrit la legende du post."""
     if not caption:
         return True
-    # Chercher le champ legende avec y > 100 (eviter le titre "Nouveau reel")
+    # Chercher le champ legende — prendre celui avec le y le plus eleve (le vrai champ, pas un doublon)
     els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
-    el = None
-    for e in els:
-        if e.get('tap', {}).get('y', 0) > 100:
-            el = e
-            break
-    if not el:
-        els = await driver.find_elements(contains="gende", clickable=True, refresh=True)
-        for e in els:
-            if e.get('tap', {}).get('y', 0) > 100:
-                el = e
-                break
+    candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 200]
+    if not candidates:
+        candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 100]
+    el = max(candidates, key=lambda e: e.get('tap', {}).get('y', 0)) if candidates else None
     if not el:
         log("   ! champ legende non trouve")
         await _dump_screen(driver, log, "no_caption_field")
@@ -182,9 +175,15 @@ async def _write_caption(driver, log, caption) -> bool:
     log("   ecriture legende (%d chars)" % len(caption))
     await driver.ht.type_text(caption)
     await asyncio.sleep(1)
-    # Fermer le clavier : tap zone couverture (entre Apercu y=138 et legende y=470)
-    log("   ferme clavier (tap couverture y=300)")
-    await driver.ht.tap(188, 300)
+    # Fermer le clavier : tap "OK" (visible a ~(348,66) quand clavier ouvert)
+    ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
+    if ok_el:
+        tap2 = ok_el.get('tap', {})
+        log("   valide legende OK (y=%d)" % tap2.get('y', 0))
+        await driver.ht.tap(tap2['x'], tap2['y'])
+    else:
+        log("   ferme clavier (tap couverture y=300)")
+        await driver.ht.tap(188, 300)
     await asyncio.sleep(random.uniform(1.5, 2.5))
     return True
 
