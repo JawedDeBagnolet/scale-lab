@@ -158,12 +158,13 @@ async def _write_caption(driver, log, caption) -> bool:
     """Ecrit la legende du post."""
     if not caption:
         return True
-    # Chercher le champ legende — prendre celui avec le y le plus eleve (le vrai champ, pas un doublon)
-    els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
-    candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 200]
+    # Chercher le champ legende — y entre 200 et 600 (eviter header et boutons bas)
+    els = await driver.find_elements(contains="gende", clickable=True, refresh=True)
+    candidates = [e for e in els if 200 < e.get('tap', {}).get('y', 0) < 600]
     if not candidates:
-        candidates = [e for e in els if e.get('tap', {}).get('y', 0) > 100]
-    el = max(candidates, key=lambda e: e.get('tap', {}).get('y', 0)) if candidates else None
+        els = await driver.find_elements(contains="Ajouter une l", clickable=True, refresh=True)
+        candidates = [e for e in els if 100 < e.get('tap', {}).get('y', 0) < 600]
+    el = candidates[0] if candidates else None
     if not el:
         log("   ! champ legende non trouve")
         await _dump_screen(driver, log, "no_caption_field")
@@ -421,8 +422,27 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
         stats["duration_s"] = round(time.time() - start)
         return stats
 
+    # 4b. Possible page "Audio suggere" → ignorer
+    await asyncio.sleep(2)
+    ignore_el = await driver.find_element(contains="Ignorer la synchro", clickable=True, refresh=True)
+    if ignore_el:
+        tap = ignore_el.get('tap', {})
+        log("   skip audio suggere (y=%d)" % tap.get('y', 0))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(2)
+    else:
+        # Verifier si on est sur la page audio (pas la caption)
+        audio_el = await driver.find_element(contains="Audio sugg", refresh=True)
+        if audio_el:
+            suivant_el = await driver.find_element(text="Suivant", clickable=True)
+            if suivant_el:
+                tap = suivant_el.get('tap', {})
+                log("   skip page audio (Suivant y=%d)" % tap.get('y', 0))
+                await driver.ht.tap(tap['x'], tap['y'])
+                await asyncio.sleep(2)
+
     # 5. Page caption/options — ecrire la legende
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(1)
     await _write_caption(driver, log, caption)
 
     # 6. Suivant (page caption → popup "A propos de Reels")
