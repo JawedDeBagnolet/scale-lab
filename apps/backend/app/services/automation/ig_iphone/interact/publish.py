@@ -52,24 +52,25 @@ async def _open_create_menu(driver, navigator, log) -> bool:
     tap = plus_el.get('tap', {})
     log("   tap menu creation (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
-    await asyncio.sleep(random.uniform(1.5, 2.5))
+    await asyncio.sleep(random.uniform(2.5, 3.5))
 
-    # Verifier que le menu est apparu
-    screen = await _detect_screen(driver, log)
-    if screen != "creation_menu":
-        log("   ⚠ ecran '%s' apres tap creation (attendu creation_menu)" % screen)
-        # Retry une fois
-        plus_el = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
-        if plus_el:
-            tap = plus_el.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(2)
-            screen = await _detect_screen(driver, log)
-            if screen != "creation_menu":
-                log("   ! menu creation pas ouvert apres retry")
-                return False
-        else:
-            return False
+    # Verifier que le menu est apparu (retry 3 fois avec delai)
+    for attempt in range(3):
+        screen = await _detect_screen(driver, log)
+        if screen == "creation_menu":
+            break
+        # Verifier par presence directe de "Reel" et "Fermer"
+        reel_check = await driver.find_element(text="Reel", clickable=True, refresh=True)
+        fermer_check = await driver.find_element(text="Fermer", clickable=True)
+        if reel_check and fermer_check:
+            log("   ✓ menu creation detecte via Reel+Fermer")
+            break
+        log("   ⚠ tentative %d: ecran '%s'" % (attempt + 1, screen))
+        if attempt < 2:
+            await asyncio.sleep(1.5)
+    else:
+        log("   ! menu creation pas ouvert apres 3 tentatives")
+        return False
 
     log("   ✓ menu creation ouvert")
     return True
