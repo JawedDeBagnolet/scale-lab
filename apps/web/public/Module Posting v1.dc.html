@@ -385,7 +385,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="6">
 <div onClick="{{ it.click }}" onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="{{ it.wrap }}">
 <div style="{{ it.bg }}"></div>
-<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}" preload="metadata" muted playsinline loop onloadeddata="this.muted=true;this.currentTime=0.1" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
+<sc-if value="{{ it.isVideoUrl }}"><video src="{{ it.videoUrl }}" preload="{{ it.videoPreload }}" muted playsinline loop onloadeddata="this.muted=true;if(!this.dataset.thumb){this.currentTime=0.1}" onseeked="this.pause()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 28%,transparent 52%,rgba(0,0,0,.75));pointer-events:none;z-index:2"></div>
 <sc-if value="{{ it.hasDesc }}"><span title="Description IA disponible" style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(124,108,246,.5);font-size:10px;font-weight:700;color:#ffffff"><i class="ph ph-sparkle" style="font-size:11px"></i>IA</span></sc-if>
 <sc-if value="{{ it.kill }}"><span style="{{ it.check }}"><sc-if value="{{ it.on }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
@@ -2178,7 +2178,7 @@ class Component extends DCLogic {
         type: (m.folder === 'pp' ? 'pfp' : m.folder) || (m.type === 'video' ? 'reel' : m.type === 'audio' ? 'reel' : 'car'),
         seed: 0, video: m.type === 'video',
         kind: m.type || 'image',
-        url: m.url || null, r2: m.url || null,
+        url: m.url || null, r2: m.url || null, thumb: m.thumb || null,
         name: m.filename || m.name || '', dur: m.dur ? (typeof m.dur === 'number' ? '0:' + String(m.dur).padStart(2, '0') : m.dur) : '0:15'
       }));
       return this.withExtra();
@@ -2302,7 +2302,7 @@ class Component extends DCLogic {
   }
   today0() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
   photo(c, i) { return 'radial-gradient(120% 90% at ' + (18 + (i * 13) % 60) + '% ' + (15 + (i * 11) % 50) + '%, rgba(255,255,255,.34), transparent 46%), radial-gradient(70% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%), linear-gradient(' + (120 + i * 37) % 360 + 'deg,' + c + ',#1b1f33 80%)'; }
-  mediaBg(m) { if (m.url && m.video) return 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
+  mediaBg(m) { if (m.url && m.video) return m.thumb ? 'center / cover no-repeat url("' + m.thumb + '")' : 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'X'; }
   platIcon(p) { return p === 'ig' ? 'ph ph-instagram-logo' : p === 'th' ? 'ph ph-threads-logo' : 'ph ph-x-logo'; }
   avStyle(c, size, r) { return { width: size, height: size, flex: 'none', borderRadius: r, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * .36), fontWeight: 600, color: '#f7f7fb', background: 'linear-gradient(135deg,' + c + ',' + c + '30)', boxShadow: 'inset 0 0 0 1px ' + c + '66' }; }
@@ -3111,7 +3111,7 @@ class Component extends DCLogic {
           click: () => grouping ? (GT.indexOf(m.type) < 0 ? null : this.setState(x => { const sl = x.grouping.sel; return { grouping: { ...x.grouping, sel: sl.indexOf(m.id) >= 0 ? sl.filter(y => y !== m.id) : sl.concat([m.id]) } }; })) : s.kill ? this.setState(x => ({ sel: { ...x.sel, [m.id]: !x.sel[m.id] } })) : this.setState({ aiDesc: { id: m.id } }),
           enter: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.muted = true; v.play().catch(() => {}); } } this.setState({ hoverMedia: m.id }); },
           leave: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.pause(); v.currentTime = 0.1; } } if (this.state.hoverMedia === m.id) this.setState({ hoverMedia: null }); },
-          isVideoUrl: !!(m.video && m.url), videoUrl: m.url,
+          isVideoUrl: !!(m.video && m.url), videoUrl: m.url, videoPreload: m.thumb ? 'none' : 'auto',
           bg: { position: 'absolute', inset: 0, background: this.mediaBg(m), opacity: grouping && oi < 0 ? (GT.indexOf(m.type) < 0 ? .25 : .6) : 1, transition: 'opacity .15s' },
           dur: m.dur, showDur: m.video && !hv && oi < 0, ...(() => { if (m.type !== 'story') return { hasTag: false }; const tg = this.mtag(m.id); if (!tg) return { hasTag: true, tagIcon: 'ph ph-tag', tagLabel: 'À tagger', tagTitle: 'Ajoute lieu, moments et météo' }; const out = tg.place === 'out'; const mo = out && tg.moms.length ? (this.MOMS.find(x => x[0] === tg.moms[0]) || [0, ''])[1] + (tg.moms.length > 1 ? ' +' + (tg.moms.length - 1) : '') : ''; return { hasTag: true, tagIcon: out ? 'ph ph-tree' : 'ph ph-house', tagLabel: out ? 'Ext.' + (mo ? ' · ' + mo : '') : 'Intérieur', tagTitle: out ? 'Extérieur · ' + (tg.weather.map(w => (this.WEATHER.find(x => x[0] === w) || [0, w])[1]).join(', ') || 'météo non précisée') : 'Intérieur · tous les moments' }; })(), showActions: hv, hasDesc: !!d && !gen && !s.kill,
           text: gen ? 'Analyse du média…' : d ? this.trunc(d, 64) : this.mediaName(m),
@@ -3743,11 +3743,18 @@ class Component extends DCLogic {
                   r2Url = res.url;
                   // Also create Media record in DB
                   const mediaType = f.kind === 'video' ? 'video' : f.kind === 'audio' ? 'audio' : 'image';
-                  SD.apiPost('/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, filename: f.name, folder: types[0] || 'post' });
+                  let thumbUrl = null;
+                  if (f.kind === 'video' && f.raw) {
+                    try {
+                      const blob = await new Promise((res, rej) => { const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(f.raw); v.onloadeddata = () => { v.currentTime = 0.1; }; v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { URL.revokeObjectURL(v.src); res(b); }, 'image/jpeg', 0.7); }; v.onerror = () => { URL.revokeObjectURL(v.src); rej(); }; setTimeout(() => rej(), 8000); });
+                      if (blob) { const tf = new File([blob], f.name.replace(/\.\w+$/, '_thumb.jpg'), { type: 'image/jpeg' }); const tr = await SD.apiUploadAsync(tf, u.persona); if (tr && tr.url) thumbUrl = tr.url; }
+                    } catch(e) { console.warn('Thumb gen failed', e); }
+                  }
+                  SD.apiPost('/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, thumbnail_url: thumbUrl, filename: f.name, folder: types[0] || 'post' });
                 }
               } catch (e) { console.warn('Upload failed for', f.name, e); }
             }
-            types.forEach(t => neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, name: f.name, dur: '0:15', r2: r2Url }));
+            types.forEach(t => neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, thumb: thumbUrl, name: f.name, dur: '0:15', r2: r2Url }));
           }
 
           const first = neu[0];

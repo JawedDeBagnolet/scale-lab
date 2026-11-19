@@ -42,6 +42,7 @@ class Media(Base):
     )
     media_type: Mapped[str] = mapped_column(String(10))  # image, video, audio
     url: Mapped[str] = mapped_column(Text)
+    thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration: Mapped[int | None] = mapped_column(Integer)  # seconds for video/audio
     tags: Mapped[list | None] = mapped_column(JSONB, default=list)
     folder: Mapped[str | None] = mapped_column(String(100))

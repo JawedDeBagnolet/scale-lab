@@ -43,6 +43,7 @@ class MediaBase(BaseModel):
     persona_id: UUID | None = None
     media_type: str = Field(max_length=10)  # image, video, audio
     url: str
+    thumbnail_url: str | None = None
     duration: int | None = None
     tags: list | None = None
     folder: str | None = Field(default=None, max_length=100)
@@ -57,6 +58,7 @@ class MediaUpdate(BaseModel):
     persona_id: UUID | None = None
     media_type: str | None = Field(default=None, max_length=10)
     url: str | None = None
+    thumbnail_url: str | None = None
     duration: int | None = None
     tags: list | None = None
     folder: str | None = Field(default=None, max_length=100)

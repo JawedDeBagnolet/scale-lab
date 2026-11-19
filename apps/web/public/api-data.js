@@ -562,6 +562,7 @@ if ('serviceWorker' in navigator) {
       persona: m.persona_id || null,
       type: m.media_type || 'image',
       url: m.url || '',
+      thumb: m.thumbnail_url || '',
       dur: m.duration || 0,
       tags: m.tags || [],
       folder: m.folder || '',
