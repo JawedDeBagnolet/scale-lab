@@ -438,14 +438,23 @@ class IGApiClient:
                         items = alacorn.get("items", [])
 
         results = []
-        for item in items:
+        for i, item in enumerate(items):
             track = item.get("track", item.get("audio", item))
             if not track or not isinstance(track, dict):
                 continue
+            # Log first item's keys for debugging
+            if i == 0:
+                logger.info("music_item[0] keys=%s", list(track.keys())[:20])
             tid = track.get("id", track.get("audio_cluster_id", ""))
             title = track.get("title", track.get("display_artist", ""))
             if not tid or not title:
                 continue
+            # Usage count: IG returns different field names
+            use_count = (track.get("reels_count")
+                or track.get("audio_asset_id_count")
+                or track.get("clips_count")
+                or track.get("number_of_clips_using_audio")
+                or 0)
             results.append({
                 "id": str(tid),
                 "title": title,
@@ -457,5 +466,6 @@ class IGApiClient:
                     track.get("dash_manifest", "")),
                 "duration_ms": track.get("duration_in_ms", 0),
                 "is_trending": track.get("is_trending", False),
+                "use_count": use_count,
             })
         return results
