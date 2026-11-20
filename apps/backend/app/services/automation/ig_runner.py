@@ -370,10 +370,11 @@ async def _publish_post(drv, nav, sess, values, log):
     caption = values.get("caption", "")
     location = values.get("location")
     first_comment = values.get("first_comment")
+    audio_query = values.get("audio_query")
     photo_count = media_count if media_count else 1
 
     if photo_count > 1:
-        stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, log=log)
+        stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, audio_query=audio_query, log=log)
     else:
         stats = await publish_feed_post(drv, nav, caption=caption, first_comment=first_comment, location=location, log=log)
 
@@ -449,7 +450,8 @@ async def _publish_reel(drv, nav, sess, values, log):
         await asyncio.sleep(2.0)
 
     caption = values.get("caption", "")
-    stats = await publish_reel(drv, nav, caption=caption, log=log)
+    audio_query = values.get("audio_query")
+    stats = await publish_reel(drv, nav, caption=caption, audio_query=audio_query, log=log)
 
     published = stats.get("published", False)
     if published and pushed:

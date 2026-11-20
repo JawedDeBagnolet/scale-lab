@@ -158,6 +158,138 @@ async def _tap_suivant(driver, log) -> bool:
     return False
 
 
+async def _add_audio(driver, log, song_query: str) -> bool:
+    """Ajoute un son au reel/carousel depuis l'editeur.
+
+    Flow (d'apres dumps UI IG) :
+    1. Tap "Audio" sur l'editeur
+    2. Tap champ de recherche
+    3. Taper le nom du son
+    4. Tap sur le premier resultat
+    5. Confirmer la selection (bouton sans label, y > 700)
+    6. Tap "C'est fait" sur la page de config audio
+    """
+    if not song_query:
+        return True
+
+    log("   [audio] recherche: '%s'" % song_query[:40])
+
+    # 1. Tap "Audio" sur l'editeur
+    audio_el = await driver.find_element(text="Audio", clickable=True, refresh=True)
+    if not audio_el:
+        log("   [audio] ! bouton Audio non trouve sur l'editeur")
+        await _dump_screen(driver, log, "editor_no_audio")
+        return False
+    tap = audio_el.get('tap', {})
+    log("   [audio] tap Audio (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(2.0, 3.0))
+
+    # 2. Tap champ de recherche
+    search_tapped = await driver.ht.tap_by_text("Recherche", match="contains")
+    if not search_tapped:
+        # Fallback: chercher l'element dans l'arbre
+        search_el = await driver.find_element(contains="Recherche", clickable=True, refresh=True)
+        if search_el:
+            tap = search_el.get('tap', {})
+            await driver.ht.tap(tap['x'], tap['y'])
+        else:
+            log("   [audio] ! champ recherche non trouve")
+            await _dump_screen(driver, log, "audio_no_search")
+            # Fermer et continuer sans audio
+            await driver.ht.tap_by_text("Fermer")
+            await asyncio.sleep(1)
+            return False
+    await asyncio.sleep(1)
+
+    # 3. Taper le nom du son
+    log("   [audio] ecriture recherche: '%s'" % song_query[:30])
+    await driver.ht.type_text(song_query)
+    await asyncio.sleep(random.uniform(2.0, 3.0))
+
+    # 4. Tap sur le premier resultat (titre du son, y > 150)
+    #    Les resultats ont le format: "TITRE, Explicite" ou juste "TITRE"
+    #    Sous chaque titre: "artiste · X K reels · durée"
+    for attempt in range(3):
+        els = await driver.find_elements(clickable=True, refresh=True)
+        # Chercher les elements de resultat (y > 150, pas les filtres/boutons)
+        candidates = []
+        for e in els:
+            txt = (e.get('text', '') or '')
+            ty = e.get('tap', {}).get('y', 0)
+            # Exclure: filtres (Artiste/Titre/Paroles), boutons (Fermer/Annuler/Effacer/Enregistrer/Recherche)
+            if ty < 170 or ty > 790:
+                continue
+            skip_words = ['fermer', 'annuler', 'effacer', 'enregistrer', 'recherche',
+                         'artiste', 'titre', 'paroles', 'vibe', 'type',
+                         'pour vous', 'populaire', 'audio d', 'importer']
+            if any(w in txt.lower() for w in skip_words):
+                continue
+            # Garder les elements qui ressemblent a un titre de chanson
+            if len(txt) > 2 and '·' not in txt:
+                candidates.append(e)
+
+        if candidates:
+            # Prendre le premier resultat (le plus haut)
+            candidates.sort(key=lambda e: e.get('tap', {}).get('y', 0))
+            best = candidates[0]
+            tap = best.get('tap', {})
+            log("   [audio] tap resultat '%s' (y=%d)" % ((best.get('text', '') or '')[:30], tap.get('y', 0)))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(1.5, 2.5))
+            break
+        log("   [audio] [retry %d] aucun resultat" % (attempt + 1))
+        await asyncio.sleep(1.5)
+    else:
+        log("   [audio] ! aucun resultat pour '%s'" % song_query[:30])
+        await driver.ht.tap_by_text("Fermer")
+        await asyncio.sleep(1)
+        return False
+
+    # 5. Confirmer la selection (bouton sans label "Bouton" a y > 700, le plus a droite)
+    #    Ce bouton n'a pas de libelle descriptif, on le cherche par position
+    await asyncio.sleep(1.5)
+    for attempt in range(3):
+        els = await driver.find_elements(clickable=True, refresh=True)
+        buttons = [e for e in els
+                   if (e.get('text', '') or '').lower() in ('bouton', '')
+                   and e.get('tap', {}).get('y', 0) > 700
+                   and e.get('tap', {}).get('x', 0) > 250]
+        if buttons:
+            # Prendre le plus a droite (x le plus grand)
+            buttons.sort(key=lambda e: e.get('tap', {}).get('x', 0), reverse=True)
+            best = buttons[0]
+            tap = best.get('tap', {})
+            log("   [audio] tap confirmer (y=%d, x=%d)" % (tap.get('y', 0), tap.get('x', 0)))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(1.5, 2.5))
+            break
+        # Peut-etre que le son a ete selectionne automatiquement
+        fait_el = await driver.find_element(contains="est fait", clickable=True)
+        if fait_el:
+            log("   [audio] son deja confirme, page config detectee")
+            break
+        log("   [audio] [retry %d] bouton confirmation non trouve" % (attempt + 1))
+        await _dump_screen(driver, log, "audio_no_confirm_%d" % attempt)
+        await asyncio.sleep(1)
+
+    # 6. Page config audio → tap "C'est fait"
+    for attempt in range(3):
+        fait_el = await driver.find_element(contains="est fait", clickable=True, refresh=True)
+        if fait_el:
+            tap = fait_el.get('tap', {})
+            log("   [audio] tap 'C'est fait' (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(random.uniform(1.5, 2.5))
+            log("   [audio] ✓ son ajoute")
+            return True
+        # Peut-etre pas encore sur la page config
+        await asyncio.sleep(1)
+
+    log("   [audio] ⚠ bouton 'C'est fait' non trouve, on continue")
+    return True
+
+
 async def _dismiss_privacy_popup(driver, log) -> bool:
     """Ferme le popup de partage de publications."""
     ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
@@ -422,6 +554,7 @@ async def publish_story(driver, navigator, photo_index=0, caption=None,
 # ── Reel ──────────────────────────────────────────────────────────────────────
 
 async def publish_reel(driver, navigator, caption="", video_index=0,
+                       audio_query: str | None = None,
                        log: Callable = print) -> dict:
     """Publie un reel. Flow complet basé sur le dump de l'arbre UI."""
     start = time.time()
@@ -453,8 +586,15 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 4. Editeur video (Audio/Texte/Voix/Sous-titres) → Suivant (skip)
+    # 4. Editeur video (Audio/Texte/Voix/Sous-titres)
     await asyncio.sleep(1.5)
+
+    # 4a. Ajouter un son si demande
+    if audio_query:
+        await _add_audio(driver, log, audio_query)
+        await asyncio.sleep(1)
+
+    # 4b. Suivant (editeur → page caption ou audio suggestion)
     if not await _tap_suivant(driver, log):
         stats["duration_s"] = round(time.time() - start)
         return stats
@@ -515,6 +655,7 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
 # ── Carousel ──────────────────────────────────────────────────────────────────
 
 async def publish_carousel(driver, navigator, caption="", photo_count=2,
+                           audio_query: str | None = None,
                            log: Callable = print) -> dict:
     """Publie un carousel (multi-photo)."""
     start = time.time()
@@ -550,16 +691,19 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(1.5)
 
-    # 3. Selectionner les photos
+    # 3. Selectionner les photos (meme logique que _select_video)
     photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-    photos = [p for p in photos if p.get('rect', {}).get('y', 0) > 400]
+    photos = [p for p in photos
+              if p.get('tap', {}).get('y', 0) > 220
+              and 'cam' not in (p.get('text', '') or '').lower()]
+    photos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
     log("   %d photos disponibles" % len(photos))
 
     # La 1ere est deja selectionnee, selectionner les suivantes
     selected = 1
     for i in range(1, min(photo_count, len(photos))):
         tap = photos[i].get('tap', {})
-        log("   selectionne photo #%d (y=%d)" % (i + 1, tap.get('y', 0)))
+        log("   selectionne photo #%d (y=%d, x=%d)" % (i + 1, tap.get('y', 0), tap.get('x', 0)))
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(random.uniform(0.5, 1.0))
         selected += 1
@@ -571,18 +715,24 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 5. Editeur → Suivant
+    # 5. Editeur: ajouter un son si demande
+    if audio_query:
+        await asyncio.sleep(1)
+        await _add_audio(driver, log, audio_query)
+        await asyncio.sleep(1)
+
+    # 6. Editeur → Suivant
     if not await _tap_suivant(driver, log):
         stats["duration_s"] = round(time.time() - start)
         return stats
 
-    # 6. Popup vie privee
+    # 7. Popup vie privee
     await _dismiss_privacy_popup(driver, log)
 
-    # 7. Legende
+    # 8. Legende
     await _write_caption(driver, log, caption)
 
-    # 8. Partager
+    # 9. Partager
     if await _tap_partager(driver, log):
         stats["published"] = True
         log("   ✓ carousel publie!")
