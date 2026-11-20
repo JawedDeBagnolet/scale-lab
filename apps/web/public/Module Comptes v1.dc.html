@@ -1246,8 +1246,17 @@ class Component extends DCLogic {
     const dr = this.mkDraft(a);
     if (!dr.profile.x) dr.profile.x = this.xDefault(this.P(a.persona), a.n || 0, a.username, a.market);
     this.setState({ view: 'edit', modal: true, draft: dr, tab: 'profile', pplat: a.platform === 'x' ? 'x' : a.platform === 'th' ? 'th' : 'ig', menu: null, fmenu: null, liveLoading: false, liveError: null, plStep: 0, plError: false });
+    // Load PP pool (indépendant du live profile)
+    this._loadPpPool();
     // Fetch live profile data via scraper API
     this._fetchLiveProfile(a);
+  }
+  _loadPpPool() {
+    const SD = window.SCALE_DATA;
+    if (!SD || !SD._live) return;
+    SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pfp').then(medias => {
+      if (Array.isArray(medias)) this.setState({ ppMedias: medias });
+    }).catch(e => console.warn('[pp-pool]', e));
   }
   _fetchLiveProfile(a) {
     if (a.platform !== 'ig' && a.platform !== 'th') return;
@@ -1262,12 +1271,7 @@ class Component extends DCLogic {
     clearTimeout(this._plT1); clearTimeout(this._plT2);
     this._plT1 = setTimeout(() => this.setState({ plStep: 1 }), 1500);
     this._plT2 = setTimeout(() => this.setState({ plStep: 2 }), 2800);
-    // Load profile photo pool from mediatheque
-    if (!this.state.ppMedias) {
-      SD.apiAsync('GET', '/posting/medias?media_type=image&folder=pfp').then(medias => {
-        if (Array.isArray(medias)) this.setState({ ppMedias: medias });
-      }).catch(() => {});
-    }
+    // PP pool loaded via _loadPpPool() in openProfile()
     SD.apiAsync('GET', '/comptes/' + cid + '/profile-live').then(p => {
       clearTimeout(this._plT1); clearTimeout(this._plT2);
       if (!p || !p.username) { this.setState({ liveLoading: false, plStep: 3 }); return; }
@@ -1770,7 +1774,7 @@ class Component extends DCLogic {
     ].map(r => ({ ...r, isToken: !!r.isToken, copy: !!r.copy, doCopy: () => { try { navigator.clipboard.writeText(r.label === 'Token Meta' ? api.token : r.value); } catch (e) {} this.toastMsg(r.label + ' copié'); } })) : [];
 
     // Pool de photos : médias réels (médiathèque) + fallback gradients
-    const ppMedias = (this.state.ppMedias || []).filter(m => !d.persona || m.persona_id === d.persona);
+    const ppMedias = (this.state.ppMedias || []).filter(m => !d.persona || !m.persona_id || m.persona_id === d.persona);
     const pool = ppMedias.length > 0
       ? ppMedias.map((m, i) => ({ url: m.url, id: m.id, bg: 'url(' + m.url + ') center/cover', uses: 0 }))
       : [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ bg: this.photo(p.color, i), uses: [3, 1, 0, 2, 5, 0, 1, 4][(i + p.id.length) % 8] }));
