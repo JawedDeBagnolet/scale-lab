@@ -80,9 +80,9 @@ async def _select_photo(driver, log, index=0) -> bool:
     """Selectionne une photo dans la galerie (par index, 0 = premiere/plus recente)."""
     for attempt in range(3):
         els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-        # Filtrer : garder les elements dans la grille (y > 220, exclut header)
-        photos = [e for e in els if e.get('rect', {}).get('y', 0) > 220]
-        photos.sort(key=lambda e: (e.get('rect', {}).get('y', 0), e.get('rect', {}).get('x', 0)))
+        # Filtrer : garder les elements dans la grille (tap.y > 220, exclut header)
+        photos = [e for e in els if e.get('tap', {}).get('y', 0) > 220]
+        photos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
         if photos:
             break
         log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
@@ -111,9 +111,9 @@ async def _select_video(driver, log, index=0) -> bool:
     """
     for attempt in range(3):
         els = await driver.find_elements(contains="Miniature vid", clickable=True, refresh=True)
-        videos = [e for e in els if e.get('rect', {}).get('y', 0) > 220]
-        # Trier par position : haut→bas, gauche→droite (ordre galerie)
-        videos.sort(key=lambda e: (e.get('rect', {}).get('y', 0), e.get('rect', {}).get('x', 0)))
+        videos = [e for e in els if e.get('tap', {}).get('y', 0) > 220]
+        # Trier par position tap : haut→bas, gauche→droite (ordre galerie)
+        videos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
         if videos:
             break
         log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
@@ -125,7 +125,7 @@ async def _select_video(driver, log, index=0) -> bool:
 
     idx = min(index, len(videos) - 1)
     tap = videos[idx].get('tap', {})
-    log("   selectionne video #%d (y=%d)" % (idx, tap.get('y', 0)))
+    log("   selectionne video #%d (y=%d, x=%d, %d dispo)" % (idx, tap.get('y', 0), tap.get('x', 0), len(videos)))
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(0.8, 1.5))
     return True
