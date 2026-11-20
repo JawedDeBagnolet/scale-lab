@@ -274,8 +274,10 @@ class IGApiClient:
             "search_surface": "clips_music_search",
             "count": str(count),
         })
-        logger.info("trending_music raw: status=%s, keys=%s, items=%d",
-            data.get("status"), list(data.keys())[:8], len(data.get("items", [])))
+        root = data.get("root_node_for_rest_merged_response", {})
+        root_keys = list(root.keys())[:10] if isinstance(root, dict) else type(root).__name__
+        logger.info("trending_music raw: status=%s, top_keys=%s, root_keys=%s",
+            data.get("status"), list(data.keys())[:8], root_keys)
         return self._parse_music_items(data)
 
     # ------------------------------------------------------------------
@@ -378,14 +380,44 @@ class IGApiClient:
 
     @staticmethod
     def _parse_music_items(data: dict) -> list[dict]:
-        """Parse music search results."""
+        """Parse music search results.
+
+        IG API returns items either at top-level or nested inside
+        root_node_for_rest_merged_response (newer API format).
+        """
+        # Try top-level items first
+        items = data.get("items", [])
+        # Newer format: items nested inside root_node_for_rest_merged_response
+        if not items:
+            root = data.get("root_node_for_rest_merged_response", {})
+            if isinstance(root, dict):
+                # Try direct items in root
+                items = root.get("items", [])
+                # Or nested in sections/nodes
+                if not items:
+                    for section in root.get("sections", root.get("nodes", [])):
+                        if isinstance(section, dict):
+                            items.extend(section.get("items", section.get("nodes", [])))
+                # Or in alacorn_data
+                if not items and "alacorn_data" in root:
+                    alacorn = root["alacorn_data"]
+                    if isinstance(alacorn, dict):
+                        items = alacorn.get("items", [])
+
         results = []
-        for item in data.get("items", []):
+        for item in items:
             track = item.get("track", item.get("audio", item))
+            if not track or not isinstance(track, dict):
+                continue
+            tid = track.get("id", track.get("audio_cluster_id", ""))
+            title = track.get("title", track.get("display_artist", ""))
+            if not tid or not title:
+                continue
             results.append({
-                "id": str(track.get("id", "")),
-                "title": track.get("title", ""),
-                "artist": track.get("subtitle", track.get("artist_name", "")),
+                "id": str(tid),
+                "title": title,
+                "artist": track.get("subtitle", track.get("display_artist",
+                    track.get("artist_name", ""))),
                 "cover_url": track.get("cover_artwork_uri",
                     track.get("cover_artwork_thumbnail_uri", "")),
                 "preview_url": track.get("progressive_download_url",
