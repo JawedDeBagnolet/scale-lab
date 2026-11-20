@@ -389,3 +389,71 @@ async def _run_publication(pub_id: UUID, compte_id: UUID, plateforme: str,
             if p:
                 p.status = "failed"
                 await db.commit()
+
+
+# --- Sounds (IG music) -------------------------------------------------------
+
+@router.get("/sounds")
+async def get_trending_sounds(db: AsyncSession = Depends(get_db)):
+    """Récupère les sons tendance IG via l'API privée d'un compte avec session."""
+    from app.services.ig_api import IGApiClient
+    from app.models.compte import Compte
+    from sqlalchemy import select
+
+    # Trouver un compte IG avec une session active
+    q = select(Compte).where(
+        Compte.plateforme == "ig",
+        Compte.session_data.isnot(None),
+        Compte.status.in_(["ok", "active"]),
+    ).limit(5)
+    result = await db.execute(q)
+    comptes = result.scalars().all()
+
+    for compte in comptes:
+        sd = compte.session_data or {}
+        if not sd.get("sessionid") and not sd.get("authorization"):
+            continue
+        try:
+            client = IGApiClient._from_session(sd)
+            tracks = await client.get_trending_music(count=30)
+            if tracks:
+                return tracks
+        except Exception as e:
+            logger.warning("sounds: trending failed for %s: %s", compte.handle, str(e)[:100])
+            continue
+
+    return []
+
+
+@router.get("/sounds/search")
+async def search_sounds(
+    q: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recherche de sons IG par titre/artiste."""
+    from app.services.ig_api import IGApiClient
+    from app.models.compte import Compte
+    from sqlalchemy import select
+
+    query = select(Compte).where(
+        Compte.plateforme == "ig",
+        Compte.session_data.isnot(None),
+        Compte.status.in_(["ok", "active"]),
+    ).limit(5)
+    result = await db.execute(query)
+    comptes = result.scalars().all()
+
+    for compte in comptes:
+        sd = compte.session_data or {}
+        if not sd.get("sessionid") and not sd.get("authorization"):
+            continue
+        try:
+            client = IGApiClient._from_session(sd)
+            tracks = await client.search_music(q, count=20)
+            if tracks:
+                return tracks
+        except Exception as e:
+            logger.warning("sounds: search failed for %s: %s", compte.handle, str(e)[:100])
+            continue
+
+    return []

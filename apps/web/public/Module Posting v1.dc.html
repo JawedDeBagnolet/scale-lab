@@ -2215,7 +2215,30 @@ class Component extends DCLogic {
   migrateGroups() { if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
   lib(p, pl, t) { return this.mediaLib().filter(m => m.persona === p && m.plat === pl && m.type === t).map(m => m.id); }
   sounds() {
-    if (this._isLive()) return [];
+    if (this._isLive()) {
+      // Live: sons chargés depuis l'API IG (trending)
+      if (!this._sLiveLoaded) {
+        this._sLiveLoaded = true;
+        this._sLive = [];
+        const SD = window.SCALE_DATA;
+        if (SD && SD._live) {
+          SD.apiAsync('GET', '/posting/sounds').then(tracks => {
+            if (Array.isArray(tracks) && tracks.length) {
+              this._sLive = tracks.map((t, i) => ({
+                id: t.id, title: t.title, artist: t.artist,
+                rank: t.is_trending ? i + 1 : null,
+                score: 50 + Math.round(Math.random() * 50),
+                uses: 0,
+                dur: t.duration_ms ? Math.floor(t.duration_ms / 60000) + ':' + String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0') : '0:30',
+                cover: t.cover_url || '', preview: t.preview_url || '', added: i
+              }));
+              this.upd(x => x); // force re-render
+            }
+          }).catch(e => console.warn('[sounds]', e));
+        }
+      }
+      return this._sLive || [];
+    }
     return this._s || (this._s = [
       ['s1', 'Midnight Drive', 'Nova Lane', 1, 94, 48200, '0:30'], ['s2', 'Soft Focus', 'Aurel', 2, 88, 41900, '0:24'],
       ['s3', 'Golden Hour Loop', 'Mira Vale', 3, 71, 36100, '0:18'], ['s4', 'Run It Back', 'KAYO', 4, 83, 30400, '0:21'],
