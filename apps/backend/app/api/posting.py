@@ -478,44 +478,37 @@ async def search_sounds(
     q: str = Query(..., min_length=1),
     db: AsyncSession = Depends(get_db),
 ):
-    """Recherche de sons — local DB + IG live."""
-    from app.models.posting import Sound
-    from sqlalchemy import select, or_
+    """Recherche de sons — IG live direct, persistence en background."""
+    import asyncio
 
-    # 1. Chercher localement d'abord
-    local_q = select(Sound).where(
-        or_(Sound.title.ilike(f"%{q}%"), Sound.artist.ilike(f"%{q}%"))
-    ).order_by(Sound.use_count.desc()).limit(20)
-    result = await db.execute(local_q)
-    local = result.scalars().all()
-
-    # 2. Toujours compléter avec IG live
+    # Appel IG live (prioritaire pour la réactivité)
     client, handle = await _get_ig_client(db)
-    ig_results = []
     if client:
         try:
             tracks = await client.search_music(q, count=20)
             if tracks:
-                await _upsert_sounds(db, tracks, source="ig_search")
-                ig_results = tracks
+                # Persister en background (non bloquant)
+                async def _bg_persist():
+                    try:
+                        from app.db import AsyncSessionLocal
+                        async with AsyncSessionLocal() as bg_db:
+                            await _upsert_sounds(bg_db, tracks, source="ig_search")
+                    except Exception:
+                        pass
+                asyncio.create_task(_bg_persist())
+                return tracks
         except Exception as e:
             logger.warning("sounds: search failed: %s", str(e)[:100])
 
-    # 3. Merge: local + IG (dedupliqué par ig_id)
-    seen = set()
-    merged = []
-    # Re-fetch from DB to get merged data
+    # Fallback: chercher localement si IG échoue
+    from app.models.posting import Sound
+    from sqlalchemy import select, or_
     result = await db.execute(
         select(Sound).where(
             or_(Sound.title.ilike(f"%{q}%"), Sound.artist.ilike(f"%{q}%"))
-        ).order_by(Sound.use_count.desc()).limit(30)
+        ).order_by(Sound.use_count.desc()).limit(20)
     )
-    for s in result.scalars():
-        if s.ig_id not in seen:
-            seen.add(s.ig_id)
-            merged.append(_sound_to_dict(s))
-
-    return merged
+    return [_sound_to_dict(s) for s in result.scalars()]
 
 
 async def _upsert_sounds(db, tracks: list[dict], source: str = "ig_trending"):
