@@ -268,17 +268,50 @@ class IGApiClient:
         return self._parse_music_items(data)
 
     async def get_trending_music(self, count: int = 30) -> list[dict]:
-        """Get trending music tracks."""
-        data = await self._post("/api/v1/music/search/", {
-            "q": "",
-            "search_surface": "clips_music_search",
-            "count": str(count),
-        })
-        root = data.get("root_node_for_rest_merged_response", {})
-        root_keys = list(root.keys())[:10] if isinstance(root, dict) else type(root).__name__
-        logger.info("trending_music raw: status=%s, top_keys=%s, root_keys=%s",
-            data.get("status"), list(data.keys())[:8], root_keys)
-        return self._parse_music_items(data)
+        """Get trending music tracks.
+
+        Tries multiple endpoints/surfaces since IG changes them frequently.
+        """
+        endpoints = [
+            # 1. Clips creation audio search (most common for reels)
+            ("/api/v1/music/search/", {
+                "q": "",
+                "search_surface": "clips_creation_audio_search",
+                "count": str(count),
+            }),
+            # 2. Reels audio creation
+            ("/api/v1/music/search/", {
+                "q": "",
+                "search_surface": "reels_audio_search",
+                "count": str(count),
+            }),
+            # 3. Dedicated trending endpoint
+            ("/api/v1/music/trending/", {
+                "count": str(count),
+            }),
+        ]
+        for path, params in endpoints:
+            try:
+                data = await self._post(path, params)
+                logger.info("trending_music [%s] status=%s keys=%s",
+                    params.get("search_surface", path.split("/")[-2]),
+                    data.get("status"), list(data.keys())[:8])
+                # Log first item structure if available
+                items = data.get("items", [])
+                if not items:
+                    root = data.get("root_node_for_rest_merged_response")
+                    if root and isinstance(root, dict):
+                        logger.info("trending_music root_keys=%s", list(root.keys())[:10])
+                tracks = self._parse_music_items(data)
+                if tracks:
+                    logger.info("trending_music: %d tracks found via %s",
+                        len(tracks), params.get("search_surface", path))
+                    return tracks
+            except Exception as e:
+                logger.warning("trending_music [%s] failed: %s",
+                    params.get("search_surface", path), str(e)[:150])
+                continue
+        return []
 
     # ------------------------------------------------------------------
     # Stats / Analytics
