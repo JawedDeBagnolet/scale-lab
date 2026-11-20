@@ -7,7 +7,7 @@ from app.models.log import AlertRule, Event, Incident
 from app.models.marche import Marche
 from app.models.niche import Niche
 from app.models.persona import Persona
-from app.models.posting import Campagne, Collection, Media, Publication, Template
+from app.models.posting import Campagne, Collection, Media, Publication, Sound, Template
 from app.models.proxy import Proxy
 from app.models.scenario import PlageHoraire, Run, Scenario
 from app.models.settings import WorkspaceSettings
@@ -44,6 +44,7 @@ __all__ = [
     "Scenario",
     "Script",
     "Snipe",
+    "Sound",
     "Target",
     "TelegramPending",
     "TelegramPendingGroup",

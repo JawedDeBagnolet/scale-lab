@@ -393,40 +393,84 @@ async def _run_publication(pub_id: UUID, compte_id: UUID, plateforme: str,
 
 # --- Sounds (IG music) -------------------------------------------------------
 
-@router.get("/sounds")
-async def get_trending_sounds(db: AsyncSession = Depends(get_db)):
-    """Récupère les sons tendance IG via l'API privée d'un compte avec session."""
+async def _get_ig_client(db):
+    """Get an IG API client from any compte with a valid session + proxy."""
     from app.services.ig_api import IGApiClient
     from app.models.compte import Compte
     from sqlalchemy import select
 
-    # Trouver un compte IG avec une session active
     q = select(Compte).where(
         Compte.plateforme == "ig",
         Compte.session_data.isnot(None),
         Compte.status.in_(["ok", "active"]),
     ).limit(5)
     result = await db.execute(q)
-    comptes = result.scalars().all()
-
-    logger.info("sounds: found %d comptes with session_data", len(comptes))
-    for compte in comptes:
+    for compte in result.scalars():
         sd = compte.session_data or {}
-        has_auth = bool(sd.get("sessionid") or sd.get("authorization"))
-        logger.info("sounds: %s has_auth=%s keys=%s", compte.handle, has_auth, list(sd.keys())[:5])
-        if not has_auth:
-            continue
-        try:
-            client = IGApiClient._from_session(sd)
-            tracks = await client.get_trending_music(count=30)
-            logger.info("sounds: %s returned %d tracks", compte.handle, len(tracks))
-            if tracks:
-                return tracks
-        except Exception as e:
-            logger.warning("sounds: trending failed for %s: %s", compte.handle, str(e)[:200])
-            continue
+        if sd.get("sessionid") or sd.get("authorization"):
+            try:
+                client = IGApiClient._from_session(sd)
+                # Attach Scrapigo proxy if available
+                try:
+                    from app.services.scrapigo import get_scrapigo_client
+                    scrapigo = await get_scrapigo_client()
+                    if scrapigo:
+                        env = compte.env or {}
+                        country = env.get("proxy_country", "FR")
+                        proxy = await scrapigo.get_proxy_for_account(
+                            account_id=str(compte.id), country=country, ttl_minutes=120,
+                        )
+                        if proxy:
+                            client.proxy_url = proxy.url
+                            logger.info("sounds: proxy %s:%d (%s)", proxy.host, proxy.port, country)
+                except Exception as pe:
+                    logger.warning("sounds: proxy unavailable: %s", str(pe)[:100])
+                return client, compte.handle
+            except Exception:
+                continue
+    return None, None
 
-    return []
+
+@router.get("/sounds")
+async def get_trending_sounds(db: AsyncSession = Depends(get_db)):
+    """Trending IG sounds — hybride: local DB + scrape IG si besoin.
+
+    Retourne les sons stockés localement, enrichis par un refresh IG
+    en background si les données ont plus de 30 min.
+    """
+    from app.models.posting import Sound
+    from sqlalchemy import select
+    from datetime import UTC, datetime, timedelta
+    import asyncio
+
+    # 1. Charger les sons locaux (trending)
+    q = select(Sound).where(Sound.is_trending == True).order_by(Sound.ig_rank.asc()).limit(50)
+    result = await db.execute(q)
+    local_sounds = result.scalars().all()
+
+    # 2. Si on a des sons récents (< 30 min), retourner directement
+    if local_sounds:
+        newest = max(s.updated_at for s in local_sounds)
+        if newest > datetime.now(UTC) - timedelta(minutes=30):
+            return [_sound_to_dict(s) for s in local_sounds]
+
+    # 3. Scrape IG trending et persiste
+    client, handle = await _get_ig_client(db)
+    if client:
+        try:
+            tracks = await client.get_trending_music(count=30)
+            if tracks:
+                logger.info("sounds: %s returned %d trending tracks, persisting...", handle, len(tracks))
+                await _upsert_sounds(db, tracks, source="ig_trending")
+                # Re-fetch from DB (clean data)
+                result = await db.execute(
+                    select(Sound).where(Sound.is_trending == True).order_by(Sound.ig_rank.asc()).limit(50)
+                )
+                local_sounds = result.scalars().all()
+        except Exception as e:
+            logger.warning("sounds: trending scrape failed: %s", str(e)[:200])
+
+    return [_sound_to_dict(s) for s in local_sounds]
 
 
 @router.get("/sounds/search")
@@ -434,30 +478,112 @@ async def search_sounds(
     q: str = Query(..., min_length=1),
     db: AsyncSession = Depends(get_db),
 ):
-    """Recherche de sons IG par titre/artiste."""
-    from app.services.ig_api import IGApiClient
-    from app.models.compte import Compte
-    from sqlalchemy import select
+    """Recherche de sons — local DB + IG live."""
+    from app.models.posting import Sound
+    from sqlalchemy import select, or_
 
-    query = select(Compte).where(
-        Compte.plateforme == "ig",
-        Compte.session_data.isnot(None),
-        Compte.status.in_(["ok", "active"]),
-    ).limit(5)
-    result = await db.execute(query)
-    comptes = result.scalars().all()
+    # 1. Chercher localement d'abord
+    local_q = select(Sound).where(
+        or_(Sound.title.ilike(f"%{q}%"), Sound.artist.ilike(f"%{q}%"))
+    ).order_by(Sound.use_count.desc()).limit(20)
+    result = await db.execute(local_q)
+    local = result.scalars().all()
 
-    for compte in comptes:
-        sd = compte.session_data or {}
-        if not sd.get("sessionid") and not sd.get("authorization"):
-            continue
+    # 2. Toujours compléter avec IG live
+    client, handle = await _get_ig_client(db)
+    ig_results = []
+    if client:
         try:
-            client = IGApiClient._from_session(sd)
             tracks = await client.search_music(q, count=20)
             if tracks:
-                return tracks
+                await _upsert_sounds(db, tracks, source="ig_search")
+                ig_results = tracks
         except Exception as e:
-            logger.warning("sounds: search failed for %s: %s", compte.handle, str(e)[:100])
+            logger.warning("sounds: search failed: %s", str(e)[:100])
+
+    # 3. Merge: local + IG (dedupliqué par ig_id)
+    seen = set()
+    merged = []
+    # Re-fetch from DB to get merged data
+    result = await db.execute(
+        select(Sound).where(
+            or_(Sound.title.ilike(f"%{q}%"), Sound.artist.ilike(f"%{q}%"))
+        ).order_by(Sound.use_count.desc()).limit(30)
+    )
+    for s in result.scalars():
+        if s.ig_id not in seen:
+            seen.add(s.ig_id)
+            merged.append(_sound_to_dict(s))
+
+    return merged
+
+
+async def _upsert_sounds(db, tracks: list[dict], source: str = "ig_trending"):
+    """Insert or update sounds in DB from IG API results."""
+    from app.models.posting import Sound
+    from sqlalchemy import select
+    from datetime import UTC, datetime
+
+    is_trending = source == "ig_trending"
+
+    # Reset trending flags if this is a trending refresh
+    if is_trending:
+        from sqlalchemy import update
+        await db.execute(update(Sound).where(Sound.is_trending == True).values(is_trending=False, ig_rank=None))
+
+    for i, t in enumerate(tracks):
+        ig_id = str(t.get("id", ""))
+        if not ig_id:
             continue
 
-    return []
+        # Check if exists
+        existing = await db.execute(select(Sound).where(Sound.ig_id == ig_id))
+        sound = existing.scalar_one_or_none()
+
+        if sound:
+            # Update
+            sound.title = t.get("title") or sound.title
+            sound.artist = t.get("artist") or sound.artist
+            sound.cover_url = t.get("cover_url") or sound.cover_url
+            sound.preview_url = t.get("preview_url") or sound.preview_url
+            sound.duration_ms = t.get("duration_ms") or sound.duration_ms
+            if t.get("use_count"):
+                sound.use_count = t["use_count"]
+            if is_trending:
+                sound.is_trending = True
+                sound.ig_rank = i + 1
+            sound.updated_at = datetime.now(UTC)
+        else:
+            # Insert
+            sound = Sound(
+                ig_id=ig_id,
+                title=t.get("title", ""),
+                artist=t.get("artist", ""),
+                cover_url=t.get("cover_url"),
+                preview_url=t.get("preview_url"),
+                duration_ms=t.get("duration_ms"),
+                use_count=t.get("use_count", 0),
+                ig_rank=i + 1 if is_trending else None,
+                is_trending=is_trending,
+                source=source,
+            )
+            db.add(sound)
+
+    await db.commit()
+
+
+def _sound_to_dict(s) -> dict:
+    """Convert Sound model to API response dict."""
+    return {
+        "id": str(s.ig_id),
+        "title": s.title,
+        "artist": s.artist or "",
+        "cover_url": s.cover_url or "",
+        "preview_url": s.preview_url or "",
+        "duration_ms": s.duration_ms or 0,
+        "use_count": s.use_count or 0,
+        "ofm_score": s.ofm_score or 0,
+        "ig_rank": s.ig_rank,
+        "is_trending": s.is_trending,
+        "source": s.source,
+    }

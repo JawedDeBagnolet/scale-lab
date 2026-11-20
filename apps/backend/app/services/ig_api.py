@@ -41,6 +41,7 @@ class IGApiClient:
     user_agent: str = "Instagram 454.1.0.0.21 (iPhone10,6; iOS 16_7_15; fr_FR; fr; scale=3.00; 1125x2436; 588848498)"
     www_claim: str = "0"
     extra_headers: dict = field(default_factory=dict)
+    proxy_url: str | None = None
 
     # ------------------------------------------------------------------
     # Factory
@@ -142,9 +143,16 @@ class IGApiClient:
                 h[k] = v
         return h
 
+    def _client_kwargs(self) -> dict:
+        """Common httpx.AsyncClient kwargs (proxy, timeout, TLS)."""
+        kw: dict = {"timeout": 15, "verify": False}
+        if self.proxy_url:
+            kw["proxy"] = self.proxy_url
+        return kw
+
     async def _get(self, path: str, params: dict | None = None) -> dict:
         """GET request to IG private API."""
-        async with httpx.AsyncClient(timeout=15, verify=False) as client:
+        async with httpx.AsyncClient(**self._client_kwargs()) as client:
             resp = await client.get(
                 f"{IG_BASE}{path}",
                 headers=self._headers(),
@@ -157,7 +165,7 @@ class IGApiClient:
         """POST request to IG private API (form-encoded)."""
         headers = self._headers()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
-        async with httpx.AsyncClient(timeout=15, verify=False) as client:
+        async with httpx.AsyncClient(**self._client_kwargs()) as client:
             resp = await client.post(
                 f"{IG_BASE}{path}",
                 headers=headers,
