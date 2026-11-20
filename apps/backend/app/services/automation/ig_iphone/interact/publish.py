@@ -80,8 +80,9 @@ async def _select_photo(driver, log, index=0) -> bool:
     """Selectionne une photo dans la galerie (par index, 0 = premiere/plus recente)."""
     for attempt in range(3):
         els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-        # Filtrer : garder les elements dans la grille (y > 400)
-        photos = [e for e in els if e.get('rect', {}).get('y', 0) > 400]
+        # Filtrer : garder les elements dans la grille (y > 220, exclut header)
+        photos = [e for e in els if e.get('rect', {}).get('y', 0) > 220]
+        photos.sort(key=lambda e: (e.get('rect', {}).get('y', 0), e.get('rect', {}).get('x', 0)))
         if photos:
             break
         log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
@@ -101,10 +102,18 @@ async def _select_photo(driver, log, index=0) -> bool:
 
 
 async def _select_video(driver, log, index=0) -> bool:
-    """Selectionne une video dans la galerie."""
+    """Selectionne une video dans la galerie.
+
+    La grille commence vers y=250-300 (sous le header 'Nouveau reel' et
+    les boutons Brouillons/Modeles). On filtre y > 220 pour exclure le
+    header et l'element Camera, puis on trie par y puis x pour obtenir
+    l'ordre galerie (haut-gauche = plus recent).
+    """
     for attempt in range(3):
-        els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
-        videos = [e for e in els if e.get('rect', {}).get('y', 0) > 400]
+        els = await driver.find_elements(contains="Miniature vid", clickable=True, refresh=True)
+        videos = [e for e in els if e.get('rect', {}).get('y', 0) > 220]
+        # Trier par position : haut→bas, gauche→droite (ordre galerie)
+        videos.sort(key=lambda e: (e.get('rect', {}).get('y', 0), e.get('rect', {}).get('x', 0)))
         if videos:
             break
         log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
