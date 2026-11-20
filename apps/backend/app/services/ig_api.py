@@ -274,6 +274,8 @@ class IGApiClient:
             "search_surface": "clips_music_search",
             "count": str(count),
         })
+        logger.info("trending_music raw: status=%s, keys=%s, items=%d",
+            data.get("status"), list(data.keys())[:8], len(data.get("items", [])))
         return self._parse_music_items(data)
 
     # ------------------------------------------------------------------
