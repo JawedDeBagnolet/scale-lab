@@ -1877,6 +1877,7 @@ class Component extends DCLogic {
       hdSw: sw(!!(prof.hdUpload || s.hdDone), false),
       toggleHd: () => {
         const cid = d.id; if (!cid || s.hdLoading) return;
+        const SD = window.SCALE_DATA;
         const wasOn = !!(prof.hdUpload || s.hdDone);
         if (wasOn) {
           this.upd(x => { x.profile[pk].hdUpload = false; });
@@ -1884,6 +1885,7 @@ class Component extends DCLogic {
           return;
         }
         this.setState({ hdLoading: true });
+        if (!SD || !SD._live) { this.setState({ hdLoading: false }); return; }
         SD.apiAsync('POST', '/comptes/' + cid + '/enable-hd').then(r => {
           this.upd(x => { x.profile[pk].hdUpload = true; });
           this.setState({ hdLoading: false, hdDone: true });
