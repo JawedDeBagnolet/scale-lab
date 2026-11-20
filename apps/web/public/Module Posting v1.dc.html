@@ -2232,7 +2232,7 @@ class Component extends DCLogic {
                 dur: t.duration_ms ? Math.floor(t.duration_ms / 60000) + ':' + String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0') : '0:30',
                 cover: t.cover_url || '', preview: t.preview_url || '', added: i
               }));
-              this.upd(x => x); // force re-render
+              this.setState({ _soundsReady: true }); // force re-render sans toucher draft
             }
           }).catch(e => console.warn('[sounds]', e));
         }
