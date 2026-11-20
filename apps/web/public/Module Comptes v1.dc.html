@@ -1876,16 +1876,18 @@ class Component extends DCLogic {
       hdLoading: !!s.hdLoading,
       hdSw: sw(!!(prof.hdUpload || s.hdDone), false),
       toggleHd: () => {
-        const cid = d.id; if (!cid || s.hdLoading) return;
+        if (s.hdLoading) return;
         const SD = window.SCALE_DATA;
+        const real = SD && SD._live ? SD.accounts.find(x => x.handle === (d.username || d.id) || x.id === d.id) : null;
+        const cid = real ? real.id : d.id;
         const wasOn = !!(prof.hdUpload || s.hdDone);
         if (wasOn) {
           this.upd(x => { x.profile[pk].hdUpload = false; });
           this.setState({ hdDone: false });
           return;
         }
+        if (!SD || !SD._live || !real) { console.warn('[enable-hd] pas de compte live'); return; }
         this.setState({ hdLoading: true });
-        if (!SD || !SD._live) { this.setState({ hdLoading: false }); return; }
         SD.apiAsync('POST', '/comptes/' + cid + '/enable-hd').then(r => {
           this.upd(x => { x.profile[pk].hdUpload = true; });
           this.setState({ hdLoading: false, hdDone: true });
