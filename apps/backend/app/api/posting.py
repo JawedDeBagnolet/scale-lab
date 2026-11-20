@@ -409,17 +409,21 @@ async def get_trending_sounds(db: AsyncSession = Depends(get_db)):
     result = await db.execute(q)
     comptes = result.scalars().all()
 
+    logger.info("sounds: found %d comptes with session_data", len(comptes))
     for compte in comptes:
         sd = compte.session_data or {}
-        if not sd.get("sessionid") and not sd.get("authorization"):
+        has_auth = bool(sd.get("sessionid") or sd.get("authorization"))
+        logger.info("sounds: %s has_auth=%s keys=%s", compte.handle, has_auth, list(sd.keys())[:5])
+        if not has_auth:
             continue
         try:
             client = IGApiClient._from_session(sd)
             tracks = await client.get_trending_music(count=30)
+            logger.info("sounds: %s returned %d tracks", compte.handle, len(tracks))
             if tracks:
                 return tracks
         except Exception as e:
-            logger.warning("sounds: trending failed for %s: %s", compte.handle, str(e)[:100])
+            logger.warning("sounds: trending failed for %s: %s", compte.handle, str(e)[:200])
             continue
 
     return []
