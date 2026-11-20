@@ -110,8 +110,17 @@ async def _select_video(driver, log, index=0) -> bool:
     l'ordre galerie (haut-gauche = plus recent).
     """
     for attempt in range(3):
-        els = await driver.find_elements(contains="Miniature vid", clickable=True, refresh=True)
-        videos = [e for e in els if e.get('tap', {}).get('y', 0) > 220]
+        els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
+        # Exclure Camera et garder uniquement les miniatures de la grille
+        videos = []
+        for e in els:
+            txt = (e.get('text', '') or '').lower()
+            ty = e.get('tap', {}).get('y', 0)
+            if ty < 220:
+                continue
+            if 'cam' in txt or 'caméra' in txt:
+                continue
+            videos.append(e)
         # Trier par position tap : haut→bas, gauche→droite (ordre galerie)
         videos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
         if videos:
