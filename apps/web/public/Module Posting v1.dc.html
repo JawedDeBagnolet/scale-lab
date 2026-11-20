@@ -2226,11 +2226,12 @@ class Component extends DCLogic {
             if (Array.isArray(tracks) && tracks.length) {
               this._sLive = tracks.map((t, i) => ({
                 id: t.id, title: t.title, artist: t.artist,
-                rank: t.is_trending ? i + 1 : null,
-                score: 50 + Math.round(Math.random() * 50),
+                rank: i + 1,
+                score: 0,
                 uses: 0,
                 dur: t.duration_ms ? Math.floor(t.duration_ms / 60000) + ':' + String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0') : '0:30',
-                cover: t.cover_url || '', preview: t.preview_url || '', added: i
+                cover: t.cover_url || '', preview: t.preview_url || '', added: i,
+                source: 'ig_trending'
               }));
               this.setState({ _soundsReady: true }); // force re-render sans toucher draft
             }
