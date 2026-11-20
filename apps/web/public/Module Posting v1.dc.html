@@ -3183,7 +3183,7 @@ class Component extends DCLogic {
       const q = s.sQ.trim().toLowerCase();
       let list = this.sounds().filter(x => !q || (x.title + ' ' + x.artist).toLowerCase().indexOf(q) >= 0);
       if (s.sTab === 'trend') list = list.filter(x => x.rank).sort((a, b) => a.rank - b.rank);
-      else if (s.sTab === 'ofm') list = list.slice().sort((a, b) => b.score - a.score);
+      else if (s.sTab === 'ofm') list = list.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
       else if (s.sTab === 'liked') list = list.filter(x => s.liked[x.id]);
       else if (s.sTab === 'search') list = s.sSearched ? list : [];
       const so = s.sSort;
