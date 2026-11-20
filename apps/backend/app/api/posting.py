@@ -478,37 +478,35 @@ async def search_sounds(
     q: str = Query(..., min_length=1),
     db: AsyncSession = Depends(get_db),
 ):
-    """Recherche de sons — IG live direct, persistence en background."""
-    import asyncio
+    """Recherche de sons — IG live direct, sans persistence (vitesse max).
 
-    # Appel IG live (prioritaire pour la réactivité)
-    client, handle = await _get_ig_client(db)
-    if client:
+    Les sons recherchés ne sont pas stockés en base. L'utilisateur like
+    ceux qu'il veut garder. Seuls trending (scrape) et veille persistent.
+    """
+    from app.services.ig_api import IGApiClient
+    from app.models.compte import Compte
+    from sqlalchemy import select
+
+    # Client IG SANS proxy (vitesse max pour la recherche live)
+    stmt = select(Compte).where(
+        Compte.plateforme == "ig",
+        Compte.session_data.isnot(None),
+        Compte.status.in_(["ok", "active"]),
+    ).limit(5)
+    result = await db.execute(stmt)
+    for compte in result.scalars():
+        sd = compte.session_data or {}
+        if not sd.get("sessionid") and not sd.get("authorization"):
+            continue
         try:
-            tracks = await client.search_music(q, count=20)
-            if tracks:
-                # Persister en background (non bloquant)
-                async def _bg_persist():
-                    try:
-                        from app.db import AsyncSessionLocal
-                        async with AsyncSessionLocal() as bg_db:
-                            await _upsert_sounds(bg_db, tracks, source="ig_search")
-                    except Exception:
-                        pass
-                asyncio.create_task(_bg_persist())
-                return tracks
+            client = IGApiClient._from_session(sd)
+            # Pas de proxy → requête directe → ~1-2s au lieu de ~5-6s
+            return await client.search_music(q, count=20)
         except Exception as e:
-            logger.warning("sounds: search failed: %s", str(e)[:100])
+            logger.warning("sounds: search failed for %s: %s", compte.handle, str(e)[:100])
+            continue
 
-    # Fallback: chercher localement si IG échoue
-    from app.models.posting import Sound
-    from sqlalchemy import select, or_
-    result = await db.execute(
-        select(Sound).where(
-            or_(Sound.title.ilike(f"%{q}%"), Sound.artist.ilike(f"%{q}%"))
-        ).order_by(Sound.use_count.desc()).limit(20)
-    )
-    return [_sound_to_dict(s) for s in result.scalars()]
+    return []
 
 
 async def _upsert_sounds(db, tracks: list[dict], source: str = "ig_trending"):
