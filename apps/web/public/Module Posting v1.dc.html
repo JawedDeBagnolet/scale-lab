@@ -40,6 +40,36 @@ a { color: #8db4fd; text-decoration: none; }
 a:hover { color: #b9d0ff; }
 input::placeholder, textarea::placeholder { color: #5b6175; }
 select option { background: #151827; color: #e8eaf3; }
+@keyframes dkIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes dkSpin { to { transform: rotate(360deg); } }
+@keyframes dkShimmer { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+.dk-panel { width: 100%; border-radius: 16px; background: #151827; border: 1px solid rgba(255,255,255,.1); box-shadow: 0 18px 44px rgba(0,0,0,.5); overflow: hidden; }
+.dk-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; cursor: pointer; }
+.dk-head:hover { background: rgba(255,255,255,.025); }
+.dk-body { max-height: 0; overflow: hidden; transition: max-height .34s cubic-bezier(.2,.7,.2,1); }
+.dk-open .dk-body { max-height: 460px; }
+.dk-caret { transition: transform .3s; }
+.dk-open .dk-caret { transform: rotate(180deg); }
+.dk-list { max-height: 318px; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid rgba(255,255,255,.07); }
+.dk-row { display: flex; align-items: center; gap: 11px; padding: 9px 12px 9px 14px; }
+.dk-row + .dk-row { border-top: 1px solid rgba(255,255,255,.05); }
+.dk-thumb { position: relative; width: 38px; height: 38px; flex: none; border-radius: 9px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.85); font-size: 16px; }
+.dk-row.wait .dk-thumb { opacity: .5; }
+.dk-name { font-size: 12.5px; font-weight: 500; color: #f2f3fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dk-sub { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #8a91a8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dk-bar { height: 3px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 6px; }
+.dk-bar > i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #6d5ef0, #4b7bf5); transition: width .15s linear; }
+.dk-ai { background: linear-gradient(90deg, #a5a0f5 0%, #a5a0f5 35%, #ffffff 50%, #a5a0f5 65%, #a5a0f5 100%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: dkShimmer 1.6s ease-in-out infinite; font-weight: 500; }
+.dk-act { width: 28px; height: 28px; flex: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #8a91a8; cursor: pointer; font-size: 14px; }
+.dk-act:hover { background: rgba(255,255,255,.06); color: #f2f3fa; }
+.dk-retry { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; flex: none; border-radius: 8px; font-size: 11.5px; font-weight: 600; color: #fda4af; background: rgba(244,114,140,.12); border: 1px solid rgba(244,114,140,.35); cursor: pointer; }
+.dk-retry:hover { background: rgba(244,114,140,.2); }
+.dk-foot { display: flex; align-items: center; gap: 8px; padding: 10px 12px 12px 14px; border-top: 1px solid rgba(255,255,255,.07); font-size: 11.5px; color: #8a91a8; }
+.dk-link { font-weight: 600; color: #8db4fd; cursor: pointer; white-space: nowrap; }
+.dk-link:hover { color: #b9d0ff; }
+.dk-chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dk-dot { width: 6px; height: 6px; border-radius: 99px; flex: none; }
+.dk-spin { display: inline-block; animation: dkSpin .8s linear infinite; }
 </style>
 </helmet>
 
@@ -793,6 +823,23 @@ select option { background: #151827; color: #e8eaf3; }
 
 <sc-if value="{{ hasToast }}">
 <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:12px;background:rgba(20,23,38,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 36px rgba(0,0,0,.45);font-size:12.5px;color:#e8eaf3"><i class="ph ph-check-circle" style="font-size:16px;color:#2dd4a8"></i>{{ toast }}</div>
+</sc-if>
+
+<sc-if value="{{ dkShow }}">
+<div id="upload-dock" style="{{ dkStyle }}" class="{{ dkPanelClass }}">
+<div class="dk-panel">
+<div class="dk-head" onClick="{{ dkToggle }}">
+<svg width="34" height="34" viewBox="0 0 34 34" style="flex:none"><circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/><circle cx="17" cy="17" r="14" fill="none" stroke="url(#dkg)" stroke-width="3" stroke-linecap="round" style="{{ dkRingStyle }}" transform="rotate(-90 17 17)"/><defs><linearGradient id="dkg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cf6"/><stop offset="1" stop-color="#4b7bf5"/></linearGradient></defs><sc-if value="{{ dkFinished }}"><sc-if value="{{ dkHasErr }}"><path d="M17 11v7M17 22v.5" stroke="#fda4af" stroke-width="2.4" stroke-linecap="round"/></sc-if><sc-if value="{{ dkNoErr }}"><path d="M12 17.5l3.5 3.5 6.5-7" fill="none" stroke="#6ee7c5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></sc-if></sc-if><sc-if value="{{ dkRunning }}"><text x="17" y="20.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#f2f3fa" style="font-variant-numeric:tabular-nums">{{ dkCounter }}</text></sc-if></svg>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#f2f3fa">{{ dkTitle }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ dkSub }}</div></div>
+<span class="dk-act" title="Détail"><i class="ph ph-caret-up dk-caret"></i></span>
+<sc-if value="{{ dkFinished }}"><span class="dk-act" title="Fermer" onClick="{{ dkClose }}"><i class="ph ph-x"></i></span></sc-if>
+</div>
+<div class="dk-body">
+<div class="dk-list" ref="{{ dkListRef }}"></div>
+<div class="dk-foot"><span class="dk-chip"><span class="dk-dot" style="background:#2dd4a8"></span>{{ dkDoneCount }}</span><sc-if value="{{ dkHasErr }}"><span class="dk-chip"><span class="dk-dot" style="background:#f4728c"></span>{{ dkErrCount }}</span></sc-if><span style="flex:1"></span><sc-if value="{{ dkHasErr }}"><span class="dk-link" onClick="{{ dkRetryAll }}">Tout réessayer</span></sc-if><sc-if value="{{ dkRunning }}"><span class="dk-link" style="color:#8a91a8" onClick="{{ dkCancelAll }}">Tout annuler</span></sc-if><sc-if value="{{ dkAllDone }}"><span class="dk-link" onClick="{{ dkGoMedia }}">Voir dans la médiathèque</span></sc-if></div>
+</div>
+</div>
+</div>
 </sc-if>
 
 <sc-if value="{{ isEd }}">
@@ -2114,7 +2161,7 @@ class Component extends DCLogic {
   TYPES = { th: [['th_text', 'Thread (texte)', 0], ['th_media', 'Thread + médias', 2], ['pfp', 'Photo de profil', 2]], ig: [['reel', 'Reel', 1], ['car', 'Post / Carousel', 2], ['story', 'Story', 1], ['pfp', 'Photo de profil', 2]], x: [['tw', 'Tweet', 0], ['tw_img', 'Tweet + médias', 2], ['pfp', 'Photo de profil', 2]] };
   LIMIT = { th: 500, ig: 2200, x: 280 };
   MAXM = { th_media: 20, car: 20, tw_img: 4 };
-  state = { tab: 'pub', navCollapsed: false, q: '', pubStatus: 'all', pubPlat: 'all', pubOrigin: 'all', openBatch: {}, menu: null, posts: this.seedPosts(), tpls: this.seedTpls(), camps: this.seedCamps(), ed: null, sched: null, picker: null, audio: null, wiz: null, campOpen: null, kill: false, sel: {}, confirm: null, toast: null, tplPersona: 'all', tplPlat: 'all', tplSort: 'recent', accMenu: false, accQ: '', playing: null, pvRaw: false, liked: { s2: true, s5: true, s9: true }, mediaSub: 'medias', mPath: [], extraMedia: [], delMedia: {}, upload: null, aiDesc: null, descs: this.seedDescs(), sTab: 'trend', sQ: '', sSort: 'default', sPage: 0, sSearched: false, sndMenu: null, storySub: 'templates', plans: this.seedPlans(), planEd: null, routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0, storyTpls: this.seedStories(), story: null, storyLoad: false, colls: this.seedColls(), collView: null, collPersona: 'all', collPlat: 'all', collType: 'all', coSort: 'score', coBulk: null, coNewCap: '', coEditCap: null, newColl: null, itemEd: null, groups: this.seedGroups(), grouping: null, hoverGroup: null, coHover: null, genIds: {} };
+  state = { tab: 'pub', navCollapsed: false, q: '', pubStatus: 'all', pubPlat: 'all', pubOrigin: 'all', openBatch: {}, menu: null, posts: this.seedPosts(), tpls: this.seedTpls(), camps: this.seedCamps(), ed: null, sched: null, picker: null, audio: null, wiz: null, campOpen: null, kill: false, sel: {}, confirm: null, toast: null, tplPersona: 'all', tplPlat: 'all', tplSort: 'recent', accMenu: false, accQ: '', playing: null, pvRaw: false, liked: { s2: true, s5: true, s9: true }, mediaSub: 'medias', mPath: [], extraMedia: [], delMedia: {}, upload: null, aiDesc: null, descs: this.seedDescs(), sTab: 'trend', sQ: '', sSort: 'default', sPage: 0, sSearched: false, sndMenu: null, storySub: 'templates', plans: this.seedPlans(), planEd: null, routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0, storyTpls: this.seedStories(), story: null, storyLoad: false, colls: this.seedColls(), collView: null, collPersona: 'all', collPlat: 'all', collType: 'all', coSort: 'score', coBulk: null, coNewCap: '', coEditCap: null, newColl: null, itemEd: null, groups: this.seedGroups(), grouping: null, hoverGroup: null, coHover: null, genIds: {}, dockQ: [], dockOpen: false, dockDismissed: true };
   STK = {
     text: ['text-t', 'Texte', 'Texte', 'Ton texte ici', '#ffffff'], mention: ['at', 'Mention', 'Mention', '@', '#8b7cf6'],
     link: ['link', 'Lien', 'Lien', 'lien.bio', '#5b8def'], poll: ['chart-bar-horizontal', 'Sondage', 'Sondage', 'Plutôt matin ou soir ?', '#8b7cf6'],
@@ -2414,6 +2461,201 @@ class Component extends DCLogic {
   }
 
   toastMsg(msg) { clearTimeout(this._tt); this.setState({ toast: msg }); this._tt = setTimeout(() => this.setState({ toast: null }), 2400); }
+
+  /* ═══ Dock d'upload en arrière-plan ═══ */
+  _dockBusy(q) { return q.st === 'upload' || q.st === 'thumb' || q.st === 'ai'; }
+  async _dockProcess() {
+    if (this._dockRunning) return;
+    this._dockRunning = true;
+    const PARALLEL = 2;
+    const me = this;
+    const next = () => {
+      const Q = me.state.dockQ;
+      const running = Q.filter(q => q.st === 'upload' || q.st === 'thumb').length;
+      const slots = PARALLEL - running;
+      if (slots <= 0) return;
+      const waiting = Q.filter(q => q.st === 'wait');
+      for (let i = 0; i < Math.min(slots, waiting.length); i++) {
+        me._dockUploadOne(waiting[i].id);
+      }
+    };
+    // Keep checking until all done
+    const check = () => {
+      const Q = me.state.dockQ;
+      const pending = Q.filter(q => q.st === 'wait' || me._dockBusy(q));
+      if (pending.length === 0) { me._dockRunning = false; me._dockRenderList(); return; }
+      next();
+      me._dockRenderList();
+      setTimeout(check, 300);
+    };
+    check();
+  }
+  async _dockUploadOne(id) {
+    const SD = window.SCALE_DATA;
+    const me = this;
+    const upd = (patch) => me.setState(x => ({ dockQ: x.dockQ.map(q => q.id === id ? { ...q, ...patch } : q) }));
+
+    upd({ st: 'upload', p: 0 });
+    const q = this.state.dockQ.find(q => q.id === id);
+    if (!q) return;
+
+    // Simulate progress during upload
+    let pct = 0;
+    const progTimer = setInterval(() => {
+      const cur = me.state.dockQ.find(x => x.id === id);
+      if (!cur || cur.st !== 'upload') { clearInterval(progTimer); return; }
+      pct = Math.min(0.95, pct + 0.03 + Math.random() * 0.05);
+      upd({ p: pct });
+      me._dockRenderList();
+    }, 200);
+
+    try {
+      let r2Url = q.blobUrl;
+      let thumbUrl = null;
+
+      if (SD && SD._live && q.raw) {
+        // Upload to R2
+        const res = await SD.apiUploadAsync(q.raw, q.persona);
+        clearInterval(progTimer);
+        if (!res || !res.url) throw new Error('R2 upload: pas de URL');
+        r2Url = res.url;
+        upd({ p: 1 });
+
+        // Thumbnail for video
+        if (q.kind === 'video') {
+          upd({ st: 'thumb' });
+          try {
+            const blob = await new Promise((resolve, reject) => {
+              const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+              v.src = URL.createObjectURL(q.raw);
+              v.onloadeddata = () => { v.currentTime = 0.1; };
+              v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { URL.revokeObjectURL(v.src); resolve(b); }, 'image/jpeg', 0.7); };
+              v.onerror = () => { URL.revokeObjectURL(v.src); reject(); };
+              setTimeout(() => reject(), 8000);
+            });
+            if (blob) {
+              const tf = new File([blob], q.name.replace(/\.\w+$/, '_thumb.jpg'), { type: 'image/jpeg' });
+              const tr = await SD.apiUploadAsync(tf, q.persona);
+              if (tr && tr.url) thumbUrl = tr.url;
+            }
+          } catch(e) { console.warn('[dock] thumb failed', q.name, e); }
+        }
+
+        // Create media records
+        const mediaType = q.kind === 'video' ? 'video' : q.kind === 'audio' ? 'audio' : 'image';
+        for (const t of q.types) {
+          await SD.apiAsync('POST', '/posting/medias', { persona_id: q.persona, media_type: mediaType, url: r2Url, thumbnail_url: thumbUrl, filename: q.name, folder: t });
+        }
+      } else {
+        clearInterval(progTimer);
+        upd({ p: 1 });
+      }
+
+      // AI description
+      if (q.ai) {
+        upd({ st: 'ai' });
+        await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
+        const desc = this.descText({ name: q.name, kind: q.kind, seed: Math.floor(Math.random() * 60) });
+        upd({ desc });
+      }
+
+      // Add to extraMedia
+      const stamp = Date.now();
+      const neu = q.types.map((t, i) => ({
+        id: 'u' + stamp + '-' + t + '-' + id.slice(-4), persona: q.persona, plat: this.typeOf(t).plat, type: t,
+        seed: Math.floor(Math.random() * 60), video: q.kind === 'video', kind: q.kind,
+        url: r2Url, thumb: thumbUrl, name: q.name, dur: '0:15', r2: r2Url
+      }));
+      this.setState(x => ({ extraMedia: x.extraMedia.concat(neu) }));
+      upd({ st: 'done', desc: q.ai ? (me.state.dockQ.find(x => x.id === id) || {}).desc || '' : null });
+
+    } catch(e) {
+      clearInterval(progTimer);
+      console.warn('[dock] upload failed', q.name, e);
+      upd({ st: 'error', err: e.message || 'Erreur réseau' });
+    }
+  }
+  _dockRetry(id) {
+    this.setState(x => ({ dockQ: x.dockQ.map(q => q.id === id ? { ...q, st: 'wait', p: 0, err: null } : q) }));
+    if (!this._dockRunning) this._dockProcess();
+  }
+  _dockCancel(id) {
+    this.setState(x => ({ dockQ: x.dockQ.map(q => q.id === id && (q.st === 'wait') ? { ...q, st: 'canceled' } : q) }));
+  }
+  _dockRetryAll() {
+    this.setState(x => ({ dockQ: x.dockQ.map(q => q.st === 'error' ? { ...q, st: 'wait', p: 0, err: null } : q) }));
+    if (!this._dockRunning) this._dockProcess();
+  }
+  _dockCancelAll() {
+    this.setState(x => ({ dockQ: x.dockQ.map(q => q.st === 'wait' ? { ...q, st: 'canceled' } : q) }));
+  }
+  _dockClose() {
+    this.setState({ dockQ: [], dockOpen: false, dockDismissed: true });
+  }
+  _dockRenderList() {
+    if (!this._dkListRef) this._dkListRef = React.createRef();
+    const el = this._dkListRef.current;
+    if (!el) return;
+    const Q = this.state.dockQ;
+    const ICON = { image: '', video: '<i class="ph ph-film-strip"></i>', audio: '<i class="ph ph-music-notes"></i>' };
+    const GRADS = ['#3b2f5c,#1d2340', '#46304a,#20233a', '#25405a,#1a2236', '#4a3a2a,#22202c', '#2f3f4a,#1b2130', '#3f2a44,#1e1f33'];
+    const html = Q.map((q, i) => {
+      const grad = GRADS[i % GRADS.length];
+      let sub = '', act = '';
+      if (q.st === 'wait') { sub = '<span>En attente</span>'; act = '<span class="dk-act" title="Annuler" data-dk-cancel="' + q.id + '"><i class="ph ph-x"></i></span>'; }
+      else if (q.st === 'upload') { sub = '<span style="color:#c5c9d8">Envoi ' + Math.round(q.p * 100) + ' %</span>'; }
+      else if (q.st === 'thumb') { sub = '<i class="ph ph-circle-notch dk-spin" style="font-size:12px;color:#8db4fd"></i><span style="color:#c5c9d8">Miniature…</span>'; }
+      else if (q.st === 'ai') { sub = '<i class="ph ph-sparkle" style="font-size:12px;color:#a5a0f5"></i><span class="dk-ai">Description IA…</span>'; }
+      else if (q.st === 'done') { sub = '<i class="ph-fill ph-check-circle" style="font-size:13px;color:#2dd4a8;flex:none"></i><span style="overflow:hidden;text-overflow:ellipsis">' + (q.desc || 'Ajouté') + '</span>'; }
+      else if (q.st === 'error') { sub = '<i class="ph-fill ph-warning-circle" style="font-size:13px;color:#fda4af;flex:none"></i><span style="color:#fda4af;overflow:hidden;text-overflow:ellipsis">' + (q.err || 'Erreur') + '</span>'; act = '<span class="dk-retry" data-dk-retry="' + q.id + '"><i class="ph ph-arrows-clockwise" style="font-size:12px"></i>Réessayer</span>'; }
+      else if (q.st === 'canceled') { sub = '<span style="color:#6b7289">Annulé</span>'; }
+      const bar = q.st === 'upload' ? '<div class="dk-bar"><i style="width:' + (q.p * 100).toFixed(1) + '%"></i></div>' : '';
+      return '<div class="dk-row ' + q.st + '">' +
+        '<div class="dk-thumb" style="background:linear-gradient(135deg,' + grad + ')">' + (ICON[q.kind] || '') + '</div>' +
+        '<div style="flex:1;min-width:0"><div class="dk-name"' + (q.st === 'canceled' ? ' style="color:#6b7289;text-decoration:line-through"' : '') + '>' + q.name + '</div><div class="dk-sub">' + sub + '</div>' + bar + '</div>' + act + '</div>';
+    }).join('');
+    el.innerHTML = html;
+    // Attach click handlers
+    el.querySelectorAll('[data-dk-retry]').forEach(b => { b.onclick = () => this._dockRetry(b.getAttribute('data-dk-retry')); });
+    el.querySelectorAll('[data-dk-cancel]').forEach(b => { b.onclick = (e) => { e.stopPropagation(); this._dockCancel(b.getAttribute('data-dk-cancel')); }; });
+  }
+  dockVals() {
+    const Q = this.state.dockQ;
+    if (this.state.dockDismissed || !Q.length) return { dkShow: false };
+    const done = Q.filter(q => q.st === 'done').length;
+    const err = Q.filter(q => q.st === 'error').length;
+    const live = Q.filter(q => q.st !== 'canceled');
+    const n = live.length;
+    const running = Q.filter(q => this._dockBusy(q)).length;
+    const wait = Q.filter(q => q.st === 'wait').length;
+    const finished = running + wait === 0;
+    const frac = n ? live.reduce((s, q) => s + (q.st === 'done' ? 1 : q.st === 'ai' ? .85 : q.st === 'thumb' ? .75 : q.st === 'upload' ? q.p * .7 : 0), 0) / n : 0;
+    const pl = (k, w) => k + ' ' + w + (k > 1 ? 's' : '');
+    const sub = [];
+    if (running) sub.push(running + ' en cours');
+    if (wait) sub.push(wait + ' en attente');
+    if (err && !finished) sub.push(pl(err, 'échec'));
+    if (finished) sub.push(err ? 'À relancer dans le détail' : 'Rangés dans la médiathèque');
+    return {
+      dkShow: true,
+      dkPanelClass: this.state.dockOpen ? 'dk-open' : '',
+      dkStyle: { position: 'fixed', right: 28, bottom: 24, zIndex: 70, width: 380, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', animation: 'dkIn .32s cubic-bezier(.2,.7,.2,1) both' },
+      dkRingStyle: { strokeDasharray: '87.96', strokeDashoffset: (87.96 * (1 - frac)).toFixed(2), transition: 'stroke-dashoffset .2s linear', stroke: finished ? (err ? '#f4728c' : '#2dd4a8') : '' },
+      dkFinished: finished, dkRunning: !finished, dkHasErr: err > 0, dkNoErr: finished && !err, dkAllDone: finished && done && !err,
+      dkCounter: done + '/' + n,
+      dkTitle: !finished ? 'Envoi de ' + pl(n, 'média') : err ? pl(done, 'média') + ' ajouté' + (done > 1 ? 's' : '') + ', ' + pl(err, 'échec') : pl(done, 'média') + ' ajouté' + (done > 1 ? 's' : ''),
+      dkSub: sub.join(' · '),
+      dkDoneCount: done + ' terminé' + (done > 1 ? 's' : ''),
+      dkErrCount: err ? pl(err, 'échec') : '',
+      dkToggle: () => this.setState(x => ({ dockOpen: !x.dockOpen })),
+      dkClose: (e) => { if (e) e.stopPropagation(); this._dockClose(); },
+      dkRetryAll: () => this._dockRetryAll(),
+      dkCancelAll: () => this._dockCancelAll(),
+      dkGoMedia: () => this.setState({ tab: 'media', mediaSub: 'medias', dockOpen: false }),
+      dkListRef: this._dkListRef || (this._dkListRef = React.createRef())
+    };
+  }
+
   syncFx() { const box = this._fxRef && this._fxRef.current; if (box && !this._drift) this.startDrift(box); }
   startDrift(box) {
     const cols = [[124, 108, 246], [75, 123, 245], [150, 122, 250], [96, 150, 240]];
@@ -2469,7 +2711,7 @@ class Component extends DCLogic {
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), mPath: x.mPath.map(T), ed: null }));
   }
   ensureBatches() { if (this._bi) return; this._bi = true; if (!this.state.posts.some(p => p.batch)) this.setState(x => ({ posts: x.posts.concat(this.seedBatches()) })); }
-  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); this._initVids(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); this._initVids(); if (!this.state.dockDismissed && this.state.dockQ.length) this._dockRenderList(); }
   componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); }
 
   renderVals() { var out = this._rvE();
@@ -2627,7 +2869,7 @@ class Component extends DCLogic {
       openWiz: () => this.openWiz(),
       hasToast: !!s.toast, toast: s.toast
     };
-    return Object.assign(out, this.scVals(), this.planVals(), this.plannerAlt(), this.edVals(), this.modalVals(), this.libVals(), this.storyVals(), this.collVals(), this.upVals());
+    return Object.assign(out, this.scVals(), this.planVals(), this.plannerAlt(), this.edVals(), this.modalVals(), this.libVals(), this.storyVals(), this.collVals(), this.upVals(), this.dockVals());
   }
   glassPanel() {
     const glass = 'Verre' === 'Verre';
@@ -3802,48 +4044,16 @@ class Component extends DCLogic {
         upKnob: { position: 'absolute', top: 3, left: u.ai ? 19 : 3, width: 16, height: 16, borderRadius: 99, background: '#ffffff', transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,.4)' },
         upHint: hint, upAddLabel: 'Ajouter' + (total && !hint ? ' (' + total + ')' : ''),
         upAddStyle: { display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 10, background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: hint ? 'not-allowed' : 'pointer', opacity: hint ? .45 : 1 },
-        upAdd: async () => {
+        upAdd: () => {
           if (hint) { this.toastMsg(hint); return; }
-          const SD = window.SCALE_DATA;
-          const stamp = Date.now(); const neu = [];
-          this.toastMsg('Upload en cours...');
-
-          // Upload each file to R2 (sequential, with per-file error handling)
-          for (let j = 0; j < u.files.length; j++) {
-            const f = u.files[j];
-            let r2Url = f.url; // fallback to blob URL
-            let thumbUrl = null;
-            if (SD && SD._live && f.raw) {
-              try {
-                const res = await SD.apiUploadAsync(f.raw, u.persona);
-                if (res && res.url) {
-                  r2Url = res.url;
-                  // Thumbnail for videos
-                  if (f.kind === 'video') {
-                    try {
-                      const blob = await new Promise((res, rej) => { const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(f.raw); v.onloadeddata = () => { v.currentTime = 0.1; }; v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { URL.revokeObjectURL(v.src); res(b); }, 'image/jpeg', 0.7); }; v.onerror = () => { URL.revokeObjectURL(v.src); rej(); }; setTimeout(() => rej(), 8000); });
-                      if (blob) { const tf = new File([blob], f.name.replace(/\.\w+$/, '_thumb.jpg'), { type: 'image/jpeg' }); const tr = await SD.apiUploadAsync(tf, u.persona); if (tr && tr.url) thumbUrl = tr.url; }
-                    } catch(e) { console.warn('[upload] thumb failed', f.name, e); }
-                  }
-                  // Create Media record in DB for each selected type
-                  const mediaType = f.kind === 'video' ? 'video' : f.kind === 'audio' ? 'audio' : 'image';
-                  for (const t of types) {
-                    try {
-                      await SD.apiAsync('POST', '/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, thumbnail_url: thumbUrl, filename: f.name, folder: t });
-                    } catch(e) { console.warn('[upload] media create failed', f.name, t, e); }
-                  }
-                } else { console.warn('[upload] R2 upload returned no URL for', f.name); }
-              } catch (e) { console.warn('[upload] failed for', f.name, e); }
-            }
-            for (const t of types) {
-              neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, thumb: thumbUrl, name: f.name, dur: '0:15', r2: r2Url });
-            }
-          }
-
-          const first = neu[0];
-          this.setState(x => ({ extraMedia: x.extraMedia.concat(neu), upload: null, mPath: [first.persona, first.plat, first.type], mediaSub: 'medias', kill: false, sel: {} }));
-          this.toastMsg(neu.length + ' média' + (neu.length > 1 ? 's' : '') + ' ajouté' + (neu.length > 1 ? 's' : '') + (u.ai ? ' · descriptions IA en cours' : ''));
-          if (u.ai) setTimeout(() => this.setState(x => { const d = { ...x.descs }; neu.forEach(m => { d[m.id] = this.descText(m); }); return { descs: d }; }), 1600);
+          const items = u.files.map((f, j) => ({
+            id: 'dq' + Date.now() + '-' + j, name: f.name, kind: f.kind, raw: f.raw, blobUrl: f.url,
+            persona: u.persona, types: types.slice(), ai: u.ai,
+            st: 'wait', p: 0, err: null, desc: null
+          }));
+          this.setState(x => ({ upload: null, dockQ: x.dockQ.concat(items), dockOpen: true, dockDismissed: false }));
+          this.toastMsg(items.length + ' média' + (items.length > 1 ? 's' : '') + ' en cours d\'envoi');
+          this._dockProcess();
         }
       });
     }
