@@ -729,7 +729,13 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     await asyncio.sleep(random.uniform(2.0, 3.0))
 
     # 2. Activer multi-select
-    sel_el = await driver.find_element(contains="lectionner", clickable=True, refresh=True)
+    # Chercher "Sélectionner" exact d'abord, puis par contains avec filtre y > 300
+    # (eviter de matcher la barre du haut a y=66 qui contient "Sélection de galerie")
+    sel_el = await driver.find_element(text="Sélectionner", clickable=True, refresh=True)
+    if not sel_el:
+        candidates = await driver.find_elements(contains="lectionner", clickable=True, refresh=True)
+        candidates = [c for c in candidates if c.get('tap', {}).get('y', 0) > 300]
+        sel_el = candidates[0] if candidates else None
     if not sel_el:
         sel_el = await driver.find_element(contains="Multi", clickable=True, refresh=True)
     if not sel_el:
