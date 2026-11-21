@@ -3798,29 +3798,36 @@ class Component extends DCLogic {
           const stamp = Date.now(); const neu = [];
           this.toastMsg('Upload en cours...');
 
-          // Upload each file to R2
+          // Upload each file to R2 (sequential, with per-file error handling)
           for (let j = 0; j < u.files.length; j++) {
             const f = u.files[j];
             let r2Url = f.url; // fallback to blob URL
+            let thumbUrl = null;
             if (SD && SD._live && f.raw) {
               try {
                 const res = await SD.apiUploadAsync(f.raw, u.persona);
                 if (res && res.url) {
                   r2Url = res.url;
-                  // Also create Media record in DB
-                  const mediaType = f.kind === 'video' ? 'video' : f.kind === 'audio' ? 'audio' : 'image';
-                  let thumbUrl = null;
-                  if (f.kind === 'video' && f.raw) {
+                  // Thumbnail for videos
+                  if (f.kind === 'video') {
                     try {
                       const blob = await new Promise((res, rej) => { const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(f.raw); v.onloadeddata = () => { v.currentTime = 0.1; }; v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { URL.revokeObjectURL(v.src); res(b); }, 'image/jpeg', 0.7); }; v.onerror = () => { URL.revokeObjectURL(v.src); rej(); }; setTimeout(() => rej(), 8000); });
                       if (blob) { const tf = new File([blob], f.name.replace(/\.\w+$/, '_thumb.jpg'), { type: 'image/jpeg' }); const tr = await SD.apiUploadAsync(tf, u.persona); if (tr && tr.url) thumbUrl = tr.url; }
-                    } catch(e) { console.warn('Thumb gen failed', e); }
+                    } catch(e) { console.warn('[upload] thumb failed', f.name, e); }
                   }
-                  SD.apiPost('/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, thumbnail_url: thumbUrl, filename: f.name, folder: types[0] || 'post' });
-                }
-              } catch (e) { console.warn('Upload failed for', f.name, e); }
+                  // Create Media record in DB for each selected type
+                  const mediaType = f.kind === 'video' ? 'video' : f.kind === 'audio' ? 'audio' : 'image';
+                  for (const t of types) {
+                    try {
+                      await SD.apiAsync('POST', '/posting/medias', { persona_id: u.persona, media_type: mediaType, url: r2Url, thumbnail_url: thumbUrl, filename: f.name, folder: t });
+                    } catch(e) { console.warn('[upload] media create failed', f.name, t, e); }
+                  }
+                } else { console.warn('[upload] R2 upload returned no URL for', f.name); }
+              } catch (e) { console.warn('[upload] failed for', f.name, e); }
             }
-            types.forEach(t => neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, thumb: thumbUrl, name: f.name, dur: '0:15', r2: r2Url }));
+            for (const t of types) {
+              neu.push({ id: 'u' + stamp + '-' + t + '-' + j, persona: u.persona, plat: this.typeOf(t).plat, type: t, seed: Math.floor(Math.random() * 60), video: f.kind === 'video', kind: f.kind, url: r2Url, thumb: thumbUrl, name: f.name, dur: '0:15', r2: r2Url });
+            }
           }
 
           const first = neu[0];
