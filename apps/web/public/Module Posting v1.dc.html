@@ -2204,13 +2204,23 @@ class Component extends DCLogic {
   }
   seedIgGroups() { if (this._isLive()) return []; const l = this.lib('lea', 'ig', 'car'), n = this.lib('nina', 'ig', 'car'), m = this.lib('maya', 'ig', 'car'); const mk = (id, persona, media, name) => ({ id, persona, plat: 'ig', media: media.filter(Boolean), name, created: 2 }); return [mk('grp_lea_ig1', 'lea', [l[0], l[2], l[1], l[3]], 'Carousel semaine 6'), mk('grp_lea_ig2', 'lea', [l[4], l[1]], 'Avant / après'), mk('grp_nina_ig1', 'nina', [n[0], n[1], n[2]], 'Flow du matin'), mk('grp_maya_ig1', 'maya', [m[0], m[1], m[2], m[3], m[4]], 'Dimanche en 5 étapes')]; }
   grp(id) { if (typeof id !== 'string' || id.indexOf('grp_') !== 0) return null; const list = (this.state && this.state.groups) || this.seedGroups(); return list.find(g => g.id === id) || null; }
+  _saveGroups(groups) { try { localStorage.setItem('sl_carousel_groups', JSON.stringify(groups)); } catch(e) {} }
+  _loadGroups() { try { const raw = localStorage.getItem('sl_carousel_groups'); if (raw) return JSON.parse(raw); } catch(e) {} return null; }
   migratePost() {
     const s = this.state; const T = t => t === 'post' ? 'car' : t; const M = id => typeof id === 'string' ? id.replace(/-post-/, '-car-') : id;
     const need = [s.posts, s.tpls, s.camps, s.extraMedia].some(a => (a || []).some(x => x.type === 'post')) || (s.colls || []).some(c => c.ptype === 'post');
     if (!need) return;
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), colls: (x.colls || []).map(c => ({ ...c, ptype: T(c.ptype), media: c.media.map(M), items: c.items.map(i => ({ ...i, media: i.media.map(M) })) })), ed: null }));
   }
-  migrateGroups() { if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
+  migrateGroups() {
+    // Live mode: restaurer depuis localStorage
+    if (this._isLive()) {
+      const saved = this._loadGroups();
+      if (saved && saved.length) { this.setState({ groups: saved }); }
+      else if (!this.state.groups) { this.setState({ groups: [] }); }
+      return;
+    }
+    if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
   lib(p, pl, t) { return this.mediaLib().filter(m => m.persona === p && m.plat === pl && m.type === t).map(m => m.id); }
   sounds() {
     if (this._isLive()) {
@@ -3137,7 +3147,7 @@ class Component extends DCLogic {
         geSub: (g0 ? this.P(g0.persona).name + ' · ' + this.platLabel(g0.plat) + ' · ' : '') + ms.length + ' médias · les collections qui l\'utilisent suivront le nouvel ordre',
         geName: ge.name, setGeName: e => gupd({ name: e.target.value }),
         geMedia: ms.map((m, i) => { const d = this.dnd('ge', i, ms.length, (a, b) => gupd({ media: this.mvArr(ge.media, a, b) })); return { ...d, n: i + 1, wrap: this.thumbWrap(96, 120, d), canRemove: ms.length > 2, style: { position: 'absolute', inset: 0, background: this.mediaBg(m), pointerEvents: 'none' }, remove: () => gupd({ media: ge.media.filter(x => x !== m.id) }) }; }),
-        geSave: () => { this.setState(x => ({ groups: x.groups.map(g => g.id === ge.id ? { ...g, name: ge.name.trim() || g.name, media: ge.media.slice() } : g), grpEd: null })); this.toastMsg('Carousel mis à jour'); }
+        geSave: () => { this.setState(x => { const ng = x.groups.map(g => g.id === ge.id ? { ...g, name: ge.name.trim() || g.name, media: ge.media.slice() } : g); this._saveGroups(ng); return { groups: ng, grpEd: null }; }); this.toastMsg('Carousel mis à jour'); }
       });
     }
     return out;
@@ -3190,7 +3200,7 @@ class Component extends DCLogic {
           hover: s.hoverGroup === g.id, enter: () => this.setState({ hoverGroup: g.id }), leave: () => { if (this.state.hoverGroup === g.id) this.setState({ hoverGroup: null }); },
           preview: ms.map((m, i) => ({ n: i + 1, style: { position: 'relative', width: 60, height: 75, flex: 'none', borderRadius: 8, background: this.mediaBg(m), border: '1px solid rgba(255,255,255,.12)' } })),
           edit: () => this.setState({ grpEd: { id: g.id, name: g.name, media: g.media.slice() }, hoverGroup: null }),
-          ungroup: e => { e.stopPropagation(); this.setState(x => ({ groups: x.groups.filter(y => y.id !== g.id), hoverGroup: null })); this.toastMsg('Carousel dégroupé · les médias restent dans la médiathèque'); } }; };
+          ungroup: e => { e.stopPropagation(); this.setState(x => { const ng = x.groups.filter(y => y.id !== g.id); this._saveGroups(ng); return { groups: ng, hoverGroup: null }; }); this.toastMsg('Carousel dégroupé · les médias restent dans la médiathèque'); } }; };
         sections = this.TYPES[pl].filter(t => t[2]).map(t => { const meta = secMeta[t[0]]; const items = scope.filter(m => m.type === t[0]); return {
           isMedia: true, isGroup: false, label: meta[2], icon: meta[0], iconStyle: { fontSize: 20, color: meta[1] }, count: items.length, empty: !items.length, emptyText: 'Aucun média dans cette section',
           canGroup: GT.indexOf(t[0]) >= 0 && items.length > 1, hint: grouping && GT.indexOf(t[0]) >= 0, groupLabel: grouping ? 'Annuler' : 'Grouper', groupIcon: grouping ? 'ph ph-x' : 'ph ph-stack',
@@ -3208,7 +3218,7 @@ class Component extends DCLogic {
         libGroupLabel: 'Créer le carousel' + (nSel ? ' (' + nSel + ')' : ''),
         libGroupBtn: { display: 'flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#ffffff', background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', cursor: nSel >= 2 ? 'pointer' : 'not-allowed', opacity: nSel >= 2 ? 1 : .45, boxShadow: nSel >= 2 ? '0 4px 18px rgba(99,102,241,.4)' : 'none' },
         libGroupCancel: () => this.setState({ grouping: null }),
-        libGroupCreate: () => { if (nSel < 2) { this.toastMsg('Sélectionne au moins 2 médias'); return; } const n = (s.groups || []).filter(g => g.persona === pp && g.plat === pl).length + 1; const g = { id: 'grp_' + Date.now(), persona: pp, plat: pl, media: gr.sel.slice(), name: 'Carousel ' + n, created: 0 }; this.setState(x => ({ groups: (x.groups || []).concat([g]), grouping: null })); this.toastMsg('Carousel créé · ' + nSel + ' médias'); }
+        libGroupCreate: () => { if (nSel < 2) { this.toastMsg('Sélectionne au moins 2 médias'); return; } const n = (s.groups || []).filter(g => g.persona === pp && g.plat === pl).length + 1; const g = { id: 'grp_' + Date.now(), persona: pp, plat: pl, media: gr.sel.slice(), name: 'Carousel ' + n, created: 0 }; this.setState(x => { const ng = (x.groups || []).concat([g]); this._saveGroups(ng); return { groups: ng, grouping: null }; }); this.toastMsg('Carousel créé · ' + nSel + ' médias'); }
       });
     }
     if (out.isSons) {
