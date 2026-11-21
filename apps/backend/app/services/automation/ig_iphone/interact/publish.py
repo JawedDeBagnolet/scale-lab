@@ -36,9 +36,22 @@ async def _open_create_menu(driver, navigator, log) -> bool:
 
     # Toujours aller au profil d'abord (le bouton "+" du feed est different)
     if screen != "own_profile":
-        await navigator.go_profile()
-        await asyncio.sleep(2)
-        screen = await _detect_screen(driver, log)
+        for nav_try in range(3):
+            await navigator.go_profile()
+            await asyncio.sleep(2)
+            screen = await _detect_screen(driver, log)
+            if screen in ("own_profile", "creation_menu"):
+                break
+            log("   ⚠ navigation profil tentative %d: ecran '%s'" % (nav_try + 1, screen))
+            if nav_try < 2:
+                await asyncio.sleep(1)
+        if screen not in ("own_profile", "creation_menu"):
+            log("   ! impossible d'atteindre le profil apres 3 tentatives")
+            await _dump_screen(driver, log, "no_profile")
+            return False
+        if screen == "creation_menu":
+            log("   ✓ menu creation ouvert (via nav)")
+            return True
 
     # Chercher le bouton "+" (menu de creation)
     plus_el = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
