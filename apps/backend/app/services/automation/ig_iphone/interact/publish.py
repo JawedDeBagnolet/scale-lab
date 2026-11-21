@@ -750,11 +750,14 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
 
     # 2b. Popup possible apres multi-select ("Partager plus")
     await _dismiss_ig_popups(driver, log)
+    await asyncio.sleep(1)
 
-    # 3. Selectionner les photos (meme logique que _select_video)
+    # 3. Selectionner les photos
+    # En mode post/carousel, la grille commence vers y=530 (sous la barre preview + boutons)
+    # Filtre y > 520 pour exclure les boutons (Sélection de galerie, Brouillons) a y=492
     photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
     photos = [p for p in photos
-              if p.get('tap', {}).get('y', 0) > 220
+              if p.get('tap', {}).get('y', 0) > 520
               and 'cam' not in (p.get('text', '') or '').lower()]
     photos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
     log("   %d photos disponibles" % len(photos))
