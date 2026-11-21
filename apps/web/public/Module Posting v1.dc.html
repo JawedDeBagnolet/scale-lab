@@ -40,6 +40,7 @@ a { color: #8db4fd; text-decoration: none; }
 a:hover { color: #b9d0ff; }
 input::placeholder, textarea::placeholder { color: #5b6175; }
 select option { background: #151827; color: #e8eaf3; }
+@keyframes up-pop { 0% { opacity: 0; transform: scale(.8); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes dkIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes dkSpin { to { transform: rotate(360deg); } }
 @keyframes dkShimmer { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
@@ -417,7 +418,8 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="{{ it.bg }}"></div>
 <sc-if value="{{ it.isVideoUrl }}"><video data-autoseek="1" src="{{ it.videoUrl }}" preload="{{ it.videoPreload }}" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 28%,transparent 52%,rgba(0,0,0,.75));pointer-events:none;z-index:2"></div>
-<sc-if value="{{ it.hasDesc }}"><span title="Description IA disponible" style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(124,108,246,.5);font-size:10px;font-weight:700;color:#ffffff"><i class="ph ph-sparkle" style="font-size:11px"></i>IA</span></sc-if>
+<sc-if value="{{ it.newTag }}"><span style="position:absolute;left:6px;top:6px;z-index:4;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff;background:linear-gradient(135deg,#6d5ef0,#4b7bf5)">Nouveau</span></sc-if>
+<sc-if value="{{ it.hasDesc }}"><span title="Description IA disponible" style="{{ it.aiTagStyle }}"><i class="ph ph-sparkle" style="font-size:11px"></i>IA</span></sc-if>
 <sc-if value="{{ it.kill }}"><span style="{{ it.check }}"><sc-if value="{{ it.on }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span></sc-if>
 <sc-if value="{{ it.hasTag }}"><span title="{{ it.tagTitle }}" style="position:absolute;left:8px;bottom:34px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(8,9,16,.66);font-size:10px;font-weight:600;color:#e2e8f0"><i class="{{ it.tagIcon }}" style="font-size:11px"></i>{{ it.tagLabel }}</span></sc-if>
 <sc-if value="{{ it.showDur }}"><span style="position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:6px;background:rgba(8,9,16,.66);font-size:10px;font-weight:600;color:#f2f3fa"><i class="ph-fill ph-play" style="font-size:9px"></i>{{ it.dur }}</span></sc-if>
@@ -2564,7 +2566,7 @@ class Component extends DCLogic {
       const neu = q.types.map((t, i) => ({
         id: 'u' + stamp + '-' + t + '-' + id.slice(-4), persona: q.persona, plat: this.typeOf(t).plat, type: t,
         seed: Math.floor(Math.random() * 60), video: q.kind === 'video', kind: q.kind,
-        url: r2Url, thumb: thumbUrl, name: q.name, dur: '0:15', r2: r2Url
+        url: r2Url, thumb: thumbUrl, name: q.name, dur: '0:15', r2: r2Url, addedAt: stamp
       }));
       this.setState(x => ({ extraMedia: x.extraMedia.concat(neu) }));
       upd({ st: 'done', desc: q.ai ? (me.state.dockQ.find(x => x.id === id) || {}).desc || '' : null });
@@ -2590,7 +2592,7 @@ class Component extends DCLogic {
     this.setState(x => ({ dockQ: x.dockQ.map(q => q.st === 'wait' ? { ...q, st: 'canceled' } : q) }));
   }
   _dockClose() {
-    this.setState({ dockQ: [], dockOpen: false, dockDismissed: true });
+    this.setState(x => ({ dockQ: [], dockOpen: false, dockDismissed: true, extraMedia: x.extraMedia.map(m => m.addedAt ? { ...m, addedAt: undefined } : m) }));
   }
   _dockRenderList() {
     if (!this._dkListRef) this._dkListRef = React.createRef();
@@ -3422,7 +3424,7 @@ class Component extends DCLogic {
         scope = lib.filter(m => m.persona === pp && m.plat === pl);
         const canGroup = true; const GT = ['th_media', 'tw_img', 'car'];
         const secMeta = { reel: ['ph ph-film-strip', '', 'Reel'], story: ['ph ph-circle-dashed', '', 'Story'], car: ['ph ph-images', '', 'Médias'], post: ['ph ph-image-square', '', 'Post classique'], th_media: ['ph ph-images', '', 'Médias'], tw_img: ['ph ph-images', '', 'Médias'], pfp: ['ph ph-user-circle', '', 'Photo de profil'] };
-        const card = m => { const on = !!s.sel[m.id]; const oi = grouping ? gr.sel.indexOf(m.id) : -1; const d = s.descs[m.id]; const gen = !!(s.genIds || {})[m.id]; const hv = s.hoverMedia === m.id && !grouping && !s.kill; return {
+        const card = m => { const on = !!s.sel[m.id]; const oi = grouping ? gr.sel.indexOf(m.id) : -1; const d = s.descs[m.id]; const gen = !!(s.genIds || {})[m.id]; const hv = s.hoverMedia === m.id && !grouping && !s.kill; const isNew = !!(m.addedAt && Date.now() - m.addedAt < 600000); const popAnim = !!(m.addedAt && Date.now() - m.addedAt < 1000); return {
           click: () => grouping ? (GT.indexOf(m.type) < 0 ? null : this.setState(x => { const sl = x.grouping.sel; return { grouping: { ...x.grouping, sel: sl.indexOf(m.id) >= 0 ? sl.filter(y => y !== m.id) : sl.concat([m.id]) } }; })) : s.kill ? this.setState(x => ({ sel: { ...x.sel, [m.id]: !x.sel[m.id] } })) : this.setState({ aiDesc: { id: m.id } }),
           enter: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { this._vidReady(v); v.play().catch(() => {}); } } this.setState({ hoverMedia: m.id }); },
           leave: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.pause(); v.currentTime = 0.1; } } if (this.state.hoverMedia === m.id) this.setState({ hoverMedia: null }); },
@@ -3433,7 +3435,9 @@ class Component extends DCLogic {
           textStyle: { fontSize: d && !gen ? 11 : 10.5, lineHeight: 1.4, color: gen ? '#dcd8ff' : '#e8eaf3', fontFamily: d || gen ? 'inherit' : "'Geist Mono',monospace", whiteSpace: d || gen ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 6px rgba(0,0,0,.5)' },
           kill: s.kill && !grouping, on, check: { ...this.cb(on, true), position: 'absolute', left: 8, top: 8, ...(on ? {} : { background: 'rgba(8,9,16,.5)' }) },
           inGroup: oi >= 0, order: oi + 1, orderStyle: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#ffffff', background: 'linear-gradient(135deg,#6d5ef0,#4b7bf5)', boxShadow: '0 0 0 2px rgba(8,9,16,.55), 0 4px 14px rgba(99,102,241,.55)' },
-          wrap: { position: 'relative', aspectRatio: '4/5', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', background: '#11131d', border: '1px solid ' + (oi >= 0 ? 'rgba(124,108,246,.9)' : on ? 'rgba(236,243,255,.95)' : hv ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.07)'), boxShadow: oi >= 0 ? '0 0 0 1px rgba(124,108,246,.9), 0 0 20px rgba(99,102,241,.3)' : on ? '0 0 0 1px rgba(236,243,255,.9), 0 0 22px rgba(205,222,255,.38)' : 'none', transition: 'border-color .15s, box-shadow .15s' },
+          isNew, newTag: isNew,
+          aiTagStyle: { position: 'absolute', left: 8, top: isNew ? 30 : 8, display: 'flex', alignItems: 'center', gap: 4, height: 20, padding: '0 7px', borderRadius: 6, background: 'rgba(124,108,246,.5)', fontSize: 10, fontWeight: 700, color: '#ffffff', zIndex: 4 },
+          wrap: { position: 'relative', aspectRatio: '4/5', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', background: '#11131d', border: '1px solid ' + (oi >= 0 ? 'rgba(124,108,246,.9)' : on ? 'rgba(236,243,255,.95)' : hv ? 'rgba(255,255,255,.2)' : isNew ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)'), boxShadow: oi >= 0 ? '0 0 0 1px rgba(124,108,246,.9), 0 0 20px rgba(99,102,241,.3)' : on ? '0 0 0 1px rgba(236,243,255,.9), 0 0 22px rgba(205,222,255,.38)' : isNew ? '0 0 0 2px rgba(124,108,246,.55), 0 0 18px rgba(124,108,246,.35)' : 'none', transition: 'border-color .15s, box-shadow .15s', animation: popAnim ? 'up-pop .45s cubic-bezier(.34,1.56,.64,1) both' : 'none' },
           gen: e => { e.stopPropagation(); this.setState(x => ({ genIds: { ...(x.genIds || {}), [m.id]: true } })); setTimeout(() => this.setState(x => { const g = { ...(x.genIds || {}) }; delete g[m.id]; return { genIds: g, descs: { ...x.descs, [m.id]: this.descText({ ...m, seed: m.seed + (x.descs[m.id] ? 1 + Math.floor(Math.random() * 4) : 0) }) } }; }), 1200); },
           remove: e => { e.stopPropagation(); this.setState({ confirm: { kind: 'media', ids: [m.id] } }); } }; };
         const gcard = g => { const ms = g.media.map(id => this.med(id)).filter(Boolean); const lay = [[18, -8, 9], [-16, -4, -7], [0, 6, 0]]; const top = ms.slice(0, 3); const off = 3 - top.length; return {
@@ -3443,7 +3447,7 @@ class Component extends DCLogic {
           preview: ms.map((m, i) => ({ n: i + 1, style: { position: 'relative', width: 60, height: 75, flex: 'none', borderRadius: 8, background: this.mediaBg(m), border: '1px solid rgba(255,255,255,.12)' } })),
           edit: () => this.setState({ grpEd: { id: g.id, name: g.name, media: g.media.slice() }, hoverGroup: null }),
           ungroup: e => { e.stopPropagation(); this.setState(x => { const ng = x.groups.filter(y => y.id !== g.id); this._saveGroups(ng); return { groups: ng, hoverGroup: null }; }); this.toastMsg('Carousel dégroupé · les médias restent dans la médiathèque'); } }; };
-        sections = this.TYPES[pl].filter(t => t[2]).map(t => { const meta = secMeta[t[0]]; const items = scope.filter(m => m.type === t[0]); return {
+        sections = this.TYPES[pl].filter(t => t[2]).map(t => { const meta = secMeta[t[0]]; const items = scope.filter(m => m.type === t[0]).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)); return {
           isMedia: true, isGroup: false, label: meta[2], icon: meta[0], iconStyle: { fontSize: 20, color: meta[1] }, count: items.length, empty: !items.length, emptyText: 'Aucun média dans cette section',
           canGroup: GT.indexOf(t[0]) >= 0 && items.length > 1, hint: grouping && GT.indexOf(t[0]) >= 0, groupLabel: grouping ? 'Annuler' : 'Grouper', groupIcon: grouping ? 'ph ph-x' : 'ph ph-stack',
           groupBtnStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 32, padding: '0 13px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: grouping ? '#ffffff' : '#c5c9d8', background: grouping ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(255,255,255,.03)', border: '1px solid ' + (grouping ? 'transparent' : 'rgba(255,255,255,.1)'), boxShadow: grouping ? '0 4px 14px rgba(99,102,241,.35)' : 'none' },
