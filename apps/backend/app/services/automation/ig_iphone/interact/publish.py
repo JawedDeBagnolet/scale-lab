@@ -303,8 +303,46 @@ async def _add_audio(driver, log, song_query: str) -> bool:
     return True
 
 
+async def _dismiss_ig_popups(driver, log) -> bool:
+    """Ferme les popups connus d'IG (Partager plus, À votre image, Partage de publications)."""
+    dismissed = False
+    for _ in range(3):
+        ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
+        fermer_el = await driver.find_element(text="Fermer", clickable=True)
+        partager_plus = await driver.find_element(contains="Partager plus", clickable=False)
+        votre_image = await driver.find_element(contains="votre image", clickable=False)
+        partage_pub = await driver.find_element(contains="Partage de publications", clickable=False)
+        if partager_plus and ok_el:
+            tap = ok_el.get('tap', {})
+            log("   dismiss popup 'Partager plus' (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(1)
+            dismissed = True
+            continue
+        if votre_image and ok_el:
+            tap = ok_el.get('tap', {})
+            log("   dismiss popup 'À votre image' (y=%d)" % tap.get('y', 0))
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(1)
+            dismissed = True
+            continue
+        if partage_pub:
+            target = ok_el or fermer_el
+            if target:
+                tap = target.get('tap', {})
+                log("   dismiss popup 'Partage de publications' (y=%d)" % tap.get('y', 0))
+                await driver.ht.tap(tap['x'], tap['y'])
+                await asyncio.sleep(1)
+                dismissed = True
+                continue
+        break
+    return dismissed
+
+
 async def _dismiss_privacy_popup(driver, log) -> bool:
-    """Ferme le popup de partage de publications."""
+    """Ferme le popup de partage de publications (ancien + nouveau)."""
+    if await _dismiss_ig_popups(driver, log):
+        return True
     ok_el = await driver.find_element(text="OK", clickable=True, refresh=True)
     if ok_el:
         rect = ok_el.get('rect', {})
@@ -704,6 +742,9 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(1.5)
 
+    # 2b. Popup possible apres multi-select ("Partager plus")
+    await _dismiss_ig_popups(driver, log)
+
     # 3. Selectionner les photos (meme logique que _select_video)
     photos = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
     photos = [p for p in photos
@@ -727,6 +768,9 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     if not await _tap_suivant(driver, log):
         stats["duration_s"] = round(time.time() - start)
         return stats
+
+    # 4b. Popups possibles ("À votre image", etc.)
+    await _dismiss_ig_popups(driver, log)
 
     # 5. Editeur: ajouter un son si demande
     if audio_query:
