@@ -2330,7 +2330,7 @@ class Component extends DCLogic {
       ['s19', 'Weightless', 'Aida Ren', null, 83, 6400, '0:44'], ['s20', 'Late Checkout', 'Palma Club', null, 44, 3900, '0:22']
     ].map((r, i) => ({ id: r[0], title: r[1], artist: r[2], rank: r[3], score: r[4], uses: r[5], dur: r[6], added: i })));
   }
-  snd(id) { return this.sounds().find(x => x.id === id) || null; }
+  snd(id) { return this.sounds().find(x => x.id === id) || (this.state.sSearchResults || []).find(x => x.id === id) || this._loadLikedSounds().find(x => x.id === id) || null; }
   _playSound(snd) {
     // snd = null to stop, or {id, preview} to play
     if (!snd) {
