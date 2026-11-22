@@ -2101,11 +2101,11 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 <sc-if value="{{ auIsSearch }}"><div onClick="{{ auSearch }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(124,108,246,.5);color:#cfd3ff;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="background:rgba(124,108,246,.14)"><i class="ph ph-instagram-logo" style="font-size:15px"></i>Recherche</div></sc-if>
 </div>
-<div style="display:grid;grid-template-columns:34px minmax(0,1fr) 44px 92px 64px 30px 22px;gap:12px;padding:0 12px;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#5b6175"><span></span><span>Titre</span><span>Rang</span><span>Score OFM</span><span>Usages</span><span></span><span></span></div>
+<div style="display:grid;grid-template-columns:48px minmax(0,1fr) 44px 92px 64px 30px 22px;gap:12px;padding:0 12px;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#5b6175"><span></span><span>Titre</span><span>Rang</span><span>Score OFM</span><span>Usages</span><span></span><span></span></div>
 <div style="display:flex;flex-direction:column;gap:3px;margin-top:-8px">
 <sc-for list="{{ auRows }}" as="r" hint-placeholder-count="6">
 <div onClick="{{ r.toggle }}" style="{{ r.rowStyle }}" style-hover="background:rgba(255,255,255,.035)">
-<span onClick="{{ r.play }}" style="{{ r.playStyle }}"><i class="{{ r.playIcon }}" style="font-size:13px"></i></span>
+<div onClick="{{ r.play }}" style="{{ r.coverStyle }}"><div style="{{ r.playStyle }}"><i class="{{ r.playIcon }}" style="font-size:13px"></i></div></div>
 <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.title }}</div><div style="font-size:11.5px;color:#8a91a8">{{ r.artist }} · {{ r.dur }}</div></div>
 <span style="font-size:12.5px;font-weight:600;color:#cbd5e1;font-variant-numeric:tabular-nums">{{ r.rank }}</span>
 <div style="display:flex;align-items:center;gap:7px"><div style="flex:1;height:4px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden"><div style="{{ r.scoreBar }}"></div></div><span style="font-size:11.5px;color:#c5c9d8;font-variant-numeric:tabular-nums">{{ r.score }}</span></div>
@@ -4293,26 +4293,31 @@ class Component extends DCLogic {
         saved.forEach(x => { if (!ids.has(x.id)) list.push(x); });
         list = list.filter(x => s.liked[x.id]);
       }
-      else if (au.tab === 'search') list = au.searched ? list : [];
+      else if (au.tab === 'search') {
+        if (au.searched && s.sSearchResults && s.sSearchResults.length) list = s.sSearchResults;
+        else if (!au.searched) list = [];
+      }
       const tabs = [['trend', 'Tendances Instagram', 'fire', ''], ['ofm', 'Tendance OFM', 'star', 'Score OFM : vitesse de croissance du son, reprise par les comptes de la niche et fraîcheur, sur 100'], ['liked', 'Likés', 'heart', ''], ['all', 'Tous', 'list', ''], ['search', 'Recherche sur Instagram', 'magnifying-glass', '']];
       Object.assign(out, {
         auOpen: true, auOuter: this.ovStyle(80, .45),
         auInner: { width: 'min(780px,100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', overscrollBehavior: 'contain', borderRadius: 20, padding: '20px 22px 22px', display: 'flex', flexDirection: 'column', gap: 16, ...this.glassPanel(), background: 'rgba(17,19,32,.94)' },
         auSub: au.multi ? 'Plusieurs sons possibles · tirage aléatoire à la publication' : 'Un son pour ce reel',
         auTabs: tabs.map(t => { const on = au.tab === t[0]; return { label: t[1], title: t[3], icon: 'ph ph-' + t[2], go: () => this.setState(x => ({ audio: { ...x.audio, tab: t[0] } })), style: { display: 'flex', alignItems: 'center', gap: 6, padding: '0 0 10px', marginBottom: -1, fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', color: on ? '#f2f3fa' : '#8a91a8', borderBottom: '2px solid ' + (on ? '#7c6cf6' : 'transparent') } }; }),
-        auQ: au.q, setAuQ: e => { const v = e.target.value; this.setState(x => ({ audio: { ...x.audio, q: v, searched: false } })); },
+        auQ: au.q, setAuQ: e => { const v = e.target.value; this.setState(x => ({ audio: { ...x.audio, q: v, searched: false } })); if (au.tab === 'search') this._searchSoundsLive(v); },
         auPh: au.tab === 'search' ? 'Rechercher un son sur Instagram' : 'Titre, artiste', auIsSearch: au.tab === 'search',
-        auSearch: () => { this.setState(x => ({ audio: { ...x.audio, searched: true } })); this.toastMsg('Recherche live sur Instagram'); },
+        auSearch: () => { this._searchSoundsLive(au.q); this.setState(x => ({ audio: { ...x.audio, searched: true } })); },
         auScrape: () => this.toastMsg('Tendances mises à jour'),
         auRows: list.map(x => { const on = au.sel.indexOf(x.id) >= 0; const pl = s.playing === x.id; const lk = !!s.liked[x.id]; return {
           title: x.title, artist: x.artist, dur: x.dur, rank: x.rank ? '#' + x.rank : '—', score: x.score, uses: this.compact(x.uses), on, cb: this.cb(on),
+          hasCover: !!x.cover,
+          coverStyle: { width: 48, height: 48, borderRadius: 10, background: x.cover ? 'url(' + x.cover + ') center/cover' : 'rgba(124,108,246,.12)', border: x.cover ? 'none' : '1px solid rgba(255,255,255,.08)', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
           scoreBar: { width: x.score + '%', height: '100%', borderRadius: 99, background: x.score >= 80 ? '#a5a0f5' : 'rgba(148,163,184,.6)' },
-          playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: { width: 34, height: 34, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)') },
-          play: e => { e.stopPropagation(); this.setState({ playing: pl ? null : x.id }); },
+          playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: x.cover ? { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', background: pl ? 'rgba(0,0,0,.55)' : 'rgba(0,0,0,.25)', transition: 'background .15s' } : { width: 34, height: 34, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)') },
+          play: e => { e.stopPropagation(); this._playSound(pl ? null : x); },
           likeIcon: lk ? 'ph-fill ph-heart' : 'ph ph-heart', likeStyle: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: lk ? '#fb7185' : '#5b6175' },
           like: e => { e.stopPropagation(); this._persistLikedSound(x, !lk); this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }); },
           toggle: () => this.setState(y => { const sel = y.audio.sel; return { audio: { ...y.audio, sel: y.audio.multi ? (on ? sel.filter(z => z !== x.id) : sel.concat([x.id])) : (on ? [] : [x.id]) } }; }),
-          rowStyle: { display: 'grid', gridTemplateColumns: '34px minmax(0,1fr) 44px 92px 64px 30px 22px', gap: 12, alignItems: 'center', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(124,108,246,.08)' : 'transparent', border: '1px solid ' + (on ? 'rgba(124,108,246,.35)' : 'transparent') } }; }),
+          rowStyle: { display: 'grid', gridTemplateColumns: '48px minmax(0,1fr) 44px 92px 64px 30px 22px', gap: 12, alignItems: 'center', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(124,108,246,.08)' : 'transparent', border: '1px solid ' + (on ? 'rgba(124,108,246,.35)' : 'transparent') } }; }),
         auEmpty: !list.length, auEmptyText: au.tab === 'search' ? (au.q.trim() ? 'Lance la recherche pour interroger Instagram' : 'Tape un titre ou un artiste puis lance la recherche') : au.tab === 'liked' ? 'Aucun son liké' : 'Aucun son',
         auCount: au.sel.length + ' son' + (au.sel.length > 1 ? 's' : '') + ' sélectionné' + (au.sel.length > 1 ? 's' : ''),
         auCancel: () => this.setState({ audio: null, playing: null }),
