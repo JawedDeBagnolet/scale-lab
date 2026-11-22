@@ -375,7 +375,7 @@ async def _publish_post(drv, nav, sess, values, log):
     photo_count = media_count if media_count else 1
 
     if photo_count > 1:
-        stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, audio_query=audio_query, username=username, log=log)
+        stats = await publish_carousel(drv, nav, caption=caption, photo_count=photo_count, audio_query=audio_query, first_comment=first_comment, username=username, log=log)
     else:
         stats = await publish_feed_post(drv, nav, caption=caption, first_comment=first_comment, location=location, username=username, log=log)
 
@@ -389,6 +389,17 @@ async def _publish_post(drv, nav, sess, values, log):
                 log("   ✓ galerie nettoyee (%d medias)" % media_count)
         except Exception:
             pass
+
+    # Mini session feed post-publication (parait naturel)
+    if published and values.get("feed_session", True):
+        try:
+            from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
+            feed_duration = values.get("feed_duration", 30)
+            log("\n--- Session feed post-publication (%ds) ---" % feed_duration)
+            feed_cfg = {"duration": feed_duration, "like_pct": 0.05}
+            await run_feed_session(drv, nav, config=feed_cfg, log=log)
+        except Exception as e:
+            log("   ⚠ session feed echouee: %s" % str(e)[:100])
 
     msg = f"Post {'publié' if published else 'échoué'}"
     if caption:
@@ -461,6 +472,17 @@ async def _publish_reel(drv, nav, sess, values, log):
             await cleanup_gallery_via_mtouch(1, log=log)
         except Exception:
             pass
+
+    # Mini session feed post-publication
+    if published and values.get("feed_session", True):
+        try:
+            from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
+            feed_duration = values.get("feed_duration", 30)
+            log("\n--- Session feed post-publication (%ds) ---" % feed_duration)
+            feed_cfg = {"duration": feed_duration, "like_pct": 0.05}
+            await run_feed_session(drv, nav, config=feed_cfg, log=log)
+        except Exception as e:
+            log("   ⚠ session feed echouee: %s" % str(e)[:100])
 
     msg = "Reel publié" if published else "Reel : échec publication"
     if caption and published:

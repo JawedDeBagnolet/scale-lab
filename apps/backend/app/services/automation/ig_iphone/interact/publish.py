@@ -461,6 +461,63 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
     return False
 
 
+async def _post_first_comment(driver, log, comment: str, username: str = "") -> bool:
+    """Poste un premier commentaire sur la publication qui vient d'etre publiee.
+
+    Apres publication, le feed affiche le post. On :
+    1. Tap sur "Commenter" (icone bulle sous le post)
+    2. Tap sur le champ de commentaire
+    3. Type le texte
+    4. Envoie (tap fleche)
+    """
+    if not comment:
+        return True
+
+    log("   [1er commentaire] '%s'" % comment[:40])
+    await asyncio.sleep(random.uniform(2.0, 3.5))
+
+    # 1. Trouver et taper sur le bouton "Commenter"
+    comment_btn = await driver.find_element(text="Commenter", clickable=True, refresh=True)
+    if not comment_btn:
+        log("   [1er commentaire] ! bouton Commenter non trouve")
+        await _dump_screen(driver, log, "no_comment_btn")
+        return False
+    tap = comment_btn.get('tap', {})
+    log("   [1er commentaire] tap Commenter (y=%d)" % tap.get('y', 0))
+    await driver.ht.tap(tap['x'], tap['y'])
+    await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    # 2. Taper sur le champ de commentaire via tap_element natif
+    tapped = await driver.ht.tap_by_text("Ajouter un commentaire", match="contains")
+    if not tapped:
+        tapped = await driver.ht.tap_by_text("commentaire", match="contains")
+    if not tapped:
+        log("   [1er commentaire] ! champ commentaire non trouve")
+        await _dump_screen(driver, log, "no_comment_field")
+        return False
+    await asyncio.sleep(1)
+
+    # 3. Taper le texte
+    await driver.ht.type_text(comment)
+    await asyncio.sleep(random.uniform(1.0, 2.0))
+
+    # 4. Envoyer (bouton "Publier" ou fleche)
+    send_el = await driver.find_element(text="Publier", clickable=True, refresh=True)
+    if not send_el:
+        send_el = await driver.find_element(contains="Envoyer", clickable=True, refresh=True)
+    if send_el:
+        tap = send_el.get('tap', {})
+        log("   [1er commentaire] envoi (y=%d)" % tap.get('y', 0))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(random.uniform(1.5, 2.5))
+        log("   [1er commentaire] ✓ commentaire poste")
+        return True
+    else:
+        log("   [1er commentaire] ! bouton Publier/Envoyer non trouve")
+        await _dump_screen(driver, log, "no_send_comment")
+        return False
+
+
 # ── Publication Feed ──────────────────────────────────────────────────────────
 
 async def publish_feed_post(driver, navigator, caption="", photo_index=0,
@@ -523,6 +580,9 @@ async def publish_feed_post(driver, navigator, caption="", photo_index=0,
     if await _tap_partager(driver, log, username=username):
         stats["published"] = True
         log("   ✓ post publie!")
+        # 8. Premier commentaire (si demande)
+        if first_comment:
+            await _post_first_comment(driver, log, first_comment, username=username)
     else:
         log("   ! echec publication")
 
@@ -737,6 +797,7 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
 
 async def publish_carousel(driver, navigator, caption="", photo_count=2,
                            audio_query: str | None = None,
+                           first_comment=None,
                            username: str = "",
                            log: Callable = print) -> dict:
     """Publie un carousel (multi-photo)."""
@@ -833,6 +894,9 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     if await _tap_partager(driver, log, username=username):
         stats["published"] = True
         log("   ✓ carousel publie!")
+        # 10. Premier commentaire (si demande)
+        if first_comment:
+            await _post_first_comment(driver, log, first_comment, username=username)
 
     stats["duration_s"] = round(time.time() - start)
     return stats

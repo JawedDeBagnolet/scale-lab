@@ -2255,6 +2255,8 @@ class Component extends DCLogic {
   grp(id) { if (typeof id !== 'string' || id.indexOf('grp_') !== 0) return null; const list = (this.state && this.state.groups) || this.seedGroups(); return list.find(g => g.id === id) || null; }
   _saveGroups(groups) { try { localStorage.setItem('sl_carousel_groups', JSON.stringify(groups)); } catch(e) {} }
   _loadGroups() { try { const raw = localStorage.getItem('sl_carousel_groups'); if (raw) return JSON.parse(raw); } catch(e) {} return null; }
+  _saveLiked(liked) { try { localStorage.setItem('sl_liked_sounds', JSON.stringify(liked)); } catch(e) {} }
+  _loadLiked() { try { const raw = localStorage.getItem('sl_liked_sounds'); if (raw) return JSON.parse(raw); } catch(e) {} return null; }
   migratePost() {
     const s = this.state; const T = t => t === 'post' ? 'car' : t; const M = id => typeof id === 'string' ? id.replace(/-post-/, '-car-') : id;
     const need = [s.posts, s.tpls, s.camps, s.extraMedia].some(a => (a || []).some(x => x.type === 'post')) || (s.colls || []).some(c => c.ptype === 'post');
@@ -2270,6 +2272,11 @@ class Component extends DCLogic {
       return;
     }
     if (this.state.groups) { if (!this.state.groups.some(g => g.plat === 'ig')) this.setState(x => ({ groups: x.groups.concat(this.seedIgGroups()) })); return; } this.setState(x => ({ groups: this.seedGroups(), grouping: null, hoverGroup: null, genIds: {}, mPath: x.mPath.slice(0, 2), colls: (x.colls || []).map(c => c.id === 'col3' && !c.media.some(id => String(id).indexOf('grp_') === 0) ? { ...c, media: c.media.concat(['grp_maya1', 'grp_maya2']) } : c) })); }
+  migrateLikes() {
+    const saved = this._loadLiked();
+    if (saved) this.setState({ liked: saved });
+    else if (this._isLive()) this.setState({ liked: {} });
+  }
   lib(p, pl, t) { return this.mediaLib().filter(m => m.persona === p && m.plat === pl && m.type === t).map(m => m.id); }
   sounds() {
     if (this._isLive()) {
@@ -2695,7 +2702,7 @@ class Component extends DCLogic {
   }
   componentDidMount() {
     this._hash = () => { const H = new URLSearchParams((location.hash || '').replace(/^#/, '')); const camp = H.get('camp'), q = H.get('q'); if (camp) { const c = (this.state.camps || []).find(x => x.id === camp || x.name === camp); this.setState(c ? { tab: 'camp', campOpen: c.id } : { tab: 'camp' }); } else if (q) this.setState({ tab: 'pub', q: q.replace(/^@/, '') }); }; setTimeout(this._hash, 50); window.addEventListener('hashchange', this._hash);
-    this.applyFont(); this.syncFx(); this.migrateGroups(); if (!this._isLive()) { this.migrate(); this.migrateColl(); this.migratePost(); this.migrateTplVars(); this.migrateStoryColls(); if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches(); }
+    this.applyFont(); this.syncFx(); this.migrateGroups(); this.migrateLikes(); if (!this._isLive()) { this.migrate(); this.migrateColl(); this.migratePost(); this.migrateTplVars(); this.migrateStoryColls(); if (!this.state.mtags) this.setState({ mtags: this.seedMtags() }); if (!this.state.plans) this.setState({ plans: this.seedPlans(), planEd: null }); if (!this.state.routines) this.setState({ routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0 }); this.ensureBatches(); }
     this._key = e => {
       if (e.key !== 'Escape') return; const s = this.state;
       if (s.cdNameEdit != null) this.setState({ cdNameEdit: null }); else if (s.cdIconOpen) this.setState({ cdIconOpen: false }); else if (s.wiz && s.wiz.timeOpen) this.setState(x => ({ wiz: { ...x.wiz, timeOpen: null } })); else if (s.grouping && !s.picker && !s.confirm) this.setState({ grouping: null }); else if (s.confirm) this.setState({ confirm: null }); else if (s.audio) this.setState({ audio: null, playing: null }); else if (s.picker) this.setState({ picker: null });
@@ -3501,7 +3508,7 @@ class Component extends DCLogic {
           playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: x.cover ? { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', background: pl ? 'rgba(0,0,0,.55)' : 'rgba(0,0,0,.25)', transition: 'background .15s' } : { width: 36, height: 36, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)'), boxShadow: pl ? '0 0 16px rgba(99,102,241,.45)' : 'none' },
           play: () => { this._playSound(pl ? null : x); },
           likeIcon: lk ? 'ph-fill ph-heart' : 'ph ph-heart', likeStyle: { width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: lk ? '#fb7185' : '#5b6175' },
-          like: () => this.setState(y => ({ liked: { ...y.liked, [x.id]: !lk } })),
+          like: () => this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }),
           menuOpen: s.sndMenu === x.id, openMenu: () => this.setState({ sndMenu: s.sndMenu === x.id ? null : x.id }) }; }),
         closeSndMenu: () => this.setState({ sndMenu: null }),
         sndTplOpts: reels.map(c => { const on = !!s.sndMenu && c.audio.indexOf(s.sndMenu) >= 0; return { name: c.name, dot: this.dot(this.P(c.persona).color, 7), on, pick: () => { const sid = s.sndMenu; this.updColl(c.id, z => ({ ...z, audio: on ? z.audio.filter(k => k !== sid) : z.audio.concat([sid]) })); this.setState({ sndMenu: null }); this.toastMsg(on ? 'Retiré de ' + c.name : 'Ajouté aux sons de ' + c.name); } }; }),
@@ -4275,7 +4282,7 @@ class Component extends DCLogic {
           playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: { width: 34, height: 34, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)') },
           play: e => { e.stopPropagation(); this.setState({ playing: pl ? null : x.id }); },
           likeIcon: lk ? 'ph-fill ph-heart' : 'ph ph-heart', likeStyle: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: lk ? '#fb7185' : '#5b6175' },
-          like: e => { e.stopPropagation(); this.setState(y => ({ liked: { ...y.liked, [x.id]: !lk } })); },
+          like: e => { e.stopPropagation(); this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }); },
           toggle: () => this.setState(y => { const sel = y.audio.sel; return { audio: { ...y.audio, sel: y.audio.multi ? (on ? sel.filter(z => z !== x.id) : sel.concat([x.id])) : (on ? [] : [x.id]) } }; }),
           rowStyle: { display: 'grid', gridTemplateColumns: '34px minmax(0,1fr) 44px 92px 64px 30px 22px', gap: 12, alignItems: 'center', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(124,108,246,.08)' : 'transparent', border: '1px solid ' + (on ? 'rgba(124,108,246,.35)' : 'transparent') } }; }),
         auEmpty: !list.length, auEmptyText: au.tab === 'search' ? (au.q.trim() ? 'Lance la recherche pour interroger Instagram' : 'Tape un titre ou un artiste puis lance la recherche') : au.tab === 'liked' ? 'Aucun son liké' : 'Aucun son',
