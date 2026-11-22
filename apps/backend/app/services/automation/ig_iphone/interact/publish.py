@@ -286,9 +286,19 @@ async def _add_audio(driver, log, song_query: str) -> bool:
         await _dump_screen(driver, log, "audio_no_confirm_%d" % attempt)
         await asyncio.sleep(1)
 
-    # 6. Page config audio → tap "C'est fait"
+    # 6. Page config audio → tap "C'est fait" (reels uniquement)
+    #    Pour les carousels/posts, apres le confirmer on revient directement
+    #    a l'editeur (pas de page config audio). Detecter l'editeur via
+    #    "Suivant" ou "Modifier" pour eviter de taper "Abandonner l'aperçu".
     for attempt in range(3):
-        fait_el = await driver.find_element(contains="est fait", clickable=True, refresh=True)
+        # Verifier si on est deja revenu sur l'editeur
+        suivant_el = await driver.find_element(text="Suivant", clickable=True, refresh=True)
+        modifier_el = await driver.find_element(text="Modifier", clickable=True)
+        if suivant_el or modifier_el:
+            log("   [audio] ✓ son ajoute (retour editeur direct)")
+            return True
+        # Sinon chercher "C'est fait" (page config reel)
+        fait_el = await driver.find_element(contains="est fait", clickable=True)
         if fait_el:
             tap = fait_el.get('tap', {})
             log("   [audio] tap 'C'est fait' (y=%d)" % tap.get('y', 0))
@@ -296,10 +306,9 @@ async def _add_audio(driver, log, song_query: str) -> bool:
             await asyncio.sleep(random.uniform(1.5, 2.5))
             log("   [audio] ✓ son ajoute")
             return True
-        # Peut-etre pas encore sur la page config
         await asyncio.sleep(1)
 
-    log("   [audio] ⚠ bouton 'C'est fait' non trouve, on continue")
+    log("   [audio] ⚠ page config audio non trouvee, on continue")
     return True
 
 
