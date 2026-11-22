@@ -2946,7 +2946,11 @@ class Component extends DCLogic {
     const isUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     console.log('[Posting] doPost:', { acc: obj.acc, isUUID: isUUID(obj.acc || ''), live: SD && SD._live, asDraft, status, postType, mediaUrls, edId: ed.id });
     if (SD && SD._live && obj.acc && isUUID(obj.acc)) {
-      const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null };
+      const sndObj = ed.sound ? this.snd(ed.sound) : null;
+      const audioQuery = sndObj ? (sndObj.title + ' ' + sndObj.artist).trim() : null;
+      const stickers = ed.stickers || {};
+      if (audioQuery) stickers.audio_query = audioQuery;
+      const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, stickers: Object.keys(stickers).length ? stickers : null, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null };
       const dispatchPub = function(pubId) { if (!asDraft && !sch) { SD.apiAsync('POST', '/posting/publications/' + pubId + '/publish').then(function(r) { if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone'); else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true); }); } };
       if (ed.id && isUUID(ed.id)) {
         SD.apiPatch('/posting/publications/' + ed.id, payload);
@@ -2988,12 +2992,12 @@ class Component extends DCLogic {
     const stL = st => st === 'session' ? ['En session', '#2dd4a8'] : st === 'error' ? ['Checkpoint', '#f4728c'] : ['Idle', '#6b7189'];
     const setPlat = pl => { const types = this.TYPES[pl]; this.upd({ mVars: [], mvIdx: 0, plat: pl, type: isTpl ? null : types[0][0], media: [], sound: null, sounds: pl === 'ig' ? ed.sounds : [], account: acc && acc.plat === pl ? ed.account : null }); };
     const setPersona = pid => this.upd({ mVars: ed.persona === pid ? ed.mVars : [], mvIdx: ed.persona === pid ? ed.mvIdx : 0, persona: pid, account: null, media: ed.persona === pid ? ed.media : [] });
-    const setType = id => { const m = this.typeOf(id).mode; this.upd({ mVars: [], mvIdx: 0, type: id, media: m === 0 ? [] : m === 1 ? ed.media.slice(0, 1) : ed.media, sound: id === 'reel' ? ed.sound : null }); };
+    const setType = id => { const m = this.typeOf(id).mode; this.upd({ mVars: [], mvIdx: 0, type: id, media: m === 0 ? [] : m === 1 ? ed.media.slice(0, 1) : ed.media, sound: (id === 'reel' || id === 'car') ? ed.sound : null }); };
 
     const platChips = ['th', 'ig', 'x'].map(pl => ({ label: this.platLabel(pl), icon: this.platIcon(pl), style: this.chip(ed.plat === pl), go: () => setPlat(pl) }));
     const persChips = this.pers().map(p => ({ name: p.name, dotStyle: this.dot(p.color, 8), style: this.chip(ed.persona === p.id, p.color), go: () => setPersona(p.id) }));
     const typeIcons = { th_text: 'text-align-left', th_media: 'images', reel: 'film-strip', car: 'images', story: 'circle-dashed', post: 'image-square', tw: 'text-align-left', tw_img: 'images' };
-    const typeChips = ed.plat ? this.TYPES[ed.plat].map(x => ({ label: x[1], icon: 'ph ph-' + typeIcons[x[0]], style: this.chip(ed.type === x[0]), go: () => setType(x[0]) })) : [];
+    const typeChips = ed.plat ? this.TYPES[ed.plat].filter(x => x[0] !== 'pfp').map(x => ({ label: x[1], icon: 'ph ph-' + typeIcons[x[0]], style: this.chip(ed.type === x[0]), go: () => setType(x[0]) })) : [];
 
     const aq = s.accQ.trim().toLowerCase();
     const pool = per && ed.plat ? this.accounts().filter(a => a.persona === per.id && a.plat === ed.plat) : [];
@@ -3104,7 +3108,7 @@ class Component extends DCLogic {
       mvHint: orderVar ? 'Mêmes médias, dans un ordre différent. Un ordre est tiré au hasard à chaque publication.' : 'Chaque variante est un jeu de médias différent, tiré au hasard à chaque publication. La caption reste le cœur du post.',
       mvAdd: () => { if (vars.length >= 4) { this.toastMsg('5 variantes maximum'); return; } if (orderVar) { if (ed.media.length < 2) { this.toastMsg('Ajoute au moins 2 médias pour varier l\'ordre'); return; } let sh = ed.media.slice(); for (let k = 0; k < 6; k++) { sh = sh.map(v => [Math.random(), v]).sort((p, q) => p[0] - q[0]).map(p => p[1]); if (sh.join() !== ed.media.join()) break; } this.setState(x => ({ ed: { ...x.ed, mVars: (x.ed.mVars || []).concat([{ id: 'mv' + Date.now(), media: sh }]), mvIdx: (x.ed.mVars || []).length + 1 }, pvIdx: 0 })); } else this.setState(x => ({ ed: { ...x.ed, mVars: (x.ed.mVars || []).concat([{ id: 'mv' + Date.now(), media: [] }]), mvIdx: (x.ed.mVars || []).length + 1 }, pvIdx: 0 })); },
       pickTileIcon: mode === 2 ? 'ph ph-plus' : 'ph ph-arrows-clockwise', pickTileLabel: mode === 2 ? 'Ajouter' : 'Remplacer',
-      isPostReel: ed.type === 'reel', isTplReel: false,
+      isPostReel: ed.type === 'reel' || ed.type === 'car', isTplReel: false,
       soundSel: { has: !!snd, none: !snd, title: snd ? snd.title : '', artist: snd ? snd.artist : '' },
       openAudio: () => this.openAudio(), clearSound: () => this.upd({ sound: null }),
       tplSounds: ed.sounds.map(id => this.snd(id)).filter(Boolean).map(x => ({ title: x.title, artist: x.artist, remove: () => this.upd({ sounds: ed.sounds.filter(y => y !== x.id) }) })), noTplSounds: !ed.sounds.length,

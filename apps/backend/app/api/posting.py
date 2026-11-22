@@ -317,6 +317,9 @@ async def dispatch_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
         "stickers": pub.stickers,
     }
     values["username"] = compte.handle
+    # Audio query from stickers or publication extras
+    if pub.stickers and pub.stickers.get("audio_query"):
+        values["audio_query"] = pub.stickers["audio_query"]
     # Remove None values
     values = {k: v for k, v in values.items() if v is not None}
 
