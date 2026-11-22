@@ -2257,6 +2257,19 @@ class Component extends DCLogic {
   _loadGroups() { try { const raw = localStorage.getItem('sl_carousel_groups'); if (raw) return JSON.parse(raw); } catch(e) {} return null; }
   _saveLiked(liked) { try { localStorage.setItem('sl_liked_sounds', JSON.stringify(liked)); } catch(e) {} }
   _loadLiked() { try { const raw = localStorage.getItem('sl_liked_sounds'); if (raw) return JSON.parse(raw); } catch(e) {} return null; }
+  _saveLikedSounds(sounds) { try { localStorage.setItem('sl_liked_sounds_data', JSON.stringify(sounds)); } catch(e) {} }
+  _loadLikedSounds() { try { const raw = localStorage.getItem('sl_liked_sounds_data'); if (raw) return JSON.parse(raw); } catch(e) {} return []; }
+  _persistLikedSound(snd, isLiked) {
+    // Quand on like un son (recherche ou trending), sauvegarder ses données pour l'onglet Likés
+    const existing = this._loadLikedSounds();
+    if (isLiked) {
+      if (!existing.some(x => x.id === snd.id)) existing.push(snd);
+    } else {
+      const idx = existing.findIndex(x => x.id === snd.id);
+      if (idx >= 0) existing.splice(idx, 1);
+    }
+    this._saveLikedSounds(existing);
+  }
   migratePost() {
     const s = this.state; const T = t => t === 'post' ? 'car' : t; const M = id => typeof id === 'string' ? id.replace(/-post-/, '-car-') : id;
     const need = [s.posts, s.tpls, s.camps, s.extraMedia].some(a => (a || []).some(x => x.type === 'post')) || (s.colls || []).some(c => c.ptype === 'post');
@@ -3479,7 +3492,13 @@ class Component extends DCLogic {
       let list = this.sounds().filter(x => !q || (x.title + ' ' + x.artist).toLowerCase().indexOf(q) >= 0);
       if (s.sTab === 'trend') list = list.filter(x => x.rank).sort((a, b) => a.rank - b.rank);
       else if (s.sTab === 'ofm') list = list.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
-      else if (s.sTab === 'liked') list = list.filter(x => s.liked[x.id]);
+      else if (s.sTab === 'liked') {
+        // Fusionner sons trending + sons likés sauvegardés (recherche etc.)
+        const saved = this._loadLikedSounds();
+        const ids = new Set(list.map(x => x.id));
+        saved.forEach(x => { if (!ids.has(x.id)) list.push(x); });
+        list = list.filter(x => s.liked[x.id]);
+      }
       else if (s.sTab === 'search') list = s.sSearched && s.sSearchResults ? s.sSearchResults : [];
       const so = s.sSort;
       if (so === 'rank') list = list.slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
@@ -3508,7 +3527,7 @@ class Component extends DCLogic {
           playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: x.cover ? { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', background: pl ? 'rgba(0,0,0,.55)' : 'rgba(0,0,0,.25)', transition: 'background .15s' } : { width: 36, height: 36, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)'), boxShadow: pl ? '0 0 16px rgba(99,102,241,.45)' : 'none' },
           play: () => { this._playSound(pl ? null : x); },
           likeIcon: lk ? 'ph-fill ph-heart' : 'ph ph-heart', likeStyle: { width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: lk ? '#fb7185' : '#5b6175' },
-          like: () => this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }),
+          like: () => { this._persistLikedSound(x, !lk); this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }); },
           menuOpen: s.sndMenu === x.id, openMenu: () => this.setState({ sndMenu: s.sndMenu === x.id ? null : x.id }) }; }),
         closeSndMenu: () => this.setState({ sndMenu: null }),
         sndTplOpts: reels.map(c => { const on = !!s.sndMenu && c.audio.indexOf(s.sndMenu) >= 0; return { name: c.name, dot: this.dot(this.P(c.persona).color, 7), on, pick: () => { const sid = s.sndMenu; this.updColl(c.id, z => ({ ...z, audio: on ? z.audio.filter(k => k !== sid) : z.audio.concat([sid]) })); this.setState({ sndMenu: null }); this.toastMsg(on ? 'Retiré de ' + c.name : 'Ajouté aux sons de ' + c.name); } }; }),
@@ -4264,7 +4283,12 @@ class Component extends DCLogic {
       let list = this.sounds().filter(x => !q || (x.title + ' ' + x.artist).toLowerCase().indexOf(q) >= 0);
       if (au.tab === 'trend') list = list.filter(x => x.rank).sort((a, b) => a.rank - b.rank);
       else if (au.tab === 'ofm') list = list.slice().sort((a, b) => b.score - a.score);
-      else if (au.tab === 'liked') list = list.filter(x => s.liked[x.id]);
+      else if (au.tab === 'liked') {
+        const saved = this._loadLikedSounds();
+        const ids = new Set(list.map(x => x.id));
+        saved.forEach(x => { if (!ids.has(x.id)) list.push(x); });
+        list = list.filter(x => s.liked[x.id]);
+      }
       else if (au.tab === 'search') list = au.searched ? list : [];
       const tabs = [['trend', 'Tendances Instagram', 'fire', ''], ['ofm', 'Tendance OFM', 'star', 'Score OFM : vitesse de croissance du son, reprise par les comptes de la niche et fraîcheur, sur 100'], ['liked', 'Likés', 'heart', ''], ['all', 'Tous', 'list', ''], ['search', 'Recherche sur Instagram', 'magnifying-glass', '']];
       Object.assign(out, {
@@ -4282,7 +4306,7 @@ class Component extends DCLogic {
           playIcon: pl ? 'ph-fill ph-pause' : 'ph-fill ph-play', playStyle: { width: 34, height: 34, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: pl ? '#ffffff' : '#cfd3ff', background: pl ? 'linear-gradient(135deg,#6d5ef0,#4b7bf5)' : 'rgba(124,108,246,.12)', border: '1px solid ' + (pl ? 'transparent' : 'rgba(124,108,246,.3)') },
           play: e => { e.stopPropagation(); this.setState({ playing: pl ? null : x.id }); },
           likeIcon: lk ? 'ph-fill ph-heart' : 'ph ph-heart', likeStyle: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: lk ? '#fb7185' : '#5b6175' },
-          like: e => { e.stopPropagation(); this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }); },
+          like: e => { e.stopPropagation(); this._persistLikedSound(x, !lk); this.setState(y => { const nw = { ...y.liked, [x.id]: !lk }; this._saveLiked(nw); return { liked: nw }; }); },
           toggle: () => this.setState(y => { const sel = y.audio.sel; return { audio: { ...y.audio, sel: y.audio.multi ? (on ? sel.filter(z => z !== x.id) : sel.concat([x.id])) : (on ? [] : [x.id]) } }; }),
           rowStyle: { display: 'grid', gridTemplateColumns: '34px minmax(0,1fr) 44px 92px 64px 30px 22px', gap: 12, alignItems: 'center', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(124,108,246,.08)' : 'transparent', border: '1px solid ' + (on ? 'rgba(124,108,246,.35)' : 'transparent') } }; }),
         auEmpty: !list.length, auEmptyText: au.tab === 'search' ? (au.q.trim() ? 'Lance la recherche pour interroger Instagram' : 'Tape un titre ou un artiste puis lance la recherche') : au.tab === 'liked' ? 'Aucun son liké' : 'Aucun son',
