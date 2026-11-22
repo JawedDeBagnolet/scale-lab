@@ -409,24 +409,51 @@ async def _write_caption(driver, log, caption) -> bool:
     return True
 
 
-async def _tap_partager(driver, log) -> bool:
-    """Tape sur le bouton 'Partager' et attend l'upload."""
+async def _tap_partager(driver, log, username: str = "") -> bool:
+    """Tape sur le bouton 'Partager' et attend l'upload complet.
+
+    Apres le tap, IG retourne au feed immediatement et uploade en
+    arriere-plan. On attend que la publication du compte (username)
+    apparaisse dans le feed. Timeout: 60s pour les carousels.
+    """
     for attempt in range(3):
         el = await driver.find_element(text="Partager", clickable=True, refresh=True)
         if el:
             tap = el.get('tap', {})
             log("   -> Partager (y=%d)" % tap.get('y', 0))
             await driver.ht.tap(tap['x'], tap['y'])
-            # Attendre l'upload (15-30s selon le media)
-            log("   attente upload...")
-            for wait_i in range(20):
+            # Attendre que IG revienne au feed
+            log("   attente retour feed...")
+            for wait_i in range(10):
                 await asyncio.sleep(2)
                 screen = await _detect_screen(driver, log)
                 if screen in ("feed", "own_profile"):
-                    log("   ✓ upload termine, retour '%s'" % screen)
-                    return True
-            log("   ⚠ timeout upload (40s)")
-            return True  # On considere que c'est OK meme si timeout
+                    break
+            # Maintenant attendre que la publication apparaisse vraiment
+            # IG uploade en arriere-plan — si on quitte, l'upload est perdu
+            marker = ("Publication de " + username) if username else None
+            if marker:
+                log("   attente upload effectif (repere: '%s')..." % marker[:40])
+            else:
+                log("   attente upload effectif...")
+            for wait_i in range(30):  # max 60s
+                await asyncio.sleep(2)
+                if marker:
+                    pub_el = await driver.find_element(
+                        contains=marker, clickable=False, refresh=True)
+                    if pub_el:
+                        log("   ✓ publication de %s confirmee dans le feed" % username)
+                        return True
+                else:
+                    # Fallback sans username: detecter le profil (retour apres upload)
+                    screen = await _detect_screen(driver, log)
+                    if screen == "own_profile":
+                        log("   ✓ retour profil detecte")
+                        return True
+                if wait_i % 5 == 4:
+                    log("   ... upload en cours (%ds)" % ((wait_i + 1) * 2))
+            log("   ⚠ timeout upload (60s) — publication peut-etre en cours")
+            return True  # On considere OK meme si timeout
         log("   [retry %d] bouton Partager non trouve" % (attempt + 1))
         await asyncio.sleep(1)
     log("   ! bouton Partager non trouve")
@@ -438,6 +465,7 @@ async def _tap_partager(driver, log) -> bool:
 
 async def publish_feed_post(driver, navigator, caption="", photo_index=0,
                             first_comment=None, location=None,
+                            username: str = "",
                             log: Callable = print) -> dict:
     """Publie un post dans le feed.
 
@@ -492,7 +520,7 @@ async def publish_feed_post(driver, navigator, caption="", photo_index=0,
     await _write_caption(driver, log, caption)
 
     # 7. Partager
-    if await _tap_partager(driver, log):
+    if await _tap_partager(driver, log, username=username):
         stats["published"] = True
         log("   ✓ post publie!")
     else:
@@ -505,7 +533,8 @@ async def publish_feed_post(driver, navigator, caption="", photo_index=0,
 # ── Story ─────────────────────────────────────────────────────────────────────
 
 async def publish_story(driver, navigator, photo_index=0, caption=None,
-                        stickers=None, log: Callable = print) -> dict:
+                        stickers=None, username: str = "",
+                        log: Callable = print) -> dict:
     """Publie une story avec stickers optionnels.
 
     Args:
@@ -594,7 +623,7 @@ async def publish_story(driver, navigator, photo_index=0, caption=None,
         log("   ✓ story publiee!")
     else:
         # Fallback : bouton Partager generique
-        if await _tap_partager(driver, log):
+        if await _tap_partager(driver, log, username=username):
             stats["published"] = True
             log("   ✓ story publiee!")
 
@@ -606,6 +635,7 @@ async def publish_story(driver, navigator, photo_index=0, caption=None,
 
 async def publish_reel(driver, navigator, caption="", video_index=0,
                        audio_query: str | None = None,
+                       username: str = "",
                        log: Callable = print) -> dict:
     """Publie un reel. Flow complet basé sur le dump de l'arbre UI."""
     start = time.time()
@@ -684,7 +714,7 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
 
     # 7. Popup "A propos de Reels" → tap "Partager"
     await asyncio.sleep(1.5)
-    if await _tap_partager(driver, log):
+    if await _tap_partager(driver, log, username=username):
         # 8. Possible popup Meta One → fermer
         await asyncio.sleep(2)
         meta_el = await driver.find_element(contains="Meta", clickable=True, refresh=True)
@@ -707,6 +737,7 @@ async def publish_reel(driver, navigator, caption="", video_index=0,
 
 async def publish_carousel(driver, navigator, caption="", photo_count=2,
                            audio_query: str | None = None,
+                           username: str = "",
                            log: Callable = print) -> dict:
     """Publie un carousel (multi-photo)."""
     start = time.time()
@@ -799,7 +830,7 @@ async def publish_carousel(driver, navigator, caption="", photo_count=2,
     await _write_caption(driver, log, caption)
 
     # 9. Partager
-    if await _tap_partager(driver, log):
+    if await _tap_partager(driver, log, username=username):
         stats["published"] = True
         log("   ✓ carousel publie!")
 

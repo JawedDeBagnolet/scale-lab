@@ -316,6 +316,7 @@ async def dispatch_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
         "phone_id": str(compte.id),
         "stickers": pub.stickers,
     }
+    values["username"] = compte.handle
     # Remove None values
     values = {k: v for k, v in values.items() if v is not None}
 
