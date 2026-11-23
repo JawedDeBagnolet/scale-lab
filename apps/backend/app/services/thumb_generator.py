@@ -28,16 +28,19 @@ JPEG_QUALITY = 60
 
 
 async def _download_image(url: str) -> bytes | None:
-    """Download image bytes from R2/gateway (with auth)."""
+    """Download image bytes from R2/gateway (with auth + referer)."""
     try:
-        headers = {}
+        headers = {
+            "Referer": "https://scalelab.win/",
+            "Origin": "https://scalelab.win",
+        }
         if API_SECRET:
             headers["Authorization"] = f"Bearer {API_SECRET}"
-        async with httpx.AsyncClient(timeout=30, verify=False) as client:
+        async with httpx.AsyncClient(timeout=30, verify=False, follow_redirects=True) as client:
             r = await client.get(url, headers=headers)
             if r.status_code == 200:
                 return r.content
-            logger.warning("download %s → HTTP %d", url[:60], r.status_code)
+            logger.warning("download %s → HTTP %d body=%s", url[:60], r.status_code, r.text[:200])
     except Exception as e:
         logger.warning("download error %s: %s", url[:60], e)
     return None
