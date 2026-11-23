@@ -4182,7 +4182,7 @@ class Component extends DCLogic {
       const names = e.names && e.names.length ? e.names : ['À la une']; const addName = () => { const v = (e.draft || '').trim(); if (!v || names.indexOf(v) >= 0) return; eu({ names: names.concat([v]), draft: '' }); };
       Object.assign(out, {
         scEdOpen: true, scOuter: this.ovStyle(60), scClose: () => this.setState({ scEd: null }),
-        scInner: isStory ? { width: 'min(920px,100%)', maxHeight: 'calc(100vh - 48px)', display: 'flex', borderRadius: 22, overflow: 'hidden', ...this.glassPanel() } : { width: 'min(1180px,100%)', height: 'calc(100vh - 48px)', maxHeight: 900, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', borderRadius: 22, overflow: 'hidden', ...this.glassPanel() },
+        scInner: isStory ? { width: 'min(640px,100%)', maxHeight: 'calc(100vh - 48px)', display: 'flex', borderRadius: 22, overflow: 'hidden', ...this.glassPanel() } : { width: 'min(1180px,100%)', height: 'calc(100vh - 48px)', maxHeight: 900, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', borderRadius: 22, overflow: 'hidden', ...this.glassPanel() },
         scLeft: { flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '22px 26px 24px', display: 'flex', flexDirection: 'column', gap: 18 },
         scE: { title: e.id ? 'Modifier la collection' : 'Nouvelle collection', isNew: !e.id, isStory, isHl: !isStory,
           kinds: [['story', 'Stories', 'ph ph-film-strip'], ['hl', 'À la une', 'ph ph-star']].map(k => ({ label: k[1], icon: k[2], count: '', countStyle: { display: 'none' }, style: this.segStyle(e.kind === k[0]), go: () => eu({ kind: k[0], tpls: [] }) })),
