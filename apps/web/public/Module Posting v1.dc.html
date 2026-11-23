@@ -2619,10 +2619,29 @@ class Component extends DCLogic {
     const el = this._dkListRef.current;
     if (!el) return;
     const Q = this.state.dockQ;
-    const ICON = { image: '', video: '<i class="ph ph-film-strip"></i>', audio: '<i class="ph ph-music-notes"></i>' };
-    const GRADS = ['#3b2f5c,#1d2340', '#46304a,#20233a', '#25405a,#1a2236', '#4a3a2a,#22202c', '#2f3f4a,#1b2130', '#3f2a44,#1e1f33'];
+    const ICON = { video: '<i class="ph ph-film-strip" style="position:absolute;right:3px;bottom:3px;font-size:11px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)"></i>', audio: '<i class="ph ph-music-notes"></i>' };
+    const GRAD_FB = ['#3b2f5c,#1d2340', '#46304a,#20233a', '#25405a,#1a2236', '#4a3a2a,#22202c', '#2f3f4a,#1b2130', '#3f2a44,#1e1f33'];
+    // Generer les thumbnails video au premier rendu
+    if (!this._dkThumbs) this._dkThumbs = {};
+    Q.forEach(q => {
+      if (q.kind === 'video' && q.blobUrl && !this._dkThumbs[q.id]) {
+        this._dkThumbs[q.id] = 'pending';
+        const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.src = q.blobUrl;
+        v.onloadeddata = () => { v.currentTime = 0.5; };
+        v.onseeked = () => { try { const c = document.createElement('canvas'); c.width = 76; c.height = 76; c.getContext('2d').drawImage(v, 0, 0, 76, 76); this._dkThumbs[q.id] = c.toDataURL('image/jpeg', 0.6); this._dockRenderList(); } catch(e) {} };
+        setTimeout(() => { if (this._dkThumbs[q.id] === 'pending') this._dkThumbs[q.id] = null; }, 5000);
+      }
+    });
     const html = Q.map((q, i) => {
-      const grad = GRADS[i % GRADS.length];
+      // Thumbnail : blob URL pour images, canvas thumb pour videos, gradient fallback pour audio
+      let thumbBg;
+      if (q.kind === 'image' && q.blobUrl) {
+        thumbBg = 'background:url(' + q.blobUrl + ') center/cover';
+      } else if (q.kind === 'video' && this._dkThumbs[q.id] && this._dkThumbs[q.id] !== 'pending') {
+        thumbBg = 'background:url(' + this._dkThumbs[q.id] + ') center/cover';
+      } else {
+        thumbBg = 'background:linear-gradient(135deg,' + GRAD_FB[i % GRAD_FB.length] + ')';
+      }
       let sub = '', act = '';
       if (q.st === 'wait') { sub = '<span>En attente</span>'; act = '<span class="dk-act" title="Annuler" data-dk-cancel="' + q.id + '"><i class="ph ph-x"></i></span>'; }
       else if (q.st === 'upload') { sub = '<span style="color:#c5c9d8">Envoi ' + Math.round(q.p * 100) + ' %</span>'; }
@@ -2633,7 +2652,7 @@ class Component extends DCLogic {
       else if (q.st === 'canceled') { sub = '<span style="color:#6b7289">Annulé</span>'; }
       const bar = q.st === 'upload' ? '<div class="dk-bar"><i style="width:' + (q.p * 100).toFixed(1) + '%"></i></div>' : '';
       return '<div class="dk-row ' + q.st + '">' +
-        '<div class="dk-thumb" style="background:linear-gradient(135deg,' + grad + ')">' + (ICON[q.kind] || '') + '</div>' +
+        '<div class="dk-thumb" style="' + thumbBg + '">' + (ICON[q.kind] || '') + '</div>' +
         '<div style="flex:1;min-width:0"><div class="dk-name"' + (q.st === 'canceled' ? ' style="color:#6b7289;text-decoration:line-through"' : '') + '>' + q.name + '</div><div class="dk-sub">' + sub + '</div>' + bar + '</div>' + act + '</div>';
     }).join('');
     el.innerHTML = html;
