@@ -422,13 +422,12 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
     """Tape sur le bouton 'Partager' et attend l'upload complet.
 
     Apres le tap, IG retourne au feed et uploade en arriere-plan.
-    Reperes d'upload :
-      - "Publication..." (y~238) = upload en cours
-      - "Publication terminee" = upload fini (disparait apres ~5s)
-      - "Commande reglable" = present uniquement sur nos propres posts
-      - "Publication de <username>" = notre post dans le feed
-    On attend "Commande reglable" ou "de <username>" — ce sont les
-    marqueurs fiables. Timeout: 90s pour les carousels volumineux.
+    Flow d'attente en 2 phases :
+      Phase 1 : detecter "Publication..." (indicateur d'upload en cours, y~238)
+      Phase 2 : attendre que cet indicateur disparaisse et que le post
+                apparaisse ("Publication terminee", "Commande reglable",
+                "de <username>")
+    Ce sequencage garantit qu'on attend le NOUVEAU post et pas un ancien.
     """
     for attempt in range(3):
         el = await driver.find_element(text="Partager", clickable=True, refresh=True)
@@ -436,6 +435,7 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
             tap = el.get('tap', {})
             log("   -> Partager (y=%d)" % tap.get('y', 0))
             await driver.ht.tap(tap['x'], tap['y'])
+
             # Attendre que IG revienne au feed
             log("   attente retour feed...")
             for wait_i in range(10):
@@ -444,33 +444,66 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
                 if screen in ("feed", "own_profile"):
                     break
 
-            # Attendre l'upload effectif
+            # Phase 1 : detecter "Publication..." (upload en cours)
+            upload_started = False
+            log("   phase 1 : detection upload en cours...")
+            for wait_i in range(15):  # max 30s pour detecter le debut
+                await asyncio.sleep(2)
+                # "Publication..." = indicateur de progression d'upload en haut du feed
+                prog_el = await driver.find_element(text="Publication...", clickable=False, refresh=True)
+                if prog_el:
+                    log("   ✓ upload en cours detecte ('Publication...' y=%d)" % prog_el.get('tap', {}).get('y', 0))
+                    upload_started = True
+                    break
+                # Peut-etre deja fini (upload tres rapide)
+                fin_el = await driver.find_element(contains="Publication terminée", clickable=False)
+                if fin_el:
+                    log("   ✓ upload deja termine (Publication terminee)")
+                    return True
+            if not upload_started:
+                log("   ⚠ indicateur 'Publication...' non detecte, on continue quand meme")
+
+            # Phase 2 : attendre que l'upload se termine
             marker = ("de " + username) if username else None
-            log("   attente upload effectif%s..." % (" (repere: '%s')" % marker if marker else ""))
+            log("   phase 2 : attente fin upload%s..." % (" (repere: '%s')" % marker if marker else ""))
             for wait_i in range(45):  # max 90s
                 await asyncio.sleep(2)
-                # Repere 1: "Commande reglable" = notre post est affiche
-                cmd_el = await driver.find_element(
-                    contains="Commande", clickable=False, refresh=True)
-                if cmd_el:
-                    log("   ✓ upload termine (Commande reglable detectee)")
-                    return True
-                # Repere 2: "de <username>" = notre publication visible
-                if marker:
-                    pub_el = await driver.find_element(
-                        contains=marker, clickable=False)
-                    if pub_el:
-                        log("   ✓ upload termine (publication de %s detectee)" % username)
-                        return True
-                # Repere 3: "Publication terminee" = upload juste fini
-                fin_el = await driver.find_element(
-                    contains="terminée", clickable=False)
+                # L'upload est en cours tant que "Publication..." est visible
+                prog_el = await driver.find_element(text="Publication...", clickable=False, refresh=True)
+                if prog_el:
+                    if wait_i % 5 == 4:
+                        log("   ... upload en cours (%ds)" % ((wait_i + 1) * 2))
+                    continue
+
+                # "Publication..." a disparu — verifier que le post est bien la
+                # Repere 1: "Publication terminee" (apparait brievement ~5s)
+                fin_el = await driver.find_element(contains="Publication terminée", clickable=False)
                 if fin_el:
-                    log("   ✓ upload termine (Publication terminee)")
+                    log("   ✓ upload termine (Publication terminee detectee)")
+                    await asyncio.sleep(2)  # laisser le feed se stabiliser
                     return True
+                # Repere 2: "Commande reglable" = notre propre post affiche
+                cmd_el = await driver.find_element(contains="Commande", clickable=False)
+                if cmd_el:
+                    # Verifier que c'est bien le post du bon compte
+                    if marker:
+                        own_el = await driver.find_element(contains=marker, clickable=False)
+                        if own_el:
+                            log("   ✓ upload termine (Commande reglable + %s)" % marker)
+                            return True
+                    else:
+                        log("   ✓ upload termine (Commande reglable detectee)")
+                        return True
+                # Repere 3: "de <username>" seul
+                if marker:
+                    pub_el = await driver.find_element(contains=marker, clickable=False)
+                    if pub_el:
+                        log("   ✓ upload termine (%s detecte)" % marker)
+                        return True
                 if wait_i % 5 == 4:
-                    log("   ... upload en cours (%ds)" % ((wait_i + 1) * 2))
-            log("   ⚠ timeout upload (90s) — publication peut-etre en cours")
+                    log("   ... attente post (%ds)" % ((wait_i + 1) * 2))
+            log("   ⚠ timeout upload (90s)")
+            await _dump_screen(driver, log, "upload_timeout")
             return True
         log("   [retry %d] bouton Partager non trouve" % (attempt + 1))
         await asyncio.sleep(1)

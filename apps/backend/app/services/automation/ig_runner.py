@@ -390,8 +390,8 @@ async def _publish_post(drv, nav, sess, values, log):
         except Exception:
             pass
 
-    # Mini session feed post-publication (parait naturel)
-    if published and values.get("feed_session", True):
+    # Mini session feed post-publication (desactive par defaut, active via feed_session=true)
+    if published and values.get("feed_session", False):
         try:
             from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
             feed_min = values.get("feed_duration_min", 1)  # minutes
@@ -474,8 +474,8 @@ async def _publish_reel(drv, nav, sess, values, log):
         except Exception:
             pass
 
-    # Mini session feed post-publication
-    if published and values.get("feed_session", True):
+    # Mini session feed post-publication (desactive par defaut)
+    if published and values.get("feed_session", False):
         try:
             from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
             feed_min = values.get("feed_duration_min", 1)
