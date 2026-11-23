@@ -1765,6 +1765,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 <sc-if value="{{ seSel.hasText }}"><input value="{{ seSel.text }}" onChange="{{ seSel.setText }}" style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></sc-if>
+<sc-if value="{{ seSel.isTextKind }}"><div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:6px">Style de texte</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px"><sc-for list="{{ seSel.textVariants }}" as="tv" hint-placeholder-count="4"><div onClick="{{ tv.go }}" style="{{ tv.style }}" style-hover="border-color:rgba(124,108,246,.5)">{{ tv.label }}</div></sc-for></div></div></sc-if>
 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
 <label style="display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)"><span style="font-size:11px;color:#5b6175">X</span><input value="{{ seSel.x }}" onChange="{{ seSel.setX }}" inputMode="numeric" style="width:100%;min-width:0;background:transparent;border:none;outline:none;color:#e8eaf3;font-family:'Geist Mono',monospace;font-size:12px"></label>
 <label style="display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)"><span style="font-size:11px;color:#5b6175">Y</span><input value="{{ seSel.y }}" onChange="{{ seSel.setY }}" inputMode="numeric" style="width:100%;min-width:0;background:transparent;border:none;outline:none;color:#e8eaf3;font-family:'Geist Mono',monospace;font-size:12px"></label>
@@ -3695,18 +3696,23 @@ class Component extends DCLogic {
   musicVals(el) {
     const sd = this.elSound(el); const st = el.mstyle || 'card'; const c = el.color || '#a5a0f5'; const art = this.coverArt(sd.id); const lyr = (el.lyrics || this.LYR[sd.id] || this.LYR.s1);
     const bar = (d, col) => ({ width: 3, height: 14, borderRadius: 2, background: col, transformOrigin: 'bottom', animation: 'eqBar ' + d + 's ease-in-out infinite' });
-    const barCol = st === 'mini' ? '#ffffff' : c;
+    const barCol = st === 'mini' ? '#ffffff' : '#16171f';
     const words = lyr.replace(/\n/g, ' ').split(/\s+/).filter(Boolean);
     return {
       title: sd.title, artist: sd.artist, eq1: bar(.9, barCol), eq2: bar(.7, barCol), eq3: bar(1.1, barCol),
       card: st === 'card', mini: st === 'mini', cover: st === 'cover', vinyl: st === 'vinyl', lyrics: st.indexOf('lyr') === 0,
       karaoke: st === 'lyrKaraoke', type: st === 'lyrType', bold: st === 'lyrBold', bubble: st === 'lyrBubble',
-      cardStyle: { display: 'flex', alignItems: 'center', gap: 10, width: 232, padding: 8, paddingRight: 12, borderRadius: 12, background: '#ffffff', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
-      coverSm: { width: 44, height: 44, flex: 'none', borderRadius: 7, background: art },
-      miniStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 30, padding: '0 12px', borderRadius: 99, background: 'rgba(12,12,16,.55)', backdropFilter: 'blur(10px)', color: '#ffffff', fontSize: 12, fontWeight: 700, maxWidth: 260 },
-      coverLg: { width: 168, height: 168, borderRadius: 14, background: art, boxShadow: '0 16px 40px rgba(0,0,0,.45)' },
-      disc: { position: 'relative', width: 170, height: 170, borderRadius: 99, background: 'repeating-radial-gradient(circle at 50% 50%, #18181c 0 2px, #0e0e11 2px 4px)', boxShadow: '0 14px 36px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06)', animation: 'vinylSpin 6s linear infinite' },
-      label: { position: 'absolute', left: '50%', top: '50%', width: 66, height: 66, marginLeft: -33, marginTop: -33, borderRadius: 99, background: art, boxShadow: '0 0 0 3px rgba(0,0,0,.4)' },
+      // Carte blanche — cover carrée 48px, titre noir bold, artiste gris
+      cardStyle: { display: 'flex', alignItems: 'center', gap: 10, width: 240, padding: 10, paddingRight: 14, borderRadius: 16, background: '#ffffff', boxShadow: '0 6px 24px rgba(0,0,0,.3)' },
+      coverSm: { width: 48, height: 48, flex: 'none', borderRadius: 8, background: art },
+      // Mini — pill semi-transparent avec equalizer + texte blanc
+      miniStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 32, padding: '0 14px', borderRadius: 99, background: 'rgba(12,12,16,.55)', backdropFilter: 'blur(10px)', color: '#ffffff', fontSize: 13, fontWeight: 700, maxWidth: 260 },
+      // Pochette grande — cover carrée ~180px, border-radius 18px
+      coverLg: { width: 180, height: 180, borderRadius: 18, background: art, boxShadow: '0 16px 40px rgba(0,0,0,.45)' },
+      // Vinyle — disque CD semi-transparent irisé (pas noir opaque)
+      disc: { position: 'relative', width: 150, height: 150, borderRadius: 99, background: 'radial-gradient(circle, rgba(255,255,255,.15) 30%, rgba(255,255,255,.05) 50%, rgba(200,200,220,.12) 70%, rgba(255,255,255,.08) 90%)', boxShadow: '0 14px 36px rgba(0,0,0,.35), inset 0 0 60px rgba(255,255,255,.08)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,.15)', animation: 'vinylSpin 6s linear infinite' },
+      label: { position: 'absolute', left: '50%', top: '50%', width: 70, height: 70, marginLeft: -35, marginTop: -35, borderRadius: 99, background: art, boxShadow: '0 0 0 3px rgba(255,255,255,.2)' },
+      hole: { position: 'absolute', left: '50%', top: '50%', width: 10, height: 10, marginLeft: -5, marginTop: -5, borderRadius: 99, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.15)' },
       lyricText: lyr.replace(/\n/g, ' '),
       karaokeStyle: { fontSize: 26, fontWeight: 900, lineHeight: 1.1, textAlign: 'center', letterSpacing: '-.01em', color: 'transparent', backgroundImage: 'linear-gradient(90deg,' + c + ' 0 50%, rgba(255,255,255,.55) 50% 100%)', backgroundSize: '200% 100%', WebkitBackgroundClip: 'text', backgroundClip: 'text', animation: 'karaokeSweep 4s linear infinite', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,.35))' },
       lines: lyr.split('\n').filter(Boolean).map((t, i, a) => ({ t, style: { display: 'inline-block', padding: '3px 8px', borderRadius: 4, background: '#ffffff', color: '#16171f', fontFamily: "'Geist Mono',monospace", fontSize: 14.5, fontWeight: 600, borderRight: i === a.length - 1 ? '2px solid ' + c : 'none', animation: i === a.length - 1 ? 'caretBlink 1s step-end infinite' : 'none' } })),
@@ -3719,8 +3725,14 @@ class Component extends DCLogic {
         text: el.text, icon: 'ph ph-' + this.STK[el.kind][0],
         isText: el.kind === 'text', isMusic: el.kind === 'music', m: el.kind === 'music' ? this.musicVals(el) : {}, isPill: pills.indexOf(el.kind) >= 0, isLink: el.kind === 'link', isLocation: el.kind === 'location', isPoll: el.kind === 'poll', isQuestion: el.kind === 'question', isCountdown: el.kind === 'countdown', isSlider: el.kind === 'slider',
         wrap: { position: 'absolute', left: el.x, top: el.y, transform: 'translate(-50%,-50%) rotate(' + el.rot + 'deg) scale(' + el.scale + ')', cursor: 'move', touchAction: 'none', userSelect: 'none', outline: on ? '1.5px dashed rgba(255,255,255,.9)' : 'none', outlineOffset: 6, borderRadius: 6 },
-        // Texte — fond noir arrondi
-        textStyle: { fontSize: 26, fontWeight: 800, color: c, textShadow: '0 2px 14px rgba(0,0,0,.45)', whiteSpace: 'nowrap', letterSpacing: '-.01em' },
+        // Texte — 4 variantes IG
+        textVariant: el.textVariant || 'shadow',
+        textStyle: (() => { const v = el.textVariant || 'shadow'; const base = { fontSize: 26, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: '-.01em', padding: '4px 10px' };
+          if (v === 'bg') return { ...base, background: '#16171f', color: c, borderRadius: 8 };
+          if (v === 'highlight') return { ...base, background: c, color: '#ffffff', borderRadius: 8 };
+          if (v === 'glow') return { ...base, color: c, textShadow: '0 0 20px ' + c + ', 0 0 40px ' + c + '88', WebkitTextStroke: '1px rgba(255,255,255,.3)' };
+          return { ...base, color: c, textShadow: '0 2px 14px rgba(0,0,0,.45)' }; // shadow (default)
+        })(),
         // Mention/Hashtag — pill blanc
         pillStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 40, padding: '0 16px', borderRadius: 99, background: '#ffffff', color: '#16171f', fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)' },
         // Lien — pill blanc avec icone chaine bleue
@@ -4263,6 +4275,8 @@ class Component extends DCLogic {
         icon: 'ph ph-' + this.STK[sel.kind][0], label: this.STK[sel.kind][1],
         // Generic text field (not for link, poll, mention, music, location)
         hasText: !['music', 'link', 'poll', 'mention', 'location'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
+        isTextKind: sel.kind === 'text',
+        textVariants: [['shadow', 'Classique'], ['bg', 'Fond noir'], ['highlight', 'Surligné'], ['glow', 'Néon']].map(v => ({ label: v[1], on: (sel.textVariant || 'shadow') === v[0], go: () => updEl(sel.id, { textVariant: v[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 28, padding: '0 10px', borderRadius: 8, fontSize: 11, fontWeight: (sel.textVariant || 'shadow') === v[0] ? 600 : 500, cursor: 'pointer', color: (sel.textVariant || 'shadow') === v[0] ? '#f7f7fb' : '#aab0c5', background: (sel.textVariant || 'shadow') === v[0] ? 'rgba(124,108,246,.18)' : 'rgba(255,255,255,.03)', border: '1px solid ' + ((sel.textVariant || 'shadow') === v[0] ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)') } })),
         // Location: autocomplete via IG API
         isLocation: sel.kind === 'location', locQ: sel.text || '', setLocQ: e => { updEl(sel.id, { text: e.target.value }); if (e.target.value.length >= 2) this._searchPlace(e.target.value); }, locResults: (this.state._placeResults || []).map(p => ({ label: p.name, sub: p.address || p.city || '', pick: () => { updEl(sel.id, { text: p.name, locationPk: p.pk, locationAddr: p.address }); this.setState({ _placeResults: [] }); } })), hasLocResults: !!(this.state._placeResults || []).length,
         // Link: URL + title
