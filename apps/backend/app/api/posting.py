@@ -125,6 +125,14 @@ async def delete_media(mid: UUID, db: AsyncSession = Depends(get_db)):
     await service.delete_media(db, m)
 
 
+@router.post("/medias/generate-thumbnails")
+async def generate_thumbnails(db: AsyncSession = Depends(get_db)):
+    """Generate R2 thumbnails for all image medias that don't have one yet."""
+    from app.services.thumb_generator import generate_missing_thumbnails
+    result = await generate_missing_thumbnails(db)
+    return result
+
+
 # --- Templates ----------------------------------------------------------------
 
 @router.get("/templates", response_model=list[TemplateOut])

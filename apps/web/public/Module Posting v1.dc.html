@@ -2485,7 +2485,7 @@ class Component extends DCLogic {
   photo(c, i) { return 'radial-gradient(120% 90% at ' + (18 + (i * 13) % 60) + '% ' + (15 + (i * 11) % 50) + '%, rgba(255,255,255,.34), transparent 46%), radial-gradient(70% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%), linear-gradient(' + (120 + i * 37) % 360 + 'deg,' + c + ',#1b1f33 80%)'; }
   _vidReady(v) { if (v._init) return; v._init = true; v.muted = true; v.addEventListener('loadeddata', () => { v.currentTime = 0.1; }); v.addEventListener('seeked', () => { if (!v._playing) v.pause(); }); }
   _initVids() { if (!this._el) return; this._el.querySelectorAll('video[data-autoseek]').forEach(v => this._vidReady(v)); }
-  mediaBg(m) { if (m.url && m.video) return m.thumb ? 'center / cover no-repeat url("' + m.thumb + '")' : 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
+  mediaBg(m, full) { const t = !full && m.thumb; if (m.url && m.video) return t ? 'center / cover no-repeat url("' + t + '")' : 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + (t || m.url) + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'X'; }
   platIcon(p) { return p === 'ig' ? 'ph ph-instagram-logo' : p === 'th' ? 'ph ph-threads-logo' : 'ph ph-x-logo'; }
   avStyle(c, size, r) { return { width: size, height: size, flex: 'none', borderRadius: r, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * .36), fontWeight: 600, color: '#f7f7fb', background: 'linear-gradient(135deg,' + c + ',' + c + '30)', boxShadow: 'inset 0 0 0 1px ' + c + '66' }; }
@@ -2583,16 +2583,23 @@ class Component extends DCLogic {
         r2Url = res.url;
         upd({ p: 1 });
 
-        // Thumbnail for video
-        if (q.kind === 'video') {
+        // Thumbnail for image + video (300x375 JPEG for grid display)
+        if (q.kind === 'image' || q.kind === 'video') {
           upd({ st: 'thumb' });
           try {
+            const TW = 300, TH = 375;
             const blob = await new Promise((resolve, reject) => {
-              const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
-              v.src = URL.createObjectURL(q.raw);
-              v.onloadeddata = () => { v.currentTime = 0.1; };
-              v.onseeked = () => { const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { URL.revokeObjectURL(v.src); resolve(b); }, 'image/jpeg', 0.7); };
-              v.onerror = () => { URL.revokeObjectURL(v.src); reject(); };
+              if (q.kind === 'video') {
+                const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+                v.src = URL.createObjectURL(q.raw);
+                v.onloadeddata = () => { v.currentTime = 0.1; };
+                v.onseeked = () => { const c = document.createElement('canvas'); c.width = TW; c.height = TH; const vw = v.videoWidth, vh = v.videoHeight, s = Math.max(TW/vw, TH/vh), sw = vw*s, sh = vh*s; c.getContext('2d').drawImage(v, (TW-sw)/2, (TH-sh)/2, sw, sh); c.toBlob(b => { URL.revokeObjectURL(v.src); resolve(b); }, 'image/jpeg', 0.6); };
+                v.onerror = () => { URL.revokeObjectURL(v.src); reject(); };
+              } else {
+                const img = new Image(); img.src = URL.createObjectURL(q.raw);
+                img.onload = () => { const c = document.createElement('canvas'); c.width = TW; c.height = TH; const iw = img.naturalWidth, ih = img.naturalHeight, s = Math.max(TW/iw, TH/ih), sw = iw*s, sh = ih*s; c.getContext('2d').drawImage(img, (TW-sw)/2, (TH-sh)/2, sw, sh); c.toBlob(b => { URL.revokeObjectURL(img.src); resolve(b); }, 'image/jpeg', 0.6); };
+                img.onerror = () => { URL.revokeObjectURL(img.src); reject(); };
+              }
               setTimeout(() => reject(), 8000);
             });
             if (blob) {
@@ -3088,14 +3095,14 @@ class Component extends DCLogic {
     const user = pvAcc ? pvAcc.username : per ? per.name.toLowerCase() : 'username';
     const color = per ? per.color : '#6b7189';
     const ig = ed.plat === 'ig'; const vert = ig && (ed.type === 'reel' || ed.type === 'story');
-    const pvMedia = mm.map((m, i) => ({ style: { flex: 'none', width: mm.length > 1 ? '64%' : '100%', aspectRatio: '4/5', maxHeight: 380, borderRadius: 10, scrollSnapAlign: 'start', background: this.mediaBg(m), border: '1px solid rgba(255,255,255,.06)' } }));
+    const pvMedia = mm.map((m, i) => ({ style: { flex: 'none', width: mm.length > 1 ? '64%' : '100%', aspectRatio: '4/5', maxHeight: 380, borderRadius: 10, scrollSnapAlign: 'start', background: this.mediaBg(m, true), border: '1px solid rgba(255,255,255,.06)' } }));
     const igIdx = Math.min(s.pvIdx || 0, Math.max(0, mm.length - 1));
     const thS = s.pvTh || { start: true, end: false };
     this._igRef = this._igRef || React.createRef(); this._thRef = this._thRef || React.createRef();
     const arrow = (side, show) => ({ position: 'absolute', top: '50%', [side]: 8, transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 99, display: show ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#16171f', background: 'rgba(255,255,255,.88)', boxShadow: '0 2px 10px rgba(0,0,0,.35)', zIndex: 2 });
     const carVals = {
       igRef: this._igRef, thRef: this._thRef,
-      pvIgItems: mm.map(m => ({ style: { flex: '0 0 100%', height: '100%', scrollSnapAlign: 'start', background: this.mediaBg(m) } })),
+      pvIgItems: mm.map(m => ({ style: { flex: '0 0 100%', height: '100%', scrollSnapAlign: 'start', background: this.mediaBg(m, true) } })),
       onIgScroll: e => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== (this.state.pvIdx || 0)) this.setState({ pvIdx: i }); },
       igPrev: () => { const el = this._igRef.current; if (el) el.scrollBy({ left: -el.clientWidth, behavior: 'smooth' }); },
       igNext: () => { const el = this._igRef.current; if (el) el.scrollBy({ left: el.clientWidth, behavior: 'smooth' }); },
@@ -3221,10 +3228,10 @@ class Component extends DCLogic {
       pvPlayML: s.pvPlaying ? '0' : '2px',
       pvPlayBtn: { width: 56, height: 56, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(8,9,16,.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.2)', opacity: s.pvPlaying ? 0 : 1, transition: 'opacity .2s' },
       pvTogglePlay: e => { e.stopPropagation(); const wrap = e.currentTarget.closest('[style*="aspect-ratio"]') || e.currentTarget.parentElement; const v = wrap.querySelector('video'); if (v) { if (v.paused) { v.muted = true; v.play().catch(() => {}); this.setState({ pvPlaying: true }); } else { v.pause(); this.setState({ pvPlaying: false }); } } },
-      pvMain: mm[0] ? { position: 'absolute', inset: 0, background: this.mediaBg(mm[0]) } : {},
-      pvMainX: mm[0] ? { marginTop: 10, aspectRatio: '16/10', borderRadius: 14, background: this.mediaBg(mm[0]), border: '1px solid rgba(255,255,255,.08)' } : {},
+      pvMain: mm[0] ? { position: 'absolute', inset: 0, background: this.mediaBg(mm[0], true) } : {},
+      pvMainX: mm[0] ? { marginTop: 10, aspectRatio: '16/10', borderRadius: 14, background: this.mediaBg(mm[0], true), border: '1px solid rgba(255,255,255,.08)' } : {},
       pvXGrid: { marginTop: 10, display: 'grid', gridTemplateColumns: mm.length > 1 ? '1fr 1fr' : '1fr', gridTemplateRows: mm.length > 2 ? '1fr 1fr' : '1fr', gap: 3, aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)' },
-      pvXItems: mm.slice(0, 4).map((m, i) => ({ style: { background: this.mediaBg(m), gridRow: mm.length === 3 && i === 0 ? 'span 2' : 'auto' } })),
+      pvXItems: mm.slice(0, 4).map((m, i) => ({ style: { background: this.mediaBg(m, true), gridRow: mm.length === 3 && i === 0 ? 'span 2' : 'auto' } })),
       pvMulti: mm.length > 1, pvMultiLabel: (igIdx + 1) + '/' + mm.length,
       pvDots: mm.length > 1 ? mm.slice(0, 20).map((_, i) => ({ style: { width: 6, height: 6, borderRadius: 99, transition: 'background .2s', background: i === igIdx ? '#8db4fd' : 'rgba(255,255,255,.25)' } })) : [],
       pvSound: snd ? snd.title + ' · ' + snd.artist : 'Son original · ' + user,
@@ -4063,7 +4070,7 @@ class Component extends DCLogic {
     });
     return out;
   }
-  storyBg(t) { const m = t.bgIdx >= 0 && t.media[t.bgIdx] ? this.med(t.media[t.bgIdx]) : null; return m ? this.mediaBg(m) : t.color; }
+  storyBg(t) { const m = t.bgIdx >= 0 && t.media[t.bgIdx] ? this.med(t.media[t.bgIdx]) : null; return m ? this.mediaBg(m, true) : t.color; }
   storyVals() {
     const s = this.state; const out = { isStory: s.tab === 'story', seOpen: false, newStory: () => this.openStory(null) };
     if (out.isStory) {
@@ -4183,7 +4190,7 @@ class Component extends DCLogic {
       Object.assign(out, {
         aiOpen: true, aiOuter: this.ovStyle(70), aiClose: () => this.setState({ aiDesc: null }),
         aiInner: { width: 'min(820px,100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', overscrollBehavior: 'contain', borderRadius: 22, padding: 22, display: 'flex', gap: 22, ...this.glassPanel() },
-        aiPreview: { position: 'relative', width: vert ? 230 : 280, flex: 'none', aspectRatio: vert ? '9/16' : '4/5', borderRadius: 14, background: this.mediaBg(m), border: '1px solid rgba(255,255,255,.08)' },
+        aiPreview: { position: 'relative', width: vert ? 230 : 280, flex: 'none', aspectRatio: vert ? '9/16' : '4/5', borderRadius: 14, background: this.mediaBg(m, true), border: '1px solid rgba(255,255,255,.08)' },
         ai: { isStory: m.type === 'story', ...(() => { const tg = this.mtag(m.id) || { place: 'in', moms: [], weather: [] }; const up = p => this.setState(x => ({ mtags: { ...(x.mtags || {}), [m.id]: { ...tg, ...p } } })); const c = (on, dis) => ({ ...this.chip(on), height: 28, padding: '0 10px', fontSize: 12, opacity: dis ? .35 : 1, cursor: dis ? 'not-allowed' : 'pointer' }); const out = tg.place === 'out'; return {
           places: [['in', 'Intérieur', 'house'], ['out', 'Extérieur', 'tree']].map(p => ({ label: p[1], hasIcon: true, hasDot: false, icon: 'ph ph-' + p[2], title: '', style: c(tg.place === p[0]), go: () => up({ place: p[0] }) })),
           momHint: out ? (tg.moms.length ? tg.moms.length + ' moment' + (tg.moms.length > 1 ? 's' : '') : 'aucun = tous') : 'intérieur : compatible avec tous les moments',
