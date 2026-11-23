@@ -394,9 +394,10 @@ async def _publish_post(drv, nav, sess, values, log):
     if published and values.get("feed_session", True):
         try:
             from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-            feed_duration = values.get("feed_duration", 30)
-            log("\n--- Session feed post-publication (%ds) ---" % feed_duration)
-            feed_cfg = {"duration": feed_duration, "like_pct": 0.05}
+            feed_min = values.get("feed_duration_min", 1)  # minutes
+            feed_max = values.get("feed_duration_max", 2)
+            log("\n--- Session feed post-publication (%d-%d min) ---" % (feed_min, feed_max))
+            feed_cfg = {"duration_min": feed_min, "duration_max": feed_max, "like_pct": 0.05}
             await run_feed_session(drv, nav, config=feed_cfg, log=log)
         except Exception as e:
             log("   ⚠ session feed echouee: %s" % str(e)[:100])
@@ -477,9 +478,10 @@ async def _publish_reel(drv, nav, sess, values, log):
     if published and values.get("feed_session", True):
         try:
             from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-            feed_duration = values.get("feed_duration", 30)
-            log("\n--- Session feed post-publication (%ds) ---" % feed_duration)
-            feed_cfg = {"duration": feed_duration, "like_pct": 0.05}
+            feed_min = values.get("feed_duration_min", 1)
+            feed_max = values.get("feed_duration_max", 2)
+            log("\n--- Session feed post-publication (%d-%d min) ---" % (feed_min, feed_max))
+            feed_cfg = {"duration_min": feed_min, "duration_max": feed_max, "like_pct": 0.05}
             await run_feed_session(drv, nav, config=feed_cfg, log=log)
         except Exception as e:
             log("   ⚠ session feed echouee: %s" % str(e)[:100])

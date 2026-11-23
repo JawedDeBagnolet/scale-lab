@@ -421,9 +421,14 @@ async def _write_caption(driver, log, caption) -> bool:
 async def _tap_partager(driver, log, username: str = "") -> bool:
     """Tape sur le bouton 'Partager' et attend l'upload complet.
 
-    Apres le tap, IG retourne au feed immediatement et uploade en
-    arriere-plan. On attend que la publication du compte (username)
-    apparaisse dans le feed. Timeout: 60s pour les carousels.
+    Apres le tap, IG retourne au feed et uploade en arriere-plan.
+    Reperes d'upload :
+      - "Publication..." (y~238) = upload en cours
+      - "Publication terminee" = upload fini (disparait apres ~5s)
+      - "Commande reglable" = present uniquement sur nos propres posts
+      - "Publication de <username>" = notre post dans le feed
+    On attend "Commande reglable" ou "de <username>" — ce sont les
+    marqueurs fiables. Timeout: 90s pour les carousels volumineux.
     """
     for attempt in range(3):
         el = await driver.find_element(text="Partager", clickable=True, refresh=True)
@@ -438,31 +443,35 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
                 screen = await _detect_screen(driver, log)
                 if screen in ("feed", "own_profile"):
                     break
-            # Maintenant attendre que la publication apparaisse vraiment
-            # IG uploade en arriere-plan — si on quitte, l'upload est perdu
-            marker = ("Publication de " + username) if username else None
-            if marker:
-                log("   attente upload effectif (repere: '%s')..." % marker[:40])
-            else:
-                log("   attente upload effectif...")
-            for wait_i in range(30):  # max 60s
+
+            # Attendre l'upload effectif
+            marker = ("de " + username) if username else None
+            log("   attente upload effectif%s..." % (" (repere: '%s')" % marker if marker else ""))
+            for wait_i in range(45):  # max 90s
                 await asyncio.sleep(2)
+                # Repere 1: "Commande reglable" = notre post est affiche
+                cmd_el = await driver.find_element(
+                    contains="Commande", clickable=False, refresh=True)
+                if cmd_el:
+                    log("   ✓ upload termine (Commande reglable detectee)")
+                    return True
+                # Repere 2: "de <username>" = notre publication visible
                 if marker:
                     pub_el = await driver.find_element(
-                        contains=marker, clickable=False, refresh=True)
+                        contains=marker, clickable=False)
                     if pub_el:
-                        log("   ✓ publication de %s confirmee dans le feed" % username)
+                        log("   ✓ upload termine (publication de %s detectee)" % username)
                         return True
-                else:
-                    # Fallback sans username: detecter le profil (retour apres upload)
-                    screen = await _detect_screen(driver, log)
-                    if screen == "own_profile":
-                        log("   ✓ retour profil detecte")
-                        return True
+                # Repere 3: "Publication terminee" = upload juste fini
+                fin_el = await driver.find_element(
+                    contains="terminée", clickable=False)
+                if fin_el:
+                    log("   ✓ upload termine (Publication terminee)")
+                    return True
                 if wait_i % 5 == 4:
                     log("   ... upload en cours (%ds)" % ((wait_i + 1) * 2))
-            log("   ⚠ timeout upload (60s) — publication peut-etre en cours")
-            return True  # On considere OK meme si timeout
+            log("   ⚠ timeout upload (90s) — publication peut-etre en cours")
+            return True
         log("   [retry %d] bouton Partager non trouve" % (attempt + 1))
         await asyncio.sleep(1)
     log("   ! bouton Partager non trouve")
@@ -473,11 +482,10 @@ async def _tap_partager(driver, log, username: str = "") -> bool:
 async def _post_first_comment(driver, log, comment: str, username: str = "") -> bool:
     """Poste un premier commentaire sur la publication qui vient d'etre publiee.
 
-    Apres publication, le feed affiche le post. On :
-    1. Tap sur "Commenter" (icone bulle sous le post)
-    2. Tap sur le champ de commentaire
-    3. Type le texte
-    4. Envoie (tap fleche)
+    Apres publication, le post est en haut du feed mais le bouton
+    "Commenter" est sous la preview — il faut scroller un peu.
+    Securite : on verifie que "de <username>" est visible pour
+    s'assurer qu'on commente bien notre propre publication.
     """
     if not comment:
         return True
@@ -485,18 +493,48 @@ async def _post_first_comment(driver, log, comment: str, username: str = "") -> 
     log("   [1er commentaire] '%s'" % comment[:40])
     await asyncio.sleep(random.uniform(2.0, 3.5))
 
-    # 1. Trouver et taper sur le bouton "Commenter"
-    comment_btn = await driver.find_element(text="Commenter", clickable=True, refresh=True)
+    # 1. Verifier que c'est bien notre post via "de <username>"
+    if username:
+        marker = "de " + username
+        own_post = await driver.find_element(contains=marker, clickable=False, refresh=True)
+        if not own_post:
+            log("   [1er commentaire] ! post de %s non visible dans le feed" % username)
+            await _dump_screen(driver, log, "no_own_post")
+            return False
+        log("   [1er commentaire] post de %s confirme" % username)
+
+    # 2. Chercher "Commenter" — scroller si pas visible (3 tentatives)
+    comment_btn = None
+    for scroll_try in range(4):
+        comment_btn = await driver.find_element(text="Commenter", clickable=True, refresh=True)
+        if comment_btn:
+            break
+        # Scroller un peu pour reveler le bouton
+        log("   [1er commentaire] scroll pour trouver Commenter (tentative %d)" % (scroll_try + 1))
+        await driver.ht.swipe(
+            driver.ht.screen_w * 0.5, driver.ht.screen_h * 0.6,
+            driver.ht.screen_w * 0.5, driver.ht.screen_h * 0.35,
+            duration=random.randint(300, 500)
+        )
+        await asyncio.sleep(1.5)
+        # Re-verifier que c'est toujours notre post
+        if username:
+            own_check = await driver.find_element(contains=marker, clickable=False, refresh=True)
+            if not own_check:
+                log("   [1er commentaire] ⚠ post de %s perdu apres scroll, abandon" % username)
+                return False
+
     if not comment_btn:
-        log("   [1er commentaire] ! bouton Commenter non trouve")
+        log("   [1er commentaire] ! bouton Commenter non trouve apres scroll")
         await _dump_screen(driver, log, "no_comment_btn")
         return False
+
     tap = comment_btn.get('tap', {})
     log("   [1er commentaire] tap Commenter (y=%d)" % tap.get('y', 0))
     await driver.ht.tap(tap['x'], tap['y'])
     await asyncio.sleep(random.uniform(1.5, 2.5))
 
-    # 2. Taper sur le champ de commentaire via tap_element natif
+    # 3. Taper sur le champ de commentaire via tap_element natif
     tapped = await driver.ht.tap_by_text("Ajouter un commentaire", match="contains")
     if not tapped:
         tapped = await driver.ht.tap_by_text("commentaire", match="contains")
@@ -506,11 +544,11 @@ async def _post_first_comment(driver, log, comment: str, username: str = "") -> 
         return False
     await asyncio.sleep(1)
 
-    # 3. Taper le texte
+    # 4. Taper le texte
     await driver.ht.type_text(comment)
     await asyncio.sleep(random.uniform(1.0, 2.0))
 
-    # 4. Envoyer (bouton "Publier" ou fleche)
+    # 5. Envoyer (bouton "Publier" ou fleche)
     send_el = await driver.find_element(text="Publier", clickable=True, refresh=True)
     if not send_el:
         send_el = await driver.find_element(contains="Envoyer", clickable=True, refresh=True)
