@@ -1715,10 +1715,31 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ seSel.isMusic }}">
 <div style="display:flex;flex-direction:column;gap:10px">
 <div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:6px">Son</div>
-<select value="{{ seSel.soundId }}" onChange="{{ seSel.setSound }}" style="width:100%;height:34px;padding:0 8px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none"><sc-for list="{{ seSel.soundOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.label }}</option></sc-for></select></div>
+<div onClick="{{ seSel.openSoundModal }}" style="display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-size:12.5px;cursor:pointer" style-hover="border-color:rgba(124,108,246,.5)"><i class="ph ph-music-notes" style="font-size:14px;color:#a5a0f5"></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ seSel.soundLabel }}</span><i class="ph ph-caret-right" style="font-size:12px;color:#5b6175"></i></div></div>
 <div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:6px">Style</div>
 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px"><sc-for list="{{ seSel.mStyles }}" as="o" hint-placeholder-count="8"><div onClick="{{ o.go }}" style="{{ o.style }}" style-hover="border-color:rgba(124,108,246,.5)"><i class="{{ o.icon }}" style="font-size:14px"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.label }}</span></div></sc-for></div></div>
 <sc-if value="{{ seSel.isLyrics }}"><div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:6px">Paroles affichées</div><textarea value="{{ seSel.lyrics }}" onChange="{{ seSel.setLyrics }}" rows="3" style="width:100%;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;line-height:1.45;outline:none;resize:vertical" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></textarea></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ seSel.isLink }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">URL</div><input value="{{ seSel.linkUrl }}" onChange="{{ seSel.setLinkUrl }}" placeholder="https://..." style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Titre affiché</div><input value="{{ seSel.linkTitle }}" onChange="{{ seSel.setLinkTitle }}" placeholder="Texte du sticker" style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
+</div>
+</sc-if>
+<sc-if value="{{ seSel.isMention }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Compte IG</div><input value="{{ seSel.mentionQ }}" onChange="{{ seSel.setMentionQ }}" placeholder="@username" style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
+<sc-if value="{{ seSel.hasMentionResults }}"><div style="display:flex;flex-direction:column;border-radius:8px;background:rgba(18,20,31,.95);border:1px solid rgba(255,255,255,.1);overflow:hidden"><sc-for list="{{ seSel.mentionResults }}" as="u" hint-placeholder-count="3"><div onClick="{{ u.pick }}" style="padding:7px 10px;font-size:12.5px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(124,108,246,.14);color:#f2f3fa">{{ u.label }}</div></sc-for></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ seSel.isPoll }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Question</div><input value="{{ seSel.pollQ }}" onChange="{{ seSel.setPollQ }}" placeholder="Posez une question..." style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Options</div>
+<div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ seSel.pollOpts }}" as="o" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:5px"><input value="{{ o.val }}" onChange="{{ o.set }}" style="flex:1;height:30px;padding:0 8px;border-radius:7px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12px;outline:none" style-focus="border-color:rgba(148,163,184,.55)"><sc-if value="{{ o.canRemove }}"><span onClick="{{ o.remove }}" style="width:24px;height:24px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#5b6175;cursor:pointer" style-hover="color:#fda4af;background:rgba(255,255,255,.04)"><i class="ph ph-x" style="font-size:11px"></i></span></sc-if></div></sc-for></div>
+<sc-if value="{{ seSel.canAddPollOpt }}"><div onClick="{{ seSel.addPollOpt }}" style="display:flex;align-items:center;gap:5px;margin-top:2px;font-size:11.5px;color:#8db4fd;cursor:pointer" style-hover="color:#a5a0f5"><i class="ph ph-plus" style="font-size:12px"></i>Ajouter une option</div></sc-if>
+</div>
 </div>
 </sc-if>
 <sc-if value="{{ seSel.hasText }}"><input value="{{ seSel.text }}" onChange="{{ seSel.setText }}" style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></sc-if>
@@ -4081,6 +4102,23 @@ class Component extends DCLogic {
     return out;
   }
   storyBg(t) { const m = t.bgIdx >= 0 && t.media[t.bgIdx] ? this.med(t.media[t.bgIdx]) : null; return m ? this.mediaBg(m, true) : t.color; }
+  _searchMention(q) {
+    if (this._mentionTimer) clearTimeout(this._mentionTimer);
+    if (!q || q.length < 2) { this.setState({ _mentionResults: [] }); return; }
+    this._mentionTimer = setTimeout(() => {
+      // Search in existing accounts
+      const accs = this.accounts().map(a => a.username).filter(u => u.toLowerCase().indexOf(q.toLowerCase()) >= 0).slice(0, 6);
+      this.setState({ _mentionResults: accs });
+    }, 200);
+  }
+  _applySoundToSticker(soundId) {
+    const st = this.state.story; if (!st) return;
+    const a = this.state.audio; if (!a || a.target !== 'storySticker' || !a.stickerId) return;
+    const snd = this.snd(soundId);
+    if (snd) {
+      this.setState(x => ({ story: { ...x.story, els: x.story.els.map(e => e.id === a.stickerId ? { ...e, sound: soundId, lyrics: this.LYR[soundId] || this.LYR.s1 || '' } : e) }, audio: null }));
+    }
+  }
   storyVals() {
     const s = this.state; const out = { isStory: s.tab === 'story', seOpen: false, newStory: () => this.openStory(null) };
     if (out.isStory) {
@@ -4103,7 +4141,7 @@ class Component extends DCLogic {
     const setSt = p => this.setState(x => ({ story: { ...x.story, ...p } }));
     const updEl = (id, p) => this.setState(x => ({ story: { ...x.story, els: x.story.els.map(e => e.id === id ? { ...e, ...p } : e) } }));
     const clampX = v => Math.round(Math.max(0, Math.min(W, v))), clampY = v => Math.round(Math.max(0, Math.min(H, v)));
-    const addEl = (kind, x, y) => { const d = this.STK[kind]; const id = 'e' + Date.now(); this.setState(z => ({ story: { ...z.story, els: z.story.els.concat([{ id, kind, x: x == null ? W / 2 : x, y: y == null ? H / 2 : y, scale: 1, rot: 0, text: kind === 'mention' ? '@' + z.story.username : d[3], color: d[4], ...(kind === 'music' ? { sound: 's1', mstyle: 'card', lyrics: this.LYR.s1 } : {}) }]), sel: id } })); };
+    const addEl = (kind, x, y) => { const d = this.STK[kind]; const id = 'e' + Date.now(); const extra = kind === 'music' ? { sound: 's1', mstyle: 'card', lyrics: this.LYR.s1 } : kind === 'link' ? { linkUrl: '' } : kind === 'poll' ? { pollOpts: ['Oui', 'Non'] } : {}; this.setState(z => ({ story: { ...z.story, els: z.story.els.concat([{ id, kind, x: x == null ? W / 2 : x, y: y == null ? H / 2 : y, scale: 1, rot: 0, text: kind === 'mention' ? '@' + z.story.username : d[3], color: d[4], ...extra }]), sel: id } })); };
     this._cvRef = this._cvRef || React.createRef();
     const sel = st.els.find(e => e.id === st.sel);
     const pills = ['mention', 'link', 'hashtag', 'location'];
@@ -4132,10 +4170,22 @@ class Component extends DCLogic {
       seBgHex: st.color, setSeBgHex: e => setSt({ color: e.target.value, bgIdx: -1 }),
       seNoSel: !sel, seHasSel: !!sel,
       seSel: sel ? { isMusic: sel.kind === 'music', isLyrics: sel.kind === 'music' && (sel.mstyle || 'card').indexOf('lyr') === 0, soundId: sel.kind === 'music' ? (this.elSound(sel) || {}).id || '' : '',
-        soundOpts: this.sounds().map(x => ({ id: x.id, label: x.title + ' · ' + x.artist })), setSound: e => { const sid = e.target.value; updEl(sel.id, { sound: sid, lyrics: this.LYR[sid] || this.LYR.s1 }); },
+        soundLabel: (() => { if (!sel.sound) return 'Choisir un son'; const s = this.snd(sel.sound); return s ? s.title + ' · ' + s.artist : sel.sound; })(),
         lyrics: sel.lyrics || '', setLyrics: e => updEl(sel.id, { lyrics: e.target.value }),
-        mStyles: [['card', 'Carte', 'ph ph-cards'], ['mini', 'Minimal', 'ph ph-equalizer'], ['cover', 'Pochette', 'ph ph-square'], ['vinyl', 'Vinyle', 'ph ph-vinyl-record'], ['lyrKaraoke', 'Karaoké', 'ph ph-microphone-stage'], ['lyrType', 'Machine à écrire', 'ph ph-text-aa'], ['lyrBold', 'Gras empilé', 'ph ph-text-b'], ['lyrBubble', 'Bulles', 'ph ph-chats-circle']].map(o => { const on = (sel.mstyle || 'card') === o[0]; return { label: o[1], icon: o[2], go: () => updEl(sel.id, { mstyle: o[0], lyrics: sel.lyrics || this.LYR[this.elSound(sel).id] || this.LYR.s1 }), style: { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 8px', borderRadius: 8, fontSize: 11.5, fontWeight: on ? 600 : 500, cursor: 'pointer', minWidth: 0, color: on ? '#f7f7fb' : '#aab0c5', background: on ? 'rgba(124,108,246,.18)' : 'rgba(255,255,255,.03)', border: '1px solid ' + (on ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)') } }; }),
-        icon: 'ph ph-' + this.STK[sel.kind][0], label: this.STK[sel.kind][1], hasText: sel.kind !== 'music', text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
+        mStyles: [['card', 'Carte', 'ph ph-cards'], ['mini', 'Minimal', 'ph ph-equalizer'], ['cover', 'Pochette', 'ph ph-square'], ['vinyl', 'Vinyle', 'ph ph-vinyl-record'], ['lyrKaraoke', 'Karaoké', 'ph ph-microphone-stage'], ['lyrType', 'Machine à écrire', 'ph ph-text-aa'], ['lyrBold', 'Gras empilé', 'ph ph-text-b'], ['lyrBubble', 'Bulles', 'ph ph-chats-circle']].map(o => { const on = (sel.mstyle || 'card') === o[0]; const sndId = (this.elSound(sel) || {}).id || 's1'; return { label: o[1], icon: o[2], go: () => updEl(sel.id, { mstyle: o[0], lyrics: sel.lyrics || this.LYR[sndId] || this.LYR.s1 }), style: { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 8px', borderRadius: 8, fontSize: 11.5, fontWeight: on ? 600 : 500, cursor: 'pointer', minWidth: 0, color: on ? '#f7f7fb' : '#aab0c5', background: on ? 'rgba(124,108,246,.18)' : 'rgba(255,255,255,.03)', border: '1px solid ' + (on ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)') } }; }),
+        icon: 'ph ph-' + this.STK[sel.kind][0], label: this.STK[sel.kind][1],
+        // Generic text field (not for link, poll, mention, music)
+        hasText: !['music', 'link', 'poll', 'mention'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
+        // Link: URL + title
+        isLink: sel.kind === 'link', linkUrl: sel.linkUrl || '', setLinkUrl: e => updEl(sel.id, { linkUrl: e.target.value }), linkTitle: sel.text || '', setLinkTitle: e => updEl(sel.id, { text: e.target.value }),
+        // Mention: autocomplete
+        isMention: sel.kind === 'mention', mentionQ: sel.text || '', setMentionQ: e => { updEl(sel.id, { text: e.target.value }); if (e.target.value.length >= 2) { this._searchMention(e.target.value.replace(/^@/, '')); } }, mentionResults: (this.state._mentionResults || []).map(u => ({ label: '@' + u, pick: () => { updEl(sel.id, { text: '@' + u }); this.setState({ _mentionResults: [] }); } })), hasMentionResults: !!(this.state._mentionResults || []).length,
+        // Poll: question + 2-4 options
+        isPoll: sel.kind === 'poll', pollQ: sel.text || '', setPollQ: e => updEl(sel.id, { text: e.target.value }),
+        pollOpts: (sel.pollOpts || ['Oui', 'Non']).map((o, i) => ({ val: o, set: e => { const opts = (sel.pollOpts || ['Oui', 'Non']).slice(); opts[i] = e.target.value; updEl(sel.id, { pollOpts: opts }); }, remove: () => { const opts = (sel.pollOpts || ['Oui', 'Non']).slice(); opts.splice(i, 1); updEl(sel.id, { pollOpts: opts }); }, canRemove: (sel.pollOpts || ['Oui', 'Non']).length > 2 })),
+        canAddPollOpt: (sel.pollOpts || ['Oui', 'Non']).length < 4, addPollOpt: () => { const opts = (sel.pollOpts || ['Oui', 'Non']).slice(); opts.push('Option ' + (opts.length + 1)); updEl(sel.id, { pollOpts: opts }); },
+        // Music: open sound modal instead of select
+        openSoundModal: () => this.setState({ audio: { tab: 'trend', q: '', sel: sel.sound ? [sel.sound] : [], multi: false, target: 'storySticker', stickerId: sel.id }, playing: null }),
         x: String(sel.x), y: String(sel.y), setX: e => updEl(sel.id, { x: clampX(parseInt(e.target.value, 10) || 0) }), setY: e => updEl(sel.id, { y: clampY(parseInt(e.target.value, 10) || 0) }),
         scale: Math.round(sel.scale * 100), scaleLabel: Math.round(sel.scale * 100) + ' %', setScale: e => updEl(sel.id, { scale: Number(e.target.value) / 100 }),
         rot: sel.rot, rotLabel: sel.rot + '°', setRot: e => updEl(sel.id, { rot: Number(e.target.value) }),
@@ -4445,7 +4495,7 @@ class Component extends DCLogic {
         auEmpty: !list.length, auEmptyText: au.tab === 'search' ? (au.q.trim() ? 'Lance la recherche pour interroger Instagram' : 'Tape un titre ou un artiste puis lance la recherche') : au.tab === 'liked' ? 'Aucun son liké' : 'Aucun son',
         auCount: au.sel.length + ' son' + (au.sel.length > 1 ? 's' : '') + ' sélectionné' + (au.sel.length > 1 ? 's' : ''),
         auCancel: () => this.setState({ audio: null, playing: null }),
-        auConfirm: () => { if (au.target === 'coll') this.updColl(this.state.collView, c => ({ ...c, audio: au.sel.slice() })); else if (au.target === 'item') this.setState(x => ({ itemEd: { ...x.itemEd, sound: au.sel[0] || null } })); else this.upd({ sound: au.sel[0] || null }); this.setState({ audio: null, playing: null }); }
+        auConfirm: () => { if (au.target === 'storySticker') { this._applySoundToSticker(au.sel[0]); } else if (au.target === 'coll') this.updColl(this.state.collView, c => ({ ...c, audio: au.sel.slice() })); else if (au.target === 'item') this.setState(x => ({ itemEd: { ...x.itemEd, sound: au.sel[0] || null } })); else this.upd({ sound: au.sel[0] || null }); this.setState({ audio: null, playing: null }); }
       });
     }
 
