@@ -28,10 +28,13 @@ JPEG_QUALITY = 60
 
 
 async def _download_image(url: str) -> bytes | None:
-    """Download image bytes from R2/gateway."""
+    """Download image bytes from R2/gateway (with auth)."""
     try:
+        headers = {}
+        if API_SECRET:
+            headers["Authorization"] = f"Bearer {API_SECRET}"
         async with httpx.AsyncClient(timeout=30, verify=False) as client:
-            r = await client.get(url)
+            r = await client.get(url, headers=headers)
             if r.status_code == 200:
                 return r.content
             logger.warning("download %s → HTTP %d", url[:60], r.status_code)
