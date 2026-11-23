@@ -641,7 +641,7 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-for list="{{ storyCards }}" as="c" hint-placeholder-count="4">
 <div style="border-radius:16px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(124,108,246,.05),rgba(255,255,255,.012) 50%);padding:12px;display:flex;flex-direction:column;gap:11px">
 <div onClick="{{ c.edit }}" style="{{ c.thumb }}">
-<div style="position:absolute;left:10px;right:10px;top:10px;display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:99px;background:rgba(255,255,255,.3)"></span><span style="font-size:10px;font-weight:600;color:#ffffff">{{ c.username }}</span></div>
+<div style="position:absolute;left:10px;right:10px;top:10px;display:flex;align-items:center;gap:6px"><span style="{{ c.avatarStyle }}"></span><span style="font-size:10px;font-weight:600;color:#ffffff">{{ c.username }}</span></div>
 <div style="{{ c.stage }}">
 <sc-for list="{{ c.els }}" as="el" hint-placeholder-count="2">
 <div style="{{ el.wrap }}">
@@ -4363,7 +4363,7 @@ class Component extends DCLogic {
         stTplPers: [{ id: 'all', label: 'Toutes' }].concat(this.pers().map(p => ({ id: p.id, label: p.name, color: p.color }))).map(o => ({ label: o.label, hasDot: !!o.color, hasIcon: false, dot: o.color ? this.dot(o.color, 8) : {}, title: '', style: this.chip((s.stTplPersona || 'all') === o.id, o.color), go: () => this.setState({ stTplPersona: o.id }) })),
         stTplCount: s.storyTpls.filter(t => (s.stTplPersona || 'all') === 'all' || t.persona === s.stTplPersona).length + ' templates',
         storyCards: s.storyTpls.filter(t => (s.stTplPersona || 'all') === 'all' || t.persona === s.stTplPersona).map(t => { const kinds = []; t.els.forEach(e => { if (kinds.indexOf(e.kind) < 0) kinds.push(e.kind); }); return {
-          name: t.name, username: t.username, meta: (t.persona && this.P(t.persona) ? this.P(t.persona).name + ' · ' + this.stype(t.type).label + ' · ' : '') + t.els.length + ' sticker' + (t.els.length > 1 ? 's' : '') + ' · modifié ' + (t.updated ? 'il y a ' + t.updated + ' j' : "aujourd\'hui"),
+          name: t.name, username: (() => { const p = this.P(t.persona); return p ? p.name : t.username; })(), avatarStyle: (() => { const p = this.P(t.persona); const c = p ? p.color : '#888'; return { width: 18, height: 18, borderRadius: 99, background: 'linear-gradient(135deg, ' + c + ', ' + c + '99)', border: '1px solid rgba(255,255,255,.7)', flexShrink: 0 }; })(), meta: (t.persona && this.P(t.persona) ? this.P(t.persona).name + ' · ' + this.stype(t.type).label + ' · ' : '') + t.els.length + ' sticker' + (t.els.length > 1 ? 's' : '') + ' · modifié ' + (t.updated ? 'il y a ' + t.updated + ' j' : "aujourd\'hui"),
           els: t.els.map(el => { const v = this.stkVals(el, false); return { ...v, wrap: { ...v.wrap, cursor: 'default', outline: 'none', pointerEvents: 'none' } }; }),
           stage: { position: 'absolute', left: 0, top: 0, width: 338, height: 600, transformOrigin: '0 0', transform: 'scale(' + (190 / 338) + ')', pointerEvents: 'none' },
           thumb: { position: 'relative', width: 190, height: Math.round(190 * 600 / 338), margin: '0 auto', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', background: this.storyBg(t), border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 10px 24px rgba(0,0,0,.35)' },
@@ -4398,8 +4398,8 @@ class Component extends DCLogic {
       seCanvas: { position: 'relative', width: W, height: H, borderRadius: 36, overflow: 'hidden', background: st.color, touchAction: 'none' },
       seGuides: (() => { if (!sel) return { showCx: false, showTop: false, showBot: false }; return { showCx: sel.x === Math.round(W / 2), showTop: sel.y === SAFE_TOP, showBot: sel.y === SAFE_BOT, cxStyle: { position: 'absolute', left: W / 2, top: 0, width: 1, height: H, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 }, topStyle: { position: 'absolute', left: 0, top: SAFE_TOP, width: W, height: 1, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 }, botStyle: { position: 'absolute', left: 0, top: SAFE_BOT, width: W, height: 1, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 } }; })(),
       seBg: { position: 'absolute', inset: 0, background: this.storyBg(st), pointerEvents: 'none' },
-      seUser: st.username, setSeUser: e => setSt({ username: e.target.value.replace(/^@/, '') }),
-      seAvatar: (() => { const p = this.P(st.persona); return { width: 26, height: 26, borderRadius: 99, background: p ? p.color : 'rgba(255,255,255,.3)', border: '1.5px solid rgba(255,255,255,.8)' }; })(),
+      seUser: (() => { const p = this.P(st.persona); return p ? p.name : st.username; })(),
+      seAvatar: (() => { const p = this.P(st.persona); const c = p ? p.color : '#888'; return { width: 26, height: 26, borderRadius: 99, background: 'linear-gradient(135deg, ' + c + ', ' + c + '99)', border: '1.5px solid rgba(255,255,255,.8)' }; })(),
       seEmpty: !st.els.length,
       seEls: st.els.map(el => { const on = st.sel === el.id; const hov = this.state._hoverEl === el.id;
         const handleBase = { position: 'absolute', width: 18, height: 18, borderRadius: 99, display: on || hov ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, border: '1.5px solid rgba(255,255,255,.8)', boxShadow: '0 2px 8px rgba(0,0,0,.5)' };
