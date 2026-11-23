@@ -3733,13 +3733,13 @@ class Component extends DCLogic {
         text: el.text, icon: 'ph ph-' + this.STK[el.kind][0],
         isText: el.kind === 'text', isMusic: el.kind === 'music', m: el.kind === 'music' ? this.musicVals(el) : {}, isPill: pills.indexOf(el.kind) >= 0, isLink: el.kind === 'link', isLocation: el.kind === 'location', isPoll: el.kind === 'poll', isQuestion: el.kind === 'question', isCountdown: el.kind === 'countdown', isSlider: el.kind === 'slider',
         wrap: { position: 'absolute', left: el.x, top: el.y, transform: 'translate(-50%,-50%) rotate(' + el.rot + 'deg) scale(' + el.scale + ')', cursor: 'move', touchAction: 'none', userSelect: 'none', outline: on ? '1.5px dashed rgba(255,255,255,.9)' : 'none', outlineOffset: 6, borderRadius: 6 },
-        // Texte — 4 variantes IG
+        // Texte — 4 variantes IG (shadow, highlight, bg, glow)
         textVariant: el.textVariant || 'shadow',
-        textStyle: (() => { const v = el.textVariant || 'shadow'; const base = { fontSize: 26, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: '-.01em', padding: '4px 10px' };
-          if (v === 'bg') return { ...base, background: '#16171f', color: c, borderRadius: 8 };
-          if (v === 'highlight') return { ...base, background: c, color: '#ffffff', borderRadius: 8 };
-          if (v === 'glow') return { ...base, color: c, textShadow: '0 0 20px ' + c + ', 0 0 40px ' + c + '88', WebkitTextStroke: '1px rgba(255,255,255,.3)' };
-          return { ...base, color: c, textShadow: '0 2px 14px rgba(0,0,0,.45)' }; // shadow (default)
+        textStyle: (() => { const v = el.textVariant || 'shadow'; const base = { fontSize: 34, fontWeight: 800, fontFamily: "'Manrope', sans-serif", whiteSpace: 'nowrap', letterSpacing: '-.02em', padding: '10px 24px', lineHeight: 1.2, textAlign: 'center' };
+          if (v === 'bg') return { ...base, background: 'rgba(0,0,0,.75)', color: c, borderRadius: 14, backdropFilter: 'blur(4px)', boxShadow: '0 4px 16px rgba(0,0,0,.3)' };
+          if (v === 'highlight') return { ...base, background: c, color: '#ffffff', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,.3)', textShadow: '0 1px 3px rgba(0,0,0,.2)' };
+          if (v === 'glow') return { ...base, color: '#ffffff', WebkitTextStroke: '1px ' + c, textShadow: '0 0 12px ' + c + ', 0 0 30px ' + c + '88, 0 0 60px ' + c + '44' };
+          return { ...base, color: c, textShadow: '0 0 8px rgba(0,0,0,.85), 0 2px 20px rgba(0,0,0,.6), 0 0 40px rgba(0,0,0,.3)' }; // shadow (default)
         })(),
         // Mention/Hashtag — pill blanc
         pillStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 40, padding: '0 16px', borderRadius: 99, background: '#ffffff', color: '#16171f', fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)' },
@@ -4284,7 +4284,7 @@ class Component extends DCLogic {
         // Generic text field (not for link, poll, mention, music, location)
         hasText: !['music', 'link', 'poll', 'mention', 'location'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
         isTextKind: sel.kind === 'text',
-        textVariants: [['shadow', 'Classique'], ['bg', 'Fond noir'], ['highlight', 'Surligné'], ['glow', 'Néon']].map(v => ({ label: v[1], on: (sel.textVariant || 'shadow') === v[0], go: () => updEl(sel.id, { textVariant: v[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 28, padding: '0 10px', borderRadius: 8, fontSize: 11, fontWeight: (sel.textVariant || 'shadow') === v[0] ? 600 : 500, cursor: 'pointer', color: (sel.textVariant || 'shadow') === v[0] ? '#f7f7fb' : '#aab0c5', background: (sel.textVariant || 'shadow') === v[0] ? 'rgba(124,108,246,.18)' : 'rgba(255,255,255,.03)', border: '1px solid ' + ((sel.textVariant || 'shadow') === v[0] ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)') } })),
+        textVariants: (() => { const sc = sel.color || '#ffffff'; return [['shadow', 'Aa', { color: sc, textShadow: '0 0 6px rgba(0,0,0,.8), 0 1px 8px rgba(0,0,0,.5)' }], ['highlight', 'Aa', { background: sc, color: '#fff', borderRadius: 6, padding: '2px 8px', textShadow: '0 1px 2px rgba(0,0,0,.2)' }], ['bg', 'Aa', { background: 'rgba(0,0,0,.7)', color: sc, borderRadius: 6, padding: '2px 8px' }], ['glow', 'Aa', { color: '#fff', WebkitTextStroke: '0.5px ' + sc, textShadow: '0 0 8px ' + sc + ', 0 0 16px ' + sc + '88' }]].map(v => { const on = (sel.textVariant || 'shadow') === v[0]; return { label: v[1], on, go: () => updEl(sel.id, { textVariant: v[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 34, padding: '0 10px', borderRadius: 8, fontSize: 16, fontWeight: 800, cursor: 'pointer', border: '1.5px solid ' + (on ? 'rgba(124,108,246,.65)' : 'rgba(255,255,255,.08)'), background: on ? 'rgba(124,108,246,.12)' : 'rgba(255,255,255,.03)', ...v[2] } }; }); })(),
         // Location: autocomplete via IG API
         isLocation: sel.kind === 'location', locQ: sel.text || '', setLocQ: e => { updEl(sel.id, { text: e.target.value }); if (e.target.value.length >= 2) this._searchPlace(e.target.value); }, locResults: (this.state._placeResults || []).map(p => ({ label: p.name, sub: p.address || p.city || '', pick: () => { updEl(sel.id, { text: p.name, locationPk: p.pk, locationAddr: p.address }); this.setState({ _placeResults: [] }); } })), hasLocResults: !!(this.state._placeResults || []).length,
         // Link: URL + title
