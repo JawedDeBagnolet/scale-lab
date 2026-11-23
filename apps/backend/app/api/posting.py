@@ -28,6 +28,9 @@ from app.schemas.posting import (
     StoryTemplateCreate,
     StoryTemplateOut,
     StoryTemplateUpdate,
+    StoryTypeCreate,
+    StoryTypeOut,
+    StoryTypeUpdate,
     TemplateCreate,
     TemplateOut,
     TemplateUpdate,
@@ -259,6 +262,42 @@ async def delete_story_collection(sid: UUID, db: AsyncSession = Depends(get_db))
     if not c:
         raise HTTPException(404, "story collection not found")
     await service.delete_story_collection(db, c)
+
+
+# --- Story Types --------------------------------------------------------------
+
+@router.get("/story-types", response_model=list[StoryTypeOut])
+async def list_story_types(db: AsyncSession = Depends(get_db)):
+    return await service.list_story_types(db)
+
+
+@router.get("/story-types/{sid}", response_model=StoryTypeOut)
+async def get_story_type(sid: UUID, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_type(db, sid)
+    if not t:
+        raise HTTPException(404, "story type not found")
+    return t
+
+
+@router.post("/story-types", response_model=StoryTypeOut, status_code=201)
+async def create_story_type(data: StoryTypeCreate, db: AsyncSession = Depends(get_db)):
+    return await service.create_story_type(db, data)
+
+
+@router.patch("/story-types/{sid}", response_model=StoryTypeOut)
+async def update_story_type(sid: UUID, data: StoryTypeUpdate, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_type(db, sid)
+    if not t:
+        raise HTTPException(404, "story type not found")
+    return await service.update_story_type(db, t, data)
+
+
+@router.delete("/story-types/{sid}", status_code=204)
+async def delete_story_type(sid: UUID, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_type(db, sid)
+    if not t:
+        raise HTTPException(404, "story type not found")
+    await service.delete_story_type(db, t)
 
 
 # --- Campagnes ----------------------------------------------------------------

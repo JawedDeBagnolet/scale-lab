@@ -143,6 +143,34 @@ class StoryTemplateOut(StoryTemplateBase):
     model_config = {"from_attributes": True}
 
 
+# --- Story Type --------------------------------------------------------------
+
+class StoryTypeBase(BaseModel):
+    slug: str = Field(min_length=1, max_length=50)
+    label: str = Field(min_length=1, max_length=100)
+    color: str = Field(default="#4ade80", max_length=20)
+    icon: str = Field(default="sparkle", max_length=50)
+    personas: list | None = None
+    position: int = 0
+
+class StoryTypeCreate(StoryTypeBase):
+    pass
+
+class StoryTypeUpdate(BaseModel):
+    slug: str | None = Field(default=None, max_length=50)
+    label: str | None = Field(default=None, max_length=100)
+    color: str | None = Field(default=None, max_length=20)
+    icon: str | None = Field(default=None, max_length=50)
+    personas: list | None = None
+    position: int | None = None
+
+class StoryTypeOut(StoryTypeBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
 # --- Story Collection ---------------------------------------------------------
 
 class StoryCollectionBase(BaseModel):

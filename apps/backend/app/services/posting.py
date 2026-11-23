@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.posting import (
-    Campagne, Collection, Media, Publication, StoryCollection, StoryTemplate, Template,
+    Campagne, Collection, Media, Publication, StoryCollection, StoryTemplate, StoryType, Template,
 )
 from app.schemas.posting import (
     CampagneCreate,
@@ -21,6 +21,8 @@ from app.schemas.posting import (
     StoryCollectionUpdate,
     StoryTemplateCreate,
     StoryTemplateUpdate,
+    StoryTypeCreate,
+    StoryTypeUpdate,
     TemplateCreate,
     TemplateUpdate,
 )
@@ -366,4 +368,43 @@ async def update_story_collection(db: AsyncSession, c: StoryCollection, data: St
 
 async def delete_story_collection(db: AsyncSession, c: StoryCollection) -> None:
     await db.delete(c)
+    await db.commit()
+
+
+# --- Story Types --------------------------------------------------------------
+
+async def list_story_types(db: AsyncSession) -> Sequence[StoryType]:
+    result = await db.execute(
+        select(StoryType).order_by(StoryType.position, StoryType.created_at)
+    )
+    return result.scalars().all()
+
+
+async def get_story_type(db: AsyncSession, sid: UUID) -> StoryType | None:
+    return await db.get(StoryType, sid)
+
+
+async def get_story_type_by_slug(db: AsyncSession, slug: str) -> StoryType | None:
+    result = await db.execute(select(StoryType).where(StoryType.slug == slug))
+    return result.scalars().first()
+
+
+async def create_story_type(db: AsyncSession, data: StoryTypeCreate) -> StoryType:
+    t = StoryType(**data.model_dump())
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+
+async def update_story_type(db: AsyncSession, t: StoryType, data: StoryTypeUpdate) -> StoryType:
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(t, key, value)
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+
+async def delete_story_type(db: AsyncSession, t: StoryType) -> None:
+    await db.delete(t)
     await db.commit()

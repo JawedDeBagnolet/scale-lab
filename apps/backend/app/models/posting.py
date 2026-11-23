@@ -158,6 +158,27 @@ class StoryCollection(Base):
     )
 
 
+class StoryType(Base):
+    """Type/catégorie de story (Lifestyle, GYM, CTA, Promo, etc.)."""
+    __tablename__ = "story_types"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str] = mapped_column(String(50), unique=True, index=True)  # ex: lifestyle, gym, cta
+    label: Mapped[str] = mapped_column(String(100))  # Nom affiché
+    color: Mapped[str] = mapped_column(String(20), default="#4ade80")
+    icon: Mapped[str] = mapped_column(String(50), default="sparkle")  # nom Phosphor sans prefixe
+    personas: Mapped[list | None] = mapped_column(JSONB, default=list)  # UUIDs des personas associées (vide = toutes)
+    position: Mapped[int] = mapped_column(Integer, default=0)  # ordre d'affichage
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class Campagne(Base):
     __tablename__ = "campagnes"
 
