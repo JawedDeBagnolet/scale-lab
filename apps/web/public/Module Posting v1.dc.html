@@ -554,7 +554,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -616,7 +616,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -1504,7 +1504,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -1538,7 +1538,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -1566,7 +1566,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -1673,7 +1673,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div></sc-if>
 </sc-if>
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:15px"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="{{ el.optStyle }}">Matin</div><div style="{{ el.optStyle }}">Soir</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="width:210px;padding:12px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></sc-if>
 <sc-if value="{{ el.isQuestion }}"><div style="width:220px;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="{{ el.headStyle }}">{{ el.text }}</div><div style="margin:10px;padding:10px;border-radius:10px;background:#f1f1f4;font-size:12px;color:#8a8a95;text-align:center">Tape quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cardStyle }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:210px;padding:14px;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(0,0,0,.3)"><div style="font-size:14px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:18px 6px 6px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
@@ -1731,6 +1731,12 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;flex-direction:column;gap:6px">
 <div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Compte IG</div><input value="{{ seSel.mentionQ }}" onChange="{{ seSel.setMentionQ }}" placeholder="@username" style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
 <sc-if value="{{ seSel.hasMentionResults }}"><div style="display:flex;flex-direction:column;border-radius:8px;background:rgba(18,20,31,.95);border:1px solid rgba(255,255,255,.1);overflow:hidden"><sc-for list="{{ seSel.mentionResults }}" as="u" hint-placeholder-count="3"><div onClick="{{ u.pick }}" style="padding:7px 10px;font-size:12.5px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(124,108,246,.14);color:#f2f3fa">{{ u.label }}</div></sc-for></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ seSel.isLocation }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div><div style="font-size:11.5px;color:#8a91a8;margin-bottom:4px">Lieu</div><input value="{{ seSel.locQ }}" onChange="{{ seSel.setLocQ }}" placeholder="Rechercher un lieu..." style="width:100%;height:34px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#e8eaf3;font-family:inherit;font-size:12.5px;outline:none" style-focus="border-color:var(--sf-b,rgba(148,163,184,.55));box-shadow:var(--sf-s,0 0 16px rgba(148,163,184,.16))"></div>
+<sc-if value="{{ seSel.hasLocResults }}"><div style="display:flex;flex-direction:column;border-radius:8px;background:rgba(18,20,31,.95);border:1px solid rgba(255,255,255,.1);overflow:hidden;max-height:200px;overflow-y:auto"><sc-for list="{{ seSel.locResults }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.pick }}" style="padding:7px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04)" style-hover="background:rgba(124,108,246,.14)"><div style="font-size:12.5px;color:#e8eaf3">{{ p.label }}</div><div style="font-size:10.5px;color:#5b6175;margin-top:1px">{{ p.sub }}</div></div></sc-for></div></sc-if>
 </div>
 </sc-if>
 <sc-if value="{{ seSel.isPoll }}">
@@ -3693,12 +3699,13 @@ class Component extends DCLogic {
     };
   }
   stkMini(t, w) { return { els: (t.els || []).map(el => { const v = this.stkVals(el, false); return { ...v, wrap: { ...v.wrap, cursor: 'default', outline: 'none', pointerEvents: 'none' } }; }), stage: { position: 'absolute', left: 0, top: 0, width: 338, height: 600, transformOrigin: '0 0', transform: 'scale(' + (w / 338) + ')', pointerEvents: 'none' } }; }
-  stkVals(el, on) { const c = el.color; const pills = ['mention', 'link', 'hashtag', 'location']; return {
+  stkVals(el, on) { const c = el.color; const pills = ['mention', 'link', 'hashtag', 'location']; const pollOpts = el.pollOpts || ['Oui', 'Non']; return {
         text: el.text, icon: 'ph ph-' + this.STK[el.kind][0],
         isText: el.kind === 'text', isMusic: el.kind === 'music', m: el.kind === 'music' ? this.musicVals(el) : {}, isPill: pills.indexOf(el.kind) >= 0, isPoll: el.kind === 'poll', isQuestion: el.kind === 'question', isCountdown: el.kind === 'countdown', isSlider: el.kind === 'slider',
         wrap: { position: 'absolute', left: el.x, top: el.y, transform: 'translate(-50%,-50%) rotate(' + el.rot + 'deg) scale(' + el.scale + ')', cursor: 'move', touchAction: 'none', userSelect: 'none', outline: on ? '1.5px dashed rgba(255,255,255,.9)' : 'none', outlineOffset: 6, borderRadius: 6 },
         textStyle: { fontSize: 26, fontWeight: 800, color: c, textShadow: '0 2px 14px rgba(0,0,0,.45)', whiteSpace: 'nowrap', letterSpacing: '-.01em' },
         pillStyle: { display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, background: '#ffffff', color: c, fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)', textTransform: el.kind === 'mention' || el.kind === 'hashtag' ? 'uppercase' : 'none' },
+        pollOptList: pollOpts.map(o => ({ label: o, style: { height: 34, borderRadius: 10, background: '#f1f1f4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: c } })),
         optStyle: { height: 34, borderRadius: 10, background: '#f1f1f4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: c },
         headStyle: { background: c, color: '#ffffff', padding: '14px', fontSize: 14, fontWeight: 700, textAlign: 'center' },
         cardStyle: { width: 210, padding: '12px 14px', borderRadius: 14, background: 'linear-gradient(135deg,' + c + ',#1b1f33)', color: '#ffffff', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
@@ -4102,6 +4109,24 @@ class Component extends DCLogic {
     return out;
   }
   storyBg(t) { const m = t.bgIdx >= 0 && t.media[t.bgIdx] ? this.med(t.media[t.bgIdx]) : null; return m ? this.mediaBg(m, true) : t.color; }
+  _searchPlace(q) {
+    if (this._placeTimer) clearTimeout(this._placeTimer);
+    if (!q || q.length < 2) { this.setState({ _placeResults: [] }); return; }
+    this._placeTimer = setTimeout(() => {
+      const SD = window.SCALE_DATA;
+      if (this._isLive() && SD && SD.apiAsync) {
+        // Find first active compte for API call
+        const acc = this.accounts().find(a => a.plat === 'ig' && a.status === 'idle');
+        if (!acc) { this.setState({ _placeResults: [] }); return; }
+        SD.apiAsync('GET', '/ig/search/places?q=' + encodeURIComponent(q) + '&compte_id=' + acc.id).then(r => {
+          if (Array.isArray(r)) this.setState({ _placeResults: r.slice(0, 8) });
+        }).catch(() => {});
+      } else {
+        // Fallback: mock places for DC preview
+        this.setState({ _placeResults: [{ pk: '1', name: q + ', France', address: 'France', city: 'Paris' }, { pk: '2', name: 'Café ' + q, address: 'Rue de la Paix', city: 'Paris' }] });
+      }
+    }, 400);
+  }
   _searchMention(q) {
     if (this._mentionTimer) clearTimeout(this._mentionTimer);
     if (!q || q.length < 2) { this.setState({ _mentionResults: [] }); return; }
@@ -4162,7 +4187,24 @@ class Component extends DCLogic {
       seBg: { position: 'absolute', inset: 0, background: this.storyBg(st), pointerEvents: 'none' },
       seUser: st.username, setSeUser: e => setSt({ username: e.target.value.replace(/^@/, '') }),
       seEmpty: !st.els.length,
-      seEls: st.els.map(el => { const on = st.sel === el.id; return { ...this.stkVals(el, on), down: e => { e.stopPropagation(); e.preventDefault(); const sx = e.clientX, sy = e.clientY, ox = el.x, oy = el.y; if (!on) setSt({ sel: el.id }); const mv = ev => updEl(el.id, { x: clampX(ox + ev.clientX - sx), y: clampY(oy + ev.clientY - sy) }); const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); }; window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); } }; }),
+      seEls: st.els.map(el => { const on = st.sel === el.id; return { ...this.stkVals(el, on), down: e => {
+        e.stopPropagation(); e.preventDefault();
+        const sx = e.clientX, sy = e.clientY, ox = el.x, oy = el.y, oScale = el.scale, oRot = el.rot;
+        if (!on) setSt({ sel: el.id });
+        // Shift+drag = scale, Alt+drag = rotate, plain drag = move
+        const shift = e.shiftKey, alt = e.altKey;
+        const mv = ev => {
+          if (shift) {
+            const dy = ev.clientY - sy; updEl(el.id, { scale: Math.max(0.3, Math.min(3, oScale - dy / 150)) });
+          } else if (alt) {
+            const dx = ev.clientX - sx; updEl(el.id, { rot: Math.round(Math.max(-180, Math.min(180, oRot + dx / 2))) });
+          } else {
+            updEl(el.id, { x: clampX(ox + ev.clientX - sx), y: clampY(oy + ev.clientY - sy) });
+          }
+        };
+        const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+        window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+      } }; }),
       seAddMedia: () => this.openPickerFor('story'),
       seMedia: st.media.map((id, i) => { const m = this.med(id); return { style: { position: 'relative', aspectRatio: '9/16', borderRadius: 8, cursor: 'pointer', background: m ? this.mediaBg(m) : '#11131d', border: '1.5px solid ' + (i === st.bgIdx ? '#a5a0f5' : 'rgba(255,255,255,.08)'), boxShadow: i === st.bgIdx ? '0 0 12px rgba(124,108,246,.4)' : 'none' }, pick: () => setSt({ bgIdx: i }), remove: e => { e.stopPropagation(); const media = st.media.filter(x => x !== id); setSt({ media, bgIdx: media.length ? 0 : -1 }); } }; }),
       seNoMedia: !st.media.length,
@@ -4174,8 +4216,10 @@ class Component extends DCLogic {
         lyrics: sel.lyrics || '', setLyrics: e => updEl(sel.id, { lyrics: e.target.value }),
         mStyles: [['card', 'Carte', 'ph ph-cards'], ['mini', 'Minimal', 'ph ph-equalizer'], ['cover', 'Pochette', 'ph ph-square'], ['vinyl', 'Vinyle', 'ph ph-vinyl-record'], ['lyrKaraoke', 'Karaoké', 'ph ph-microphone-stage'], ['lyrType', 'Machine à écrire', 'ph ph-text-aa'], ['lyrBold', 'Gras empilé', 'ph ph-text-b'], ['lyrBubble', 'Bulles', 'ph ph-chats-circle']].map(o => { const on = (sel.mstyle || 'card') === o[0]; const sndId = (this.elSound(sel) || {}).id || 's1'; return { label: o[1], icon: o[2], go: () => updEl(sel.id, { mstyle: o[0], lyrics: sel.lyrics || this.LYR[sndId] || this.LYR.s1 }), style: { display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 8px', borderRadius: 8, fontSize: 11.5, fontWeight: on ? 600 : 500, cursor: 'pointer', minWidth: 0, color: on ? '#f7f7fb' : '#aab0c5', background: on ? 'rgba(124,108,246,.18)' : 'rgba(255,255,255,.03)', border: '1px solid ' + (on ? 'rgba(124,108,246,.55)' : 'rgba(255,255,255,.07)') } }; }),
         icon: 'ph ph-' + this.STK[sel.kind][0], label: this.STK[sel.kind][1],
-        // Generic text field (not for link, poll, mention, music)
-        hasText: !['music', 'link', 'poll', 'mention'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
+        // Generic text field (not for link, poll, mention, music, location)
+        hasText: !['music', 'link', 'poll', 'mention', 'location'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
+        // Location: autocomplete via IG API
+        isLocation: sel.kind === 'location', locQ: sel.text || '', setLocQ: e => { updEl(sel.id, { text: e.target.value }); if (e.target.value.length >= 2) this._searchPlace(e.target.value); }, locResults: (this.state._placeResults || []).map(p => ({ label: p.name, sub: p.address || p.city || '', pick: () => { updEl(sel.id, { text: p.name, locationPk: p.pk, locationAddr: p.address }); this.setState({ _placeResults: [] }); } })), hasLocResults: !!(this.state._placeResults || []).length,
         // Link: URL + title
         isLink: sel.kind === 'link', linkUrl: sel.linkUrl || '', setLinkUrl: e => updEl(sel.id, { linkUrl: e.target.value }), linkTitle: sel.text || '', setLinkTitle: e => updEl(sel.id, { text: e.target.value }),
         // Mention: autocomplete

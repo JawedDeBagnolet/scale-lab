@@ -154,6 +154,30 @@ async def get_trending_music(
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Recherche de lieux
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@router.get("/search/places")
+async def search_places(
+    q: str = Query(..., min_length=1, description="Recherche de lieu"),
+    compte_id: str = Query(...),
+    lat: float = Query(48.8566, description="Latitude pour biais géographique"),
+    lng: float = Query(2.3522, description="Longitude pour biais géographique"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recherche de lieux IG — retourne nom, adresse, coordonnées.
+
+    Utilisé dans le Story Builder pour l'autocomplete du sticker lieu.
+    Les résultats sont les mêmes que ceux proposés par IG nativement.
+    """
+    client = await _get_client(compte_id, db)
+    try:
+        return await client.search_places(q, lat, lng)
+    except Exception as e:
+        raise HTTPException(502, f"Erreur API IG: {e}")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Stats / Analytics
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -322,6 +322,34 @@ class IGApiClient:
         return []
 
     # ------------------------------------------------------------------
+    # Recherche de lieux
+    # ------------------------------------------------------------------
+
+    async def search_places(self, query: str, lat: float = 48.8566, lng: float = 2.3522, count: int = 15) -> list[dict]:
+        """Search IG places/locations — returns [{pk, name, address, lat, lng, city}]."""
+        try:
+            data = await self._get("/api/v1/location_search/", {
+                "search_query": query,
+                "latitude": str(lat),
+                "longitude": str(lng),
+                "rank_token": f"{self.ds_user_id}_{query[:8]}",
+            })
+            results = []
+            for v in data.get("venues", []):
+                results.append({
+                    "pk": str(v.get("external_id") or v.get("pk", "")),
+                    "name": v.get("name", ""),
+                    "address": v.get("address", ""),
+                    "lat": v.get("lat", 0),
+                    "lng": v.get("lng", 0),
+                    "city": v.get("city", ""),
+                })
+            return results[:count]
+        except Exception as e:
+            logger.warning("search_places failed: %s", str(e)[:150])
+            return []
+
+    # ------------------------------------------------------------------
     # Stats / Analytics
     # ------------------------------------------------------------------
 
