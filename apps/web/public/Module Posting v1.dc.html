@@ -415,7 +415,7 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
 <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="6">
 <div onClick="{{ it.click }}" onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="{{ it.wrap }}">
-<div style="{{ it.bg }}" data-lazy-bg="{{ it.lazyBg }}"></div>
+<div style="{{ it.bg }}"></div>
 <sc-if value="{{ it.isVideoUrl }}"><video data-autoseek="1" src="{{ it.videoUrl }}" preload="{{ it.videoPreload }}" muted playsinline loop style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1"></video></sc-if>
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 28%,transparent 52%,rgba(0,0,0,.75));pointer-events:none;z-index:2"></div>
 <sc-if value="{{ it.newTag }}"><span style="position:absolute;left:6px;top:6px;z-index:4;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff;background:linear-gradient(135deg,#6d5ef0,#4b7bf5)">Nouveau</span></sc-if>
@@ -2486,13 +2486,6 @@ class Component extends DCLogic {
   _vidReady(v) { if (v._init) return; v._init = true; v.muted = true; v.addEventListener('loadeddata', () => { v.currentTime = 0.1; }); v.addEventListener('seeked', () => { if (!v._playing) v.pause(); }); }
   _initVids() { if (!this._el) return; this._el.querySelectorAll('video[data-autoseek]').forEach(v => this._vidReady(v)); }
   mediaBg(m) { if (m.url && m.video) return m.thumb ? 'center / cover no-repeat url("' + m.thumb + '")' : 'linear-gradient(135deg,#1a1d2e,#11131d)'; if (m.url) return 'center / cover no-repeat url("' + m.url + '")'; if (m.kind === 'audio') return 'linear-gradient(135deg,#232842,#11131d)'; const p = this.P(m.persona); return this.photo(p ? p.color : '#6b7189', m.seed); }
-  // Lazy version: returns [placeholder, fullBg] — use data-lazy-bg for deferred loading
-  mediaBgLazy(m) {
-    const full = this.mediaBg(m);
-    if (!m.url && !m.thumb) return [full, null]; // gradient placeholders don't need lazy
-    const p = this.P(m.persona);
-    return ['linear-gradient(135deg,' + (p ? p.color : '#6b7189') + ',#11131d)', full];
-  }
   platLabel(p) { return p === 'ig' ? 'Instagram' : p === 'th' ? 'Threads' : 'X'; }
   platIcon(p) { return p === 'ig' ? 'ph ph-instagram-logo' : p === 'th' ? 'ph ph-threads-logo' : 'ph ph-x-logo'; }
   avStyle(c, size, r) { return { width: size, height: size, flex: 'none', borderRadius: r, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * .36), fontWeight: 600, color: '#f7f7fb', background: 'linear-gradient(135deg,' + c + ',' + c + '30)', boxShadow: 'inset 0 0 0 1px ' + c + '66' }; }
@@ -2811,26 +2804,8 @@ class Component extends DCLogic {
     this.setState(x => ({ posts: x.posts.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), tpls: x.tpls.map(p => ({ ...p, type: T(p.type), media: p.media.map(M) })), camps: x.camps.map(c => ({ ...c, type: T(c.type) })), extraMedia: x.extraMedia.map(m => ({ ...m, type: T(m.type) })), mPath: x.mPath.map(T), ed: null }));
   }
   ensureBatches() { if (this._bi) return; this._bi = true; if (!this.state.posts.some(p => p.batch)) this.setState(x => ({ posts: x.posts.concat(this.seedBatches()) })); }
-  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); this._initVids(); this._initLazy(); if (!this.state.dockDismissed && this.state.dockQ.length) this._dockRenderList(); }
-  // === Lazy loading : IntersectionObserver ===
-  _initLazy() {
-    if (!this._lazyObs) {
-      this._lazyObs = new IntersectionObserver((entries) => {
-        entries.forEach(e => {
-          if (e.isIntersecting && e.target.dataset.lazyBg && e.target.dataset.lazyBg !== 'null') {
-            e.target.style.background = e.target.dataset.lazyBg;
-            e.target.removeAttribute('data-lazy-bg');
-            this._lazyObs.unobserve(e.target);
-          }
-        });
-      }, { rootMargin: '300px' });
-    }
-    if (!this._el) return;
-    this._el.querySelectorAll('[data-lazy-bg]').forEach(el => {
-      if (!el._lazyOb) { el._lazyOb = true; this._lazyObs.observe(el); }
-    });
-  }
-  componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); if (this._lazyObs) this._lazyObs.disconnect(); }
+  componentDidUpdate() { this.applyFont(); this.syncFx(); this.initWheels(); if (!this._isLive()) this.ensureBatches(); this._initVids(); if (!this.state.dockDismissed && this.state.dockQ.length) this._dockRenderList(); }
+  componentWillUnmount() { clearTimeout(this._tt); this.stopDrift(); window.removeEventListener('keydown', this._key); }
 
   renderVals() { var out = this._rvE();
     var SD = window.SCALE_DATA; var s = this.state;
@@ -3560,8 +3535,7 @@ class Component extends DCLogic {
           enter: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { this._vidReady(v); v.play().catch(() => {}); } } this.setState({ hoverMedia: m.id }); },
           leave: e => { const el = e.currentTarget; if (m.video && m.url) { const v = el.querySelector('video'); if (v) { v.pause(); v.currentTime = 0.1; } } if (this.state.hoverMedia === m.id) this.setState({ hoverMedia: null }); },
           isVideoUrl: !!(m.video && m.url), videoUrl: m.url, videoPreload: m.thumb ? 'none' : 'auto',
-          bg: (() => { const hasUrl = m.url || m.thumb; const o = grouping && oi < 0 ? (GT.indexOf(m.type) < 0 ? .25 : .6) : 1; if (hasUrl) { const p = this.P(m.persona); return { position: 'absolute', inset: 0, background: 'linear-gradient(135deg,' + (p ? p.color : '#6b7189') + ',#11131d)', opacity: o, transition: 'opacity .15s, background .3s' }; } return { position: 'absolute', inset: 0, background: this.mediaBg(m), opacity: o, transition: 'opacity .15s' }; })(),
-          lazyBg: (m.url || m.thumb) ? this.mediaBg(m) : null,
+          bg: { position: 'absolute', inset: 0, background: this.mediaBg(m), opacity: grouping && oi < 0 ? (GT.indexOf(m.type) < 0 ? .25 : .6) : 1, transition: 'opacity .15s' },
           dur: m.dur, showDur: m.video && !hv && oi < 0, ...(() => { if (m.type !== 'story') return { hasTag: false }; const tg = this.mtag(m.id); if (!tg) return { hasTag: true, tagIcon: 'ph ph-tag', tagLabel: 'À tagger', tagTitle: 'Ajoute lieu, moments et météo' }; const out = tg.place === 'out'; const mo = out && tg.moms.length ? (this.MOMS.find(x => x[0] === tg.moms[0]) || [0, ''])[1] + (tg.moms.length > 1 ? ' +' + (tg.moms.length - 1) : '') : ''; return { hasTag: true, tagIcon: out ? 'ph ph-tree' : 'ph ph-house', tagLabel: out ? 'Ext.' + (mo ? ' · ' + mo : '') : 'Intérieur', tagTitle: out ? 'Extérieur · ' + (tg.weather.map(w => (this.WEATHER.find(x => x[0] === w) || [0, w])[1]).join(', ') || 'météo non précisée') : 'Intérieur · tous les moments' }; })(), showActions: hv, hasDesc: !!d && !gen && !s.kill,
           text: gen ? 'Analyse du média…' : d ? this.trunc(d, 64) : this.mediaName(m),
           textStyle: { fontSize: d && !gen ? 11 : 10.5, lineHeight: 1.4, color: gen ? '#dcd8ff' : '#e8eaf3', fontFamily: d || gen ? 'inherit' : "'Geist Mono',monospace", whiteSpace: d || gen ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 6px rgba(0,0,0,.5)' },
