@@ -4363,7 +4363,7 @@ class Component extends DCLogic {
         stTplPers: [{ id: 'all', label: 'Toutes' }].concat(this.pers().map(p => ({ id: p.id, label: p.name, color: p.color }))).map(o => ({ label: o.label, hasDot: !!o.color, hasIcon: false, dot: o.color ? this.dot(o.color, 8) : {}, title: '', style: this.chip((s.stTplPersona || 'lea') === o.id, o.color), go: () => this.setState({ stTplPersona: o.id }) })),
         stTplCount: s.storyTpls.filter(t => (s.stTplPersona || 'lea') === 'all' || t.persona === (s.stTplPersona || 'lea')).length + ' templates',
         storyCards: s.storyTpls.filter(t => (s.stTplPersona || 'lea') === 'all' || t.persona === (s.stTplPersona || 'lea')).map(t => { const kinds = []; t.els.forEach(e => { if (kinds.indexOf(e.kind) < 0) kinds.push(e.kind); }); return {
-          name: t.name, username: t.username, meta: (t.persona ? this.P(t.persona).name + ' · ' + this.stype(t.type).label + ' · ' : '') + t.els.length + ' sticker' + (t.els.length > 1 ? 's' : '') + ' · modifié ' + (t.updated ? 'il y a ' + t.updated + ' j' : "aujourd\'hui"),
+          name: t.name, username: t.username, meta: (t.persona && this.P(t.persona) ? this.P(t.persona).name + ' · ' + this.stype(t.type).label + ' · ' : '') + t.els.length + ' sticker' + (t.els.length > 1 ? 's' : '') + ' · modifié ' + (t.updated ? 'il y a ' + t.updated + ' j' : "aujourd\'hui"),
           els: t.els.map(el => { const v = this.stkVals(el, false); return { ...v, wrap: { ...v.wrap, cursor: 'default', outline: 'none', pointerEvents: 'none' } }; }),
           stage: { position: 'absolute', left: 0, top: 0, width: 338, height: 600, transformOrigin: '0 0', transform: 'scale(' + (190 / 338) + ')', pointerEvents: 'none' },
           thumb: { position: 'relative', width: 190, height: Math.round(190 * 600 / 338), margin: '0 auto', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', background: this.storyBg(t), border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 10px 24px rgba(0,0,0,.35)' },
@@ -4466,11 +4466,12 @@ class Component extends DCLogic {
       seCount: st.els.length + ' sticker' + (st.els.length > 1 ? 's' : ''),
       seSave: () => {
         const isNew = !st.id || st.id.indexOf('st') === 0 && st.id.length < 10;
-        const obj = { persona: st.persona || 'lea', type: st.type || 'lifestyle', moments: (st.moments || []).slice(), id: st.id || 'st' + Date.now(), name: st.name.trim() || 'Story sans titre', username: st.username, color: st.color, media: st.media.slice(), bgIdx: st.bgIdx, els: st.els.map(e => ({ ...e })), updated: 0 };
+        const resolvedPersona = st.persona && st.persona.length > 10 ? st.persona : (this.pers()[0] || {}).id || null;
+        const obj = { persona: resolvedPersona, type: st.type || 'lifestyle', moments: (st.moments || []).slice(), id: st.id || 'st' + Date.now(), name: st.name.trim() || 'Story sans titre', username: st.username, color: st.color, media: st.media.slice(), bgIdx: st.bgIdx, els: st.els.map(e => ({ ...e })), updated: 0 };
         // Persist to backend in live mode
         const SD = window.SCALE_DATA;
         if (this._isLive() && SD && SD.apiAsync) {
-          const pid = obj.persona && obj.persona.length > 10 ? obj.persona : (this.pers()[0] || {}).id || null;
+          const pid = resolvedPersona;
           const mids = (obj.media || []).filter(id => id && id.length > 10);
           const payload = { persona_id: pid, name: obj.name, story_type: obj.type, username: obj.username, color: obj.color, media_ids: mids, bg_idx: obj.bgIdx, elements: obj.els, moments: obj.moments };
           if (isNew) {
