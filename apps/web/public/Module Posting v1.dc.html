@@ -2222,12 +2222,22 @@ class Component extends DCLogic {
     return shot + ' de ' + p.name + ' ' + scene + ', ' + mood + '. Aucun texte incrusté ni logo visible. Adapté au format ' + (t ? t.label : 'vertical') + '.';
   }
   mediaName(m) { return m.name || (m.video ? 'VID_' : 'IMG_') + (4100 + (m.seed * 37) % 900) + (m.video ? '.mp4' : '.jpg'); }
-  seedStories() { if (this._isLive()) return [];
+  seedStories() {
+    if (this._isLive()) {
+      const SD = window.SCALE_DATA || {};
+      if (SD.loadModule) SD.loadModule('posting');
+      return (SD.storyTemplates || []).map(t => ({
+        id: t.id, persona: t.persona, name: t.name, type: t.type,
+        username: t.username, color: t.color, media: t.media || [],
+        bgIdx: t.bgIdx != null ? t.bgIdx : -1, els: t.els || [],
+        moments: t.moments || [], updated: 0, isLiked: t.isLiked || false
+      }));
+    }
     return [
-      { id: 'st1', name: 'Question du soir', username: 'lea.fitfr', color: '#1b1f33', media: ['lea-story-0'], bgIdx: 0, updated: 2, els: [{ id: 'e1', kind: 'text', x: 169, y: 170, scale: 1, rot: -4, text: 'Vos questions ?', color: '#ffffff' }, { id: 'e2', kind: 'question', x: 169, y: 330, scale: 1, rot: 0, text: 'Pose-moi une question', color: '#8b7cf6' }] },
-      { id: 'st2', name: 'Sondage matin / soir', username: 'maya.ig', color: '#1b1f33', media: ['maya-story-1'], bgIdx: 0, updated: 5, els: [{ id: 'e1', kind: 'poll', x: 169, y: 300, scale: 1, rot: 0, text: 'Plutôt matin ou soir ?', color: '#5b8def' }, { id: 'e2', kind: 'mention', x: 169, y: 470, scale: 1, rot: -3, text: '@maya.cafe', color: '#5b8def' }] },
-      { id: 'st3', name: 'Lancement programme', username: 'lea.gymfr', color: '#6d5ef0', media: [], bgIdx: -1, updated: 9, els: [{ id: 'e1', kind: 'countdown', x: 169, y: 250, scale: 1, rot: 0, text: 'Programme 8 semaines', color: '#8b7cf6' }, { id: 'e2', kind: 'link', x: 169, y: 380, scale: 1, rot: 0, text: 'lien.bio/lea', color: '#5b8def' }, { id: 'e3', kind: 'hashtag', x: 120, y: 470, scale: 1, rot: -6, text: '#fitnessfr', color: '#2dd4a8' }] },
-      { id: 'st4', name: 'Spot du jour', username: 'alba.trip', color: '#1b1f33', media: ['alba-story-0'], bgIdx: 0, updated: 14, els: [{ id: 'e1', kind: 'location', x: 169, y: 160, scale: 1.1, rot: 0, text: 'Sevilla, España', color: '#38bdf8' }, { id: 'e2', kind: 'slider', x: 169, y: 420, scale: 1, rot: 0, text: '¿Te gusta?', color: '#fb7185' }, { id: 'e3', kind: 'music', x: 169, y: 520, scale: .9, rot: 0, text: 'Golden Hour Loop · Mira Vale', color: '#a5a0f5' }] }
+      { id: 'st1', name: 'Question du soir', persona: 'lea', type: 'lifestyle', username: 'lea.fitfr', color: '#1b1f33', media: ['lea-story-0'], bgIdx: 0, updated: 2, els: [{ id: 'e1', kind: 'text', x: 169, y: 170, scale: 1, rot: -4, text: 'Vos questions ?', color: '#ffffff' }, { id: 'e2', kind: 'question', x: 169, y: 330, scale: 1, rot: 0, text: 'Pose-moi une question', color: '#8b7cf6' }] },
+      { id: 'st2', name: 'Sondage matin / soir', persona: 'maya', type: 'lifestyle', username: 'maya.ig', color: '#1b1f33', media: ['maya-story-1'], bgIdx: 0, updated: 5, els: [{ id: 'e1', kind: 'poll', x: 169, y: 300, scale: 1, rot: 0, text: 'Plutôt matin ou soir ?', color: '#5b8def' }, { id: 'e2', kind: 'mention', x: 169, y: 470, scale: 1, rot: -3, text: '@maya.cafe', color: '#5b8def' }] },
+      { id: 'st3', name: 'Lancement programme', persona: 'lea', type: 'promo', username: 'lea.gymfr', color: '#6d5ef0', media: [], bgIdx: -1, updated: 9, els: [{ id: 'e1', kind: 'countdown', x: 169, y: 250, scale: 1, rot: 0, text: 'Programme 8 semaines', color: '#8b7cf6' }, { id: 'e2', kind: 'link', x: 169, y: 380, scale: 1, rot: 0, text: 'lien.bio/lea', color: '#5b8def' }, { id: 'e3', kind: 'hashtag', x: 120, y: 470, scale: 1, rot: -6, text: '#fitnessfr', color: '#2dd4a8' }] },
+      { id: 'st4', name: 'Spot du jour', persona: 'alba', type: 'lifestyle', username: 'alba.trip', color: '#1b1f33', media: ['alba-story-0'], bgIdx: 0, updated: 14, els: [{ id: 'e1', kind: 'location', x: 169, y: 160, scale: 1.1, rot: 0, text: 'Sevilla, España', color: '#38bdf8' }, { id: 'e2', kind: 'slider', x: 169, y: 420, scale: 1, rot: 0, text: '¿Te gusta?', color: '#fb7185' }, { id: 'e3', kind: 'music', x: 169, y: 520, scale: .9, rot: 0, text: 'Golden Hour Loop · Mira Vale', color: '#a5a0f5' }] }
     ];
   }
   withExtra() {
@@ -4134,7 +4144,28 @@ class Component extends DCLogic {
       seT: this.typesFor(st.persona || 'lea').map(t => ({ label: t.label, hasIcon: true, hasDot: false, icon: t.icon, title: '', style: { ...this.chip(st.type === t.id, t.color), height: 26, padding: '0 8px', fontSize: 11.5 }, go: () => setSt({ type: t.id }) })),
       seM: this.MOMS.map(m => { const on = (st.moments || []).indexOf(m[0]) >= 0; return { label: m[1], hasIcon: true, hasDot: false, icon: 'ph ph-' + m[5], title: m[2], style: { ...this.chip(on), height: 26, padding: '0 8px', fontSize: 11.5 }, go: () => setSt({ moments: on ? st.moments.filter(x => x !== m[0]) : (st.moments || []).concat([m[0]]) }) }; }),
       seCount: st.els.length + ' sticker' + (st.els.length > 1 ? 's' : ''),
-      seSave: () => { const obj = { persona: st.persona || 'lea', type: st.type || 'lifestyle', moments: (st.moments || []).slice(), id: st.id || 'st' + Date.now(), name: st.name.trim() || 'Story sans titre', username: st.username, color: st.color, media: st.media.slice(), bgIdx: st.bgIdx, els: st.els.map(e => ({ ...e })), updated: 0 }; this.setState(x => ({ storyTpls: x.storyTpls.some(t => t.id === obj.id) ? x.storyTpls.map(t => t.id === obj.id ? obj : t) : [obj].concat(x.storyTpls), story: { ...x.story, id: obj.id, name: obj.name } })); this.toastMsg('Template de story sauvegardé'); },
+      seSave: () => {
+        const isNew = !st.id || st.id.indexOf('st') === 0 && st.id.length < 10;
+        const obj = { persona: st.persona || 'lea', type: st.type || 'lifestyle', moments: (st.moments || []).slice(), id: st.id || 'st' + Date.now(), name: st.name.trim() || 'Story sans titre', username: st.username, color: st.color, media: st.media.slice(), bgIdx: st.bgIdx, els: st.els.map(e => ({ ...e })), updated: 0 };
+        // Persist to backend in live mode
+        const SD = window.SCALE_DATA;
+        if (this._isLive() && SD && SD.apiAsync) {
+          const payload = { persona_id: obj.persona, name: obj.name, story_type: obj.type, username: obj.username, color: obj.color, media_ids: obj.media, bg_idx: obj.bgIdx, elements: obj.els, moments: obj.moments };
+          if (isNew) {
+            SD.apiAsync('POST', '/posting/story-templates', payload).then(r => {
+              if (r && r.id) { obj.id = r.id; this.setState(x => ({ storyTpls: [obj].concat(x.storyTpls), story: { ...x.story, id: r.id, name: obj.name } })); this.toastMsg('Template de story créé'); }
+              else { this.toastMsg('Erreur lors de la sauvegarde'); }
+            });
+          } else {
+            SD.apiAsync('PATCH', '/posting/story-templates/' + st.id, payload).then(r => {
+              if (r && r.id) { this.setState(x => ({ storyTpls: x.storyTpls.map(t => t.id === st.id ? obj : t), story: { ...x.story, name: obj.name } })); this.toastMsg('Template mis à jour'); }
+              else { this.toastMsg('Erreur lors de la mise à jour'); }
+            });
+          }
+        } else {
+          this.setState(x => ({ storyTpls: x.storyTpls.some(t => t.id === obj.id) ? x.storyTpls.map(t => t.id === obj.id ? obj : t) : [obj].concat(x.storyTpls), story: { ...x.story, id: obj.id, name: obj.name } })); this.toastMsg('Template de story sauvegardé');
+        }
+      },
       seToggleLoad: () => this.setState({ storyLoad: !s.storyLoad }), seLoadOpen: s.storyLoad,
       seLoadList: s.storyTpls.slice().sort((a, b) => ((s.stLikes || {})[b.id] ? 1 : 0) - ((s.stLikes || {})[a.id] ? 1 : 0)).map(t => ({ name: ((s.stLikes || {})[t.id] ? '♥ ' : '') + t.name, meta: t.els.length + ' stickers · @' + t.username, thumb: { width: 24, height: 42, flex: 'none', borderRadius: 5, background: this.storyBg(t) }, pick: () => this.openStory(t) }))
     });

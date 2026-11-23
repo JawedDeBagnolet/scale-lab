@@ -605,6 +605,42 @@ if ('serviceWorker' in navigator) {
     };
   }
 
+  function xStoryTemplate(t) {
+    return {
+      id: t.id,
+      persona: t.persona_id || null,
+      name: t.name || 'Sans titre',
+      type: t.story_type || 'lifestyle',
+      username: t.username || '',
+      color: t.color || '#1b1f33',
+      media: t.media_ids || [],
+      bgIdx: t.bg_idx != null ? t.bg_idx : -1,
+      els: t.elements || [],
+      moments: t.moments || [],
+      isLiked: t.is_liked || false,
+      updated: 0,
+      created: t.created_at,
+      updatedAt: t.updated_at
+    };
+  }
+
+  function xStoryCollection(c) {
+    return {
+      id: c.id,
+      persona: c.persona_id || null,
+      name: c.name || '',
+      kind: c.kind || 'story',
+      type: c.story_type || null,
+      tpls: c.template_ids || [],
+      byP: c.by_persona || {},
+      hlName: c.highlight_name || null,
+      hlIcon: c.highlight_icon || null,
+      schedule: c.schedule || {},
+      created: c.created_at,
+      updated: c.updated_at
+    };
+  }
+
   function xTrackedLink(l) {
     return {
       id: l.id,
@@ -857,6 +893,8 @@ if ('serviceWorker' in navigator) {
   var snipes        = [];
   var veilleAlbums  = [];
   var dailyStats    = [];
+  var storyTemplates = [];
+  var storyCollections = [];
 
   // ─── Fonctions de recherche ────────────────────────────────────────
   var PLN = { ig: 'Instagram', th: 'Threads', x: 'X' };
@@ -1088,6 +1126,8 @@ if ('serviceWorker' in navigator) {
     snipes: snipes,
     veilleAlbums: veilleAlbums,
     dailyStats: dailyStats,
+    storyTemplates: storyTemplates,
+    storyCollections: storyCollections,
 
     // Overview/stats objects (populated via loadModule)
     logStats: null,
@@ -1335,9 +1375,11 @@ if ('serviceWorker' in navigator) {
           populate(medias,       safe(apiFetchSync('/posting/medias')).map(xMedia));
           populate(templates,    safe(apiFetchSync('/posting/templates')).map(xTemplate));
           populate(publications, safe(apiFetchSync('/posting/publications')).map(xPublication));
+          populate(storyTemplates,   safe(apiFetchSync('/posting/story-templates')).map(xStoryTemplate));
+          populate(storyCollections, safe(apiFetchSync('/posting/story-collections')).map(xStoryCollection));
           D.postingOverview = apiFetchSync('/posting/overview');
           if (!D.postingOverview || Array.isArray(D.postingOverview)) D.postingOverview = { total_collections: 0, total_medias: 0, total_templates: 0, total_campagnes: 0, active_campagnes: 0, total_publications: 0, published: 0, planned: 0, failed: 0 };
-          console.log('[Scale Lab] Module posting :', medias.length, 'medias,', templates.length, 'templates,', publications.length, 'publications');
+          console.log('[Scale Lab] Module posting :', medias.length, 'medias,', templates.length, 'templates,', publications.length, 'publications,', storyTemplates.length, 'story tpls');
           break;
 
         case 'dashboard':

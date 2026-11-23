@@ -105,6 +105,59 @@ class Template(Base):
     )
 
 
+class StoryTemplate(Base):
+    """Template de story 9:16 avec stickers positionnables."""
+    __tablename__ = "story_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    persona_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("personas.id", ondelete="SET NULL"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    story_type: Mapped[str] = mapped_column(String(50), default="lifestyle")  # lifestyle, fitness, promo, etc.
+    username: Mapped[str] = mapped_column(String(100), default="")
+    color: Mapped[str] = mapped_column(String(20), default="#1b1f33")  # fond uni
+    media_ids: Mapped[list | None] = mapped_column(JSONB, default=list)  # UUIDs des medias de fond
+    bg_idx: Mapped[int] = mapped_column(Integer, default=-1)  # index media actif (-1 = couleur)
+    elements: Mapped[list[dict]] = mapped_column(JSONB, default=list)  # stickers [{id,kind,x,y,scale,rot,text,color,...}]
+    moments: Mapped[list | None] = mapped_column(JSONB, default=list)  # ["matin","midi",...]
+    is_liked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class StoryCollection(Base):
+    """Collection de stories : classique (rotation) ou à la une (highlight)."""
+    __tablename__ = "story_collections"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    persona_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("personas.id", ondelete="SET NULL"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(10))  # story, hl (highlight)
+    story_type: Mapped[str | None] = mapped_column(String(50))  # lifestyle, fitness, etc.
+    template_ids: Mapped[list | None] = mapped_column(JSONB, default=list)  # UUIDs story_templates
+    by_persona: Mapped[dict | None] = mapped_column(JSONB, default=dict)  # {persona_id: {tpls: [...]}}
+    highlight_name: Mapped[str | None] = mapped_column(String(200))  # nom du highlight IG
+    highlight_icon: Mapped[str | None] = mapped_column(String(50))  # icone
+    schedule: Mapped[dict | None] = mapped_column(JSONB, default=dict)  # {days: [...], window: {from, to}}
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class Campagne(Base):
     __tablename__ = "campagnes"
 

@@ -4,7 +4,9 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.posting import Campagne, Collection, Media, Publication, Template
+from app.models.posting import (
+    Campagne, Collection, Media, Publication, StoryCollection, StoryTemplate, Template,
+)
 from app.schemas.posting import (
     CampagneCreate,
     CampagneUpdate,
@@ -15,6 +17,10 @@ from app.schemas.posting import (
     PostingOverview,
     PublicationCreate,
     PublicationUpdate,
+    StoryCollectionCreate,
+    StoryCollectionUpdate,
+    StoryTemplateCreate,
+    StoryTemplateUpdate,
     TemplateCreate,
     TemplateUpdate,
 )
@@ -280,3 +286,84 @@ async def get_overview(db: AsyncSession) -> PostingOverview:
         planned=planned,
         failed=failed,
     )
+
+
+# --- Story Templates ----------------------------------------------------------
+
+async def list_story_templates(
+    db: AsyncSession,
+    *,
+    persona_id: UUID | None = None,
+) -> Sequence[StoryTemplate]:
+    q = select(StoryTemplate).order_by(StoryTemplate.updated_at.desc())
+    if persona_id:
+        q = q.where(StoryTemplate.persona_id == persona_id)
+    result = await db.execute(q)
+    return result.scalars().all()
+
+
+async def get_story_template(db: AsyncSession, sid: UUID) -> StoryTemplate | None:
+    return await db.get(StoryTemplate, sid)
+
+
+async def create_story_template(db: AsyncSession, data: StoryTemplateCreate) -> StoryTemplate:
+    t = StoryTemplate(**data.model_dump())
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+
+async def update_story_template(db: AsyncSession, t: StoryTemplate, data: StoryTemplateUpdate) -> StoryTemplate:
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(t, key, value)
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+
+async def delete_story_template(db: AsyncSession, t: StoryTemplate) -> None:
+    await db.delete(t)
+    await db.commit()
+
+
+# --- Story Collections --------------------------------------------------------
+
+async def list_story_collections(
+    db: AsyncSession,
+    *,
+    persona_id: UUID | None = None,
+    kind: str | None = None,
+) -> Sequence[StoryCollection]:
+    q = select(StoryCollection).order_by(StoryCollection.updated_at.desc())
+    if persona_id:
+        q = q.where(StoryCollection.persona_id == persona_id)
+    if kind:
+        q = q.where(StoryCollection.kind == kind)
+    result = await db.execute(q)
+    return result.scalars().all()
+
+
+async def get_story_collection(db: AsyncSession, sid: UUID) -> StoryCollection | None:
+    return await db.get(StoryCollection, sid)
+
+
+async def create_story_collection(db: AsyncSession, data: StoryCollectionCreate) -> StoryCollection:
+    c = StoryCollection(**data.model_dump())
+    db.add(c)
+    await db.commit()
+    await db.refresh(c)
+    return c
+
+
+async def update_story_collection(db: AsyncSession, c: StoryCollection, data: StoryCollectionUpdate) -> StoryCollection:
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(c, key, value)
+    await db.commit()
+    await db.refresh(c)
+    return c
+
+
+async def delete_story_collection(db: AsyncSession, c: StoryCollection) -> None:
+    await db.delete(c)
+    await db.commit()

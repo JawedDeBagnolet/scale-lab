@@ -22,6 +22,12 @@ from app.schemas.posting import (
     PublicationCreate,
     PublicationOut,
     PublicationUpdate,
+    StoryCollectionCreate,
+    StoryCollectionOut,
+    StoryCollectionUpdate,
+    StoryTemplateCreate,
+    StoryTemplateOut,
+    StoryTemplateUpdate,
     TemplateCreate,
     TemplateOut,
     TemplateUpdate,
@@ -174,6 +180,85 @@ async def delete_template(tid: UUID, db: AsyncSession = Depends(get_db)):
     if not t:
         raise HTTPException(404, "template not found")
     await service.delete_template(db, t)
+
+
+# --- Story Templates ----------------------------------------------------------
+
+@router.get("/story-templates", response_model=list[StoryTemplateOut])
+async def list_story_templates(
+    persona_id: UUID | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_story_templates(db, persona_id=persona_id)
+
+
+@router.get("/story-templates/{sid}", response_model=StoryTemplateOut)
+async def get_story_template(sid: UUID, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_template(db, sid)
+    if not t:
+        raise HTTPException(404, "story template not found")
+    return t
+
+
+@router.post("/story-templates", response_model=StoryTemplateOut, status_code=201)
+async def create_story_template(data: StoryTemplateCreate, db: AsyncSession = Depends(get_db)):
+    return await service.create_story_template(db, data)
+
+
+@router.patch("/story-templates/{sid}", response_model=StoryTemplateOut)
+async def update_story_template(sid: UUID, data: StoryTemplateUpdate, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_template(db, sid)
+    if not t:
+        raise HTTPException(404, "story template not found")
+    return await service.update_story_template(db, t, data)
+
+
+@router.delete("/story-templates/{sid}", status_code=204)
+async def delete_story_template(sid: UUID, db: AsyncSession = Depends(get_db)):
+    t = await service.get_story_template(db, sid)
+    if not t:
+        raise HTTPException(404, "story template not found")
+    await service.delete_story_template(db, t)
+
+
+# --- Story Collections --------------------------------------------------------
+
+@router.get("/story-collections", response_model=list[StoryCollectionOut])
+async def list_story_collections(
+    persona_id: UUID | None = Query(None),
+    kind: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_story_collections(db, persona_id=persona_id, kind=kind)
+
+
+@router.get("/story-collections/{sid}", response_model=StoryCollectionOut)
+async def get_story_collection(sid: UUID, db: AsyncSession = Depends(get_db)):
+    c = await service.get_story_collection(db, sid)
+    if not c:
+        raise HTTPException(404, "story collection not found")
+    return c
+
+
+@router.post("/story-collections", response_model=StoryCollectionOut, status_code=201)
+async def create_story_collection(data: StoryCollectionCreate, db: AsyncSession = Depends(get_db)):
+    return await service.create_story_collection(db, data)
+
+
+@router.patch("/story-collections/{sid}", response_model=StoryCollectionOut)
+async def update_story_collection(sid: UUID, data: StoryCollectionUpdate, db: AsyncSession = Depends(get_db)):
+    c = await service.get_story_collection(db, sid)
+    if not c:
+        raise HTTPException(404, "story collection not found")
+    return await service.update_story_collection(db, c, data)
+
+
+@router.delete("/story-collections/{sid}", status_code=204)
+async def delete_story_collection(sid: UUID, db: AsyncSession = Depends(get_db)):
+    c = await service.get_story_collection(db, sid)
+    if not c:
+        raise HTTPException(404, "story collection not found")
+    await service.delete_story_collection(db, c)
 
 
 # --- Campagnes ----------------------------------------------------------------

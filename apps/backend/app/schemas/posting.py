@@ -104,6 +104,82 @@ class TemplateOut(TemplateBase):
     model_config = {"from_attributes": True}
 
 
+# --- Story Template -----------------------------------------------------------
+
+class StoryTemplateBase(BaseModel):
+    persona_id: UUID | None = None
+    name: str = Field(min_length=1, max_length=200)
+    story_type: str = Field(default="lifestyle", max_length=50)
+    username: str = Field(default="", max_length=100)
+    color: str = Field(default="#1b1f33", max_length=20)
+    media_ids: list | None = None
+    bg_idx: int = -1
+    elements: list[dict] = []
+    moments: list | None = None
+    is_liked: bool = False
+
+
+class StoryTemplateCreate(StoryTemplateBase):
+    pass
+
+
+class StoryTemplateUpdate(BaseModel):
+    persona_id: UUID | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    story_type: str | None = Field(default=None, max_length=50)
+    username: str | None = Field(default=None, max_length=100)
+    color: str | None = Field(default=None, max_length=20)
+    media_ids: list | None = None
+    bg_idx: int | None = None
+    elements: list[dict] | None = None
+    moments: list | None = None
+    is_liked: bool | None = None
+
+
+class StoryTemplateOut(StoryTemplateBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+# --- Story Collection ---------------------------------------------------------
+
+class StoryCollectionBase(BaseModel):
+    persona_id: UUID | None = None
+    name: str = Field(min_length=1, max_length=200)
+    kind: str = Field(max_length=10)  # story, hl
+    story_type: str | None = Field(default=None, max_length=50)
+    template_ids: list | None = None
+    by_persona: dict | None = None
+    highlight_name: str | None = Field(default=None, max_length=200)
+    highlight_icon: str | None = Field(default=None, max_length=50)
+    schedule: dict | None = None
+
+
+class StoryCollectionCreate(StoryCollectionBase):
+    pass
+
+
+class StoryCollectionUpdate(BaseModel):
+    persona_id: UUID | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    kind: str | None = Field(default=None, max_length=10)
+    story_type: str | None = Field(default=None, max_length=50)
+    template_ids: list | None = None
+    by_persona: dict | None = None
+    highlight_name: str | None = Field(default=None, max_length=200)
+    highlight_icon: str | None = Field(default=None, max_length=50)
+    schedule: dict | None = None
+
+
+class StoryCollectionOut(StoryCollectionBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
 # --- Campagne -----------------------------------------------------------------
 
 class CampagneBase(BaseModel):
