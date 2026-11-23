@@ -110,8 +110,18 @@ class IGApiClient:
     async def _extract_live(cls, ssh_port: int, host: str = "127.0.0.1") -> dict | None:
         """Read /tmp/scale_session.json from the iPhone."""
         try:
-            raw = await _ssh_exec(ssh_port, "cat /tmp/scale_session.json 2>/dev/null", host=host)
-            if not raw or not raw.strip():
+            result = await _ssh_exec(ssh_port, "cat /tmp/scale_session.json 2>/dev/null", host=host)
+            # _ssh_exec returns (ok, output) tuple
+            if isinstance(result, tuple):
+                ok, raw = result
+                if not ok or not raw:
+                    return None
+            else:
+                raw = result
+                if not raw:
+                    return None
+            raw = raw.strip()
+            if not raw:
                 return None
             return json.loads(raw)
         except Exception as e:
