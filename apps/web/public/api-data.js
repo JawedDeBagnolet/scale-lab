@@ -278,7 +278,10 @@ if ('serviceWorker' in navigator) {
     };
     if (data) opts.body = JSON.stringify(data);
     return fetch(API_BASE + path, opts)
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (r.status === 204 || r.headers.get('content-length') === '0') return { ok: true };
+        return r.json();
+      })
       .catch(function (e) { console.warn('[Scale Lab] Async ' + method + ' ' + path + ' :', e); return null; });
   }
 
