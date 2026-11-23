@@ -4136,7 +4136,8 @@ class Component extends DCLogic {
   }
   migrateStoryColls() {
     const s = this.state; if (s.scVer === 2) return; const userT = t => !/^sg\d/.test(t.id); const userC = c => /^(sc|sch)_\d+$/.test(c.id);
-    const stypes = this.STYPES.map(t => ({ id: t[0], label: t[1], color: t[2], icon: t[3], personas: t[4] || this.pers().map(p => p.id) }));
+    const apiST = this._isLive() && window.SCALE_DATA && window.SCALE_DATA.storyTypes && window.SCALE_DATA.storyTypes.length ? window.SCALE_DATA.storyTypes.map(t => ({ id: t.slug, dbId: t.id, label: t.label, color: t.color, icon: t.icon, personas: t.personas && t.personas.length ? t.personas : this.pers().map(p => p.id) })) : null;
+    const stypes = apiST || this.STYPES.map(t => ({ id: t[0], label: t[1], color: t[2], icon: t[3], personas: t[4] || this.pers().map(p => p.id) }));
     const fix = { st1: ['lea', 'question', ['soiree', 'diner']], st2: ['maya', 'question', ['matin', 'soiree']], st3: ['lea', 'cta', ['soiree']], st4: ['alba', 'lifestyle', ['midi', 'aprem']] };
     const base = s.storyTpls.filter(userT).map(t => t.persona ? t : { ...t, persona: (fix[t.id] || ['lea'])[0], type: (fix[t.id] || [0, 'lifestyle'])[1], moments: (fix[t.id] || [0, 0, ['matin']])[2] });
     const tpls = base.concat(this.genStoryTpls()); const colls = (s.storyColls || []).filter(userC);
