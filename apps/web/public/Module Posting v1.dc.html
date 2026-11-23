@@ -25,9 +25,115 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Saira:ital,wdth,wght@0,50..125,100..900;1,50..125,100..900&family=Inter:wght@100..900&family=DM+Mono:wght@300;400;500&family=Knewave&family=Courier+Prime&display=swap">
 <style>
 body { margin: 0; background: #0b0d16; }
+/* IG Sticker system — all sizes in --u (= canvas width / 375) */
+.igs { --u: 1px; display: inline-flex; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; white-space: nowrap; line-height: 1; }
+.igs * { box-sizing: border-box; }
+/* Text sticker — Saira Extra Condensed */
+.igs-text { display: inline-block; box-sizing: border-box; white-space: nowrap;
+  height: calc(49 * var(--u)); line-height: calc(49 * var(--u));
+  padding: 0 calc(11.5 * var(--u)) 0 calc(11.4 * var(--u));
+  border-radius: calc(8 * var(--u));
+  font-family: 'Saira', 'Oswald', 'Arial Narrow', sans-serif;
+  font-weight: 540; font-stretch: 62%;
+  font-size: calc(30.7 * var(--u)); letter-spacing: .008em; }
+/* Link — white pill, blue chain icon */
+.igs-link { align-items: center; height: calc(44 * var(--u));
+  padding: 0 calc(13 * var(--u)) 0 calc(12 * var(--u));
+  border-radius: calc(13.33 * var(--u));
+  background: #ffffff; color: #0c0f14; }
+.igs-link .ic { flex: none; width: calc(24 * var(--u)); height: calc(24 * var(--u)); color: #4496f4; transform: rotate(-45deg); }
+.igs-link .t { margin-left: calc(5 * var(--u)); font-size: calc(21.44 * var(--u)); letter-spacing: .0153em; font-weight: 398; }
+/* Mention — white pill, orange @ icon */
+.igs-mention { align-items: center; height: calc(36 * var(--u));
+  padding: 0 calc(10.67 * var(--u)) 0 calc(10.33 * var(--u));
+  border-radius: calc(12 * var(--u));
+  background: #ffffff; color: #0c0f14; }
+.igs-mention .ic { flex: none; width: calc(19 * var(--u)); height: calc(19 * var(--u)); color: #ec8133; }
+.igs-mention .t { margin-left: calc(-2 * var(--u)); font-size: calc(16 * var(--u)); letter-spacing: -.048em; font-weight: 500; }
+/* Poll — dark header + light options */
+.igs-poll { flex-direction: column; width: calc(240 * var(--u)); border-radius: calc(24 * var(--u)); background: #ffffff; overflow: hidden; }
+.igs-poll .hd { height: calc(52 * var(--u)); background: #0b0e13; color: #f3f3f3; display: flex; align-items: center; justify-content: center;
+  padding: 0 calc(16 * var(--u)); text-transform: uppercase;
+  font-family: 'Saira', sans-serif; font-weight: 618; font-stretch: 68%;
+  font-size: calc(21.24 * var(--u)); letter-spacing: .008em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.igs-poll .ops { display: flex; flex-direction: column; gap: calc(8 * var(--u)); padding: calc(8 * var(--u)) calc(8.33 * var(--u)); }
+.igs-poll .op { height: calc(48 * var(--u)); border-radius: calc(24 * var(--u)); background: #f0f1f5; color: #0c0f14;
+  display: flex; align-items: center; padding: 0 calc(16 * var(--u));
+  font-size: calc(14.88 * var(--u)); letter-spacing: -.05em; font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Question — white card, avatar on top */
+.igs-question { position: relative; flex-direction: column; align-items: center;
+  width: calc(279 * var(--u)); height: calc(143 * var(--u));
+  border-radius: calc(12 * var(--u)); background: #ffffff; color: #000;
+  margin-top: calc(23.5 * var(--u)); }
+.igs-question .av { position: absolute; left: 50%; top: 0; width: calc(47 * var(--u)); height: calc(47 * var(--u));
+  margin: calc(-23.5 * var(--u)) 0 0 calc(-23.5 * var(--u)); border-radius: 50%; background: #fff; padding: calc(2.33 * var(--u)); }
+.igs-question .av > * { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: linear-gradient(160deg, #c9c9cf, #8e8e96); }
+.igs-question .q { position: absolute; left: calc(16 * var(--u)); right: calc(16 * var(--u)); top: calc(52 * var(--u)); transform: translateY(-50%);
+  text-align: center; white-space: normal; font-size: calc(20.4 * var(--u)); letter-spacing: -.036em; font-weight: 360; line-height: 1.2; }
+.igs-question .in { position: absolute; left: calc(16 * var(--u)); right: calc(16 * var(--u)); bottom: calc(16 * var(--u));
+  height: calc(48.67 * var(--u)); border-radius: calc(7 * var(--u)); background: #dfdfdf; color: #595959;
+  display: flex; align-items: center; justify-content: center; font-size: calc(14.36 * var(--u)); letter-spacing: -.02em; font-weight: 364; }
+/* Location — white pill + purple map pin */
+.igs-loc { align-items: center; height: calc(36 * var(--u));
+  padding: 0 calc(11.33 * var(--u)) 0 calc(10.33 * var(--u));
+  border-radius: calc(12 * var(--u)); background: #ffffff; color: #0f1014; }
+.igs-loc .ic { flex: none; width: calc(15 * var(--u)); height: calc(18 * var(--u)); color: #6e3bef; }
+.igs-loc .t { margin-left: calc(6 * var(--u)); font-size: calc(15.31 * var(--u)); letter-spacing: -.006em; font-weight: 525; }
+.igs-loc.glass { background: rgba(255,255,255,.33); color: #fff; -webkit-backdrop-filter: blur(calc(10 * var(--u))); backdrop-filter: blur(calc(10 * var(--u))); }
+.igs-loc.glass .ic { color: #fff; }
+/* Music card — white pill, cover art */
+.igs-music-card { align-items: center; height: calc(59.67 * var(--u));
+  padding: 0 calc(10 * var(--u)) 0 calc(6 * var(--u));
+  border-radius: calc(18 * var(--u)); background: #fff; color: #000; }
+.igs-music-card .cv { flex: none; width: calc(48 * var(--u)); height: calc(48 * var(--u)); border-radius: calc(12 * var(--u)); background: linear-gradient(160deg, #c9c9cf, #8e8e96); overflow: hidden; }
+.igs-music-card .cv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.igs-music-card .tx { display: flex; flex-direction: column; margin-left: calc(8 * var(--u)); }
+.igs-music-card .ti { font-size: calc(13.66 * var(--u)); letter-spacing: .007em; font-weight: 590; }
+.igs-music-card .ar { font-size: calc(11.74 * var(--u)); letter-spacing: .003em; font-weight: 344; color: #575757; }
+.igs-music-card.glass { background: rgba(255,255,255,.35); color: #fff; -webkit-backdrop-filter: blur(calc(14 * var(--u))); backdrop-filter: blur(calc(14 * var(--u))); }
+.igs-music-card.glass .ar { color: rgba(255,255,255,.88); }
+/* Music cover — large artwork + text below */
+.igs-music-cover { flex-direction: column; align-items: center; color: #fff; text-shadow: 0 0 calc(4 * var(--u)) rgba(0,0,0,.28); }
+.igs-music-cover .cv { width: calc(140 * var(--u)); height: calc(140 * var(--u)); border-radius: calc(22 * var(--u)); background: linear-gradient(160deg, #c9c9cf, #8e8e96); overflow: hidden; box-shadow: inset 0 0 0 calc(.5 * var(--u)) rgba(255,255,255,.45); }
+.igs-music-cover .cv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.igs-music-cover .ti { margin-top: calc(13 * var(--u)); font-size: calc(13.66 * var(--u)); letter-spacing: .007em; font-weight: 590; }
+.igs-music-cover .ar { margin-top: calc(3 * var(--u)); font-size: calc(11.74 * var(--u)); letter-spacing: .003em; font-weight: 344; color: rgba(255,255,255,.88); }
+/* Music vinyl — large disc with cover in center */
+.igs-music-vinyl { flex-direction: column; align-items: center; color: #fff; text-shadow: 0 0 calc(4 * var(--u)) rgba(0,0,0,.28); }
+.igs-music-vinyl .pl { position: relative; width: calc(200 * var(--u)); height: calc(200 * var(--u)); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,220,235,.12) 50%, rgba(255,255,255,.15));
+  box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255,255,255,.25);
+  -webkit-backdrop-filter: blur(calc(8 * var(--u))); backdrop-filter: blur(calc(8 * var(--u))); animation: vinylSpin 4s linear infinite; }
+.igs-music-vinyl .cv { width: calc(86 * var(--u)); height: calc(86 * var(--u)); border-radius: 50%; background: linear-gradient(160deg, #c9c9cf, #8e8e96); overflow: hidden; }
+.igs-music-vinyl .cv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.igs-music-vinyl .ti { margin-top: calc(10 * var(--u)); font-size: calc(13.66 * var(--u)); letter-spacing: .007em; font-weight: 590; }
+.igs-music-vinyl .ar { margin-top: calc(1 * var(--u)); font-size: calc(11.74 * var(--u)); letter-spacing: .003em; font-weight: 344; color: rgba(255,255,255,.88); }
+/* Music disc — small iridescent disc */
+.igs-music-disc { flex-direction: column; align-items: center; color: #fff; text-shadow: 0 0 calc(4 * var(--u)) rgba(0,0,0,.28); }
+.igs-music-disc .pl { position: relative; width: calc(96 * var(--u)); height: calc(96 * var(--u)); border-radius: 50%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(255,255,255,.42), rgba(255,220,235,.22) 50%, rgba(255,255,255,.38));
+  box-shadow: inset 0 0 0 calc(1.5 * var(--u)) rgba(255,255,255,.62);
+  -webkit-backdrop-filter: blur(calc(6 * var(--u))); backdrop-filter: blur(calc(6 * var(--u))); }
+.igs-music-disc .cv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(160deg, #c9c9cf, #8e8e96); overflow: hidden; animation: vinylSpin 6s linear infinite; }
+.igs-music-disc .cv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.igs-music-disc .hub { position: relative; z-index: 2; width: calc(36 * var(--u)); height: calc(36 * var(--u)); border-radius: 50%;
+  background: linear-gradient(160deg, rgba(255,255,255,.85), rgba(255,255,255,.55)); box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(255,255,255,.8); }
+.igs-music-disc .ti { margin-top: calc(10 * var(--u)); font-size: calc(13.66 * var(--u)); letter-spacing: .007em; font-weight: 590; }
+.igs-music-disc .ar { margin-top: calc(1 * var(--u)); font-size: calc(11.74 * var(--u)); letter-spacing: .003em; font-weight: 344; color: rgba(255,255,255,.88); }
+/* Music label — retro tape style */
+.igs-music-label { align-items: center; height: calc(56 * var(--u));
+  padding: 0 calc(12.33 * var(--u)) 0 calc(8.33 * var(--u));
+  border-radius: calc(19 * var(--u)); background: #f2f2ea; color: #0a0a0a; }
+.igs-music-label .sq { flex: none; width: calc(39 * var(--u)); height: calc(39 * var(--u)); border-radius: calc(9 * var(--u));
+  background: #e45044; display: flex; align-items: center; justify-content: center; }
+.igs-music-label .sq i { font-size: calc(17 * var(--u)); color: #fff; }
+.igs-music-label .tx { display: flex; flex-direction: column; margin-left: calc(11 * var(--u)); position: relative; }
+.igs-music-label .tx .nm { font-family: 'Knewave', cursive; font-size: calc(13.64 * var(--u)); letter-spacing: .011em; text-transform: uppercase; }
 @keyframes vinylSpin { to { transform: rotate(360deg); } }
 @keyframes eqBar { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 @keyframes karaokeSweep { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
@@ -556,8 +662,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div>
@@ -620,8 +726,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div></sc-for></div></sc-if></div></sc-for></div>
@@ -1510,8 +1616,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div></sc-for></div><span style="{{ t.check }}"><sc-if value="{{ t.on }}"><i class="ph ph-check" style="font-size:11px"></i></sc-if></span><div style="position:absolute;left:6px;bottom:6px;display:flex;gap:3px"><sc-for list="{{ t.momIcons }}" as="mi" hint-placeholder-count="1"><span style="width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;background:rgba(8,9,16,.66);color:#f2f3fa"><i class="{{ mi.icon }}" style="font-size:10px"></i></span></sc-for></div></div><div style="font-size:11px;color:#c5c9d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</div></div></sc-for>
@@ -1546,8 +1652,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div></sc-for></div><span style="position:absolute;left:5px;top:5px;min-width:18px;height:18px;padding:0 5px;border-radius:5px;background:rgba(8,9,16,.7);font-size:10px;font-weight:700;color:#f2f3fa;display:flex;align-items:center;justify-content:center">{{ m.n }}</span><span onClick="{{ m.remove }}" style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:99px;background:rgba(8,9,16,.72);display:flex;align-items:center;justify-content:center;color:#f2f3fa;cursor:pointer" style-hover="background:rgba(153,27,27,.85)"><i class="ph ph-x" style="font-size:10px"></i></span></div></sc-for>
@@ -1576,8 +1682,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div></sc-for></div><sc-if value="{{ t.used }}"><span style="position:absolute;right:5px;top:5px;height:16px;padding:0 5px;border-radius:4px;background:rgba(124,108,246,.8);font-size:9.5px;font-weight:700;color:#ffffff;display:flex;align-items:center">×{{ t.usedN }}</span></sc-if></div></sc-for>
@@ -1689,8 +1795,8 @@ select option { background: #151827; color: #e8eaf3; }
 <sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLink }}"><div style="{{ el.linkStyle }}"><i class="ph ph-link" style="{{ el.linkIcon }}"></i>{{ el.text }}</div></sc-if>
 <sc-if value="{{ el.isLocation }}"><div style="{{ el.locStyle }}"><i class="ph-fill ph-map-pin" style="{{ el.locIcon }}"></i>{{ el.text }}</div></sc-if>
-<sc-if value="{{ el.isPoll }}"><div style="width:240px;border-radius:20px;overflow:hidden;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
-<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="display:flex;justify-content:center;margin-top:-18px"><div style="width:36px;height:36px;border-radius:99px;background:linear-gradient(135deg,#c13584,#e1306c,#fd1d1d);border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
+<sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div><div style="{{ el.pollBody }}"><sc-for list="{{ el.pollOptList }}" as="po" hint-placeholder-count="2"><div style="{{ po.style }}">{{ po.label }}</div></sc-for></div></div></sc-if>
+<sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qAvatar }}"><div style="{{ el.qAvatarInner }}"></div></div><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if>
 <sc-if value="{{ el.isCountdown }}"><div style="{{ el.cdCard }}"><div style="font-size:13px;font-weight:800;text-align:center">{{ el.text }}</div><div style="font-size:24px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.02em">02 : 14 : 36</div></div></sc-if>
 <sc-if value="{{ el.isSlider }}"><div style="width:220px;padding:16px;border-radius:20px;background:#ffffff;box-shadow:0 6px 24px rgba(0,0,0,.3)"><div style="font-size:16px;font-weight:800;color:#16171f;text-align:center">{{ el.text }}</div><div style="position:relative;height:6px;border-radius:99px;margin:20px 6px 8px;background:#e7e7ec"><div style="{{ el.barStyle }}"></div><i class="ph-fill ph-heart" style="{{ el.knobStyle }}"></i></div></div></sc-if>
 </div>
@@ -2217,14 +2323,18 @@ class Component extends DCLogic {
     location: ['map-pin', 'Lieu', 'Lieu', 'Paris, France', '#38bdf8'], music: ['music-notes', 'Musique', 'Musique', 'Midnight Drive · Nova Lane', '#a5a0f5']
   };
   // IG story color palette — 3 pages (~27 colors)
-  SW = [
-    // Page 1: vifs
-    '#ffffff', '#000000', '#386bd4', '#58c255', '#b8cc2a', '#f5c33b', '#f5922a', '#e6553a', '#d93569', '#a033b8',
-    // Page 2: tons chauds/naturels
-    '#ed2a2a', '#e8577a', '#f0a0b8', '#f8d0d8', '#fce0c8', '#d4a06a', '#c08040', '#6b3520', '#1e4d2b',
-    // Page 3: gris (noir → blanc)
-    '#1a1a1a', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3', '#cccccc', '#e6e6e6'
+  // IG Story color palette — [textColor, bgColor] pairs from native IG
+  SW_PAIRS = [
+    // Page 1: vifs (9 couleurs)
+    ['#ffffff','#000000'], ['#000000','#ffffff'], ['#3898ef','#d8eeff'], ['#70c04f','#e4f0e2'], ['#fdcb5c','#fff9eb'], ['#fc8d33','#fdf1e1'], ['#ee4957','#fce9eb'], ['#d0086a','#ffd4ef'], ['#a306b9','#f9d2fe'],
+    // Page 2: tons chauds/naturels (9 couleurs)
+    ['#ec0014','#ffd6da'], ['#ed858e','#fbf1f2'], ['#fed2d3','#272121'], ['#fedbb5','#26221f'], ['#fec283','#231f1c'], ['#d18e47','#f9f2e8'], ['#99643a','#f5ece5'], ['#432324','#eee0e0'], ['#1c4928','#d5ffe9'],
+    // Page 3: gris (9 couleurs)
+    ['#262626','#e7e7e7'], ['#363636','#e9e9e9'], ['#555555','#ececec'], ['#737373','#efefef'], ['#999999','#f4f4f4'], ['#b2b2b2','#f6f6f6'], ['#c7c7c7','#221c1c'], ['#dbdbdb','#251f1f'], ['#efefef','#272121']
   ];
+  SW = this.SW_PAIRS.map(p => p[0]);
+  swBg(c) { const p = this.SW_PAIRS.find(x => x[0] === c); return p ? p[1] : (this._isLight(c) ? '#1a1a1a' : '#ffffff'); }
+  _isLight(c) { const n = parseInt(c.replace('#',''), 16); return ((n >> 16 & 255) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 128; }
   _isLive() { return (window.SCALE_DATA && window.SCALE_DATA._live) || window.location.hostname === 'scalelab.win'; }
   // === IndexedDB thumbnail cache ===
   _idbOpen() {
@@ -3729,39 +3839,43 @@ class Component extends DCLogic {
     };
   }
   stkMini(t, w) { return { els: (t.els || []).map(el => { const v = this.stkVals(el, false); return { ...v, wrap: { ...v.wrap, cursor: 'default', outline: 'none', pointerEvents: 'none' } }; }), stage: { position: 'absolute', left: 0, top: 0, width: 338, height: 600, transformOrigin: '0 0', transform: 'scale(' + (w / 338) + ')', pointerEvents: 'none' } }; }
-  stkVals(el, on) { const c = el.color; const pills = ['mention', 'hashtag']; const pollOpts = el.pollOpts || ['Oui', 'Non']; return {
+  stkVals(el, on) { const c = el.color; const u = 338 / 375; const pills = ['mention', 'hashtag']; const pollOpts = el.pollOpts || ['Oui', 'Non']; const bg = this.swBg(c); return {
         text: el.text, icon: 'ph ph-' + this.STK[el.kind][0],
         isText: el.kind === 'text', isMusic: el.kind === 'music', m: el.kind === 'music' ? this.musicVals(el) : {}, isPill: pills.indexOf(el.kind) >= 0, isLink: el.kind === 'link', isLocation: el.kind === 'location', isPoll: el.kind === 'poll', isQuestion: el.kind === 'question', isCountdown: el.kind === 'countdown', isSlider: el.kind === 'slider',
         wrap: { position: 'absolute', left: el.x, top: el.y, transform: 'translate(-50%,-50%) rotate(' + el.rot + 'deg) scale(' + el.scale + ')', cursor: 'move', touchAction: 'none', userSelect: 'none', outline: on ? '1.5px dashed rgba(255,255,255,.9)' : 'none', outlineOffset: 6, borderRadius: 6 },
-        // Texte — 4 variantes IG (shadow, highlight, bg, glow)
-        textVariant: el.textVariant || 'shadow',
-        textStyle: (() => { const v = el.textVariant || 'shadow'; const base = { fontSize: 34, fontWeight: 800, fontFamily: "'Manrope', sans-serif", whiteSpace: 'nowrap', letterSpacing: '-.02em', padding: '10px 24px', lineHeight: 1.2, textAlign: 'center' };
-          if (v === 'bg') return { ...base, background: 'rgba(0,0,0,.75)', color: c, borderRadius: 14, backdropFilter: 'blur(4px)', boxShadow: '0 4px 16px rgba(0,0,0,.3)' };
-          if (v === 'highlight') return { ...base, background: c, color: '#ffffff', borderRadius: 14, boxShadow: '0 4px 16px rgba(0,0,0,.3)', textShadow: '0 1px 3px rgba(0,0,0,.2)' };
-          if (v === 'glow') return { ...base, color: '#ffffff', WebkitTextStroke: '1px ' + c, textShadow: '0 0 12px ' + c + ', 0 0 30px ' + c + '88, 0 0 60px ' + c + '44' };
-          return { ...base, color: c, textShadow: '0 0 8px rgba(0,0,0,.85), 0 2px 20px rgba(0,0,0,.6), 0 0 40px rgba(0,0,0,.3)' }; // shadow (default)
+        // Texte — Saira wght540 wdth62, h49u r8u, 3 modes
+        textVariant: el.textVariant || 'highlight',
+        textStyle: (() => { const v = el.textVariant || 'highlight';
+          const base = { display: 'inline-block', boxSizing: 'border-box', whiteSpace: 'nowrap', height: Math.round(49 * u), lineHeight: Math.round(49 * u) + 'px', padding: '0 ' + Math.round(11.5 * u) + 'px', borderRadius: Math.round(8 * u), fontFamily: "'Saira', 'Oswald', 'Arial Narrow', sans-serif", fontWeight: 540, fontStretch: '62%', fontSize: Math.round(30.7 * u), letterSpacing: '.008em' };
+          if (v === 'shadow') return { ...base, color: c, background: 'transparent', textShadow: '0 0 8px rgba(0,0,0,.85), 0 2px 16px rgba(0,0,0,.6)' };
+          if (v === 'glow') return { ...base, color: '#fff', background: 'transparent', WebkitTextStroke: '1px ' + c, textShadow: '0 0 12px ' + c + ', 0 0 30px ' + c + '88, 0 0 60px ' + c + '44' };
+          return { ...base, background: bg, color: c }; // highlight — IG default w/ colored bg
         })(),
-        // Mention/Hashtag — pill blanc
-        pillStyle: { display: 'flex', alignItems: 'center', gap: 7, height: 40, padding: '0 16px', borderRadius: 99, background: '#ffffff', color: '#16171f', fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)' },
-        // Lien — pill blanc avec icone chaine bleue
-        linkStyle: { display: 'flex', alignItems: 'center', gap: 8, height: 44, padding: '0 18px', borderRadius: 99, background: '#ffffff', fontSize: 16, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)', color: '#16171f' },
-        linkIcon: { fontSize: 20, color: '#3897f0', transform: 'rotate(-45deg)' },
-        // Lieu — pill blanc avec pin violette
-        locStyle: { display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', borderRadius: 99, background: '#ffffff', fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.28)', color: '#16171f' },
-        locIcon: { fontSize: 17, color: '#8b5cf6' },
-        // Sondage — header noir, options gris clair, border-radius 20px
-        pollOptList: pollOpts.map(o => ({ label: o, style: { height: 44, borderRadius: 20, background: '#f1f1f4', display: 'flex', alignItems: 'center', paddingLeft: 16, fontSize: 16, fontWeight: 700, color: '#16171f' } })),
-        pollHead: { background: '#16171f', color: '#ffffff', padding: '14px 16px', fontSize: 16, fontWeight: 800, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.03em', borderRadius: '20px 20px 0 0' },
-        pollBody: { padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 },
-        // Question — carte blanche, avatar centré en haut
-        qCard: { width: 240, borderRadius: 20, overflow: 'hidden', background: '#ffffff', boxShadow: '0 6px 24px rgba(0,0,0,.3)' },
-        qHead: { padding: '28px 16px 10px', fontSize: 17, fontWeight: 800, color: '#16171f', textAlign: 'center' },
-        qField: { margin: '0 12px 14px', padding: '12px 14px', borderRadius: 14, background: '#f1f1f4', fontSize: 13, color: '#8a8a95', textAlign: 'center' },
+        // Mention — pill blanc, @ orange, Inter wght500 16u
+        pillStyle: { display: 'inline-flex', alignItems: 'center', height: Math.round(36 * u), padding: '0 ' + Math.round(10.67 * u) + 'px 0 ' + Math.round(10.33 * u) + 'px', borderRadius: Math.round(12 * u), background: '#ffffff', color: '#0c0f14', fontFamily: "'Inter', sans-serif", fontSize: Math.round(16 * u), fontWeight: 500, letterSpacing: '-.048em', whiteSpace: 'nowrap' },
+        pillIcon: { flexShrink: 0, width: Math.round(19 * u), height: Math.round(19 * u), color: '#ec8133' },
+        // Lien — pill blanc, chaîne bleue, Inter wght398 21.44u
+        linkStyle: { display: 'inline-flex', alignItems: 'center', height: Math.round(44 * u), padding: '0 ' + Math.round(13 * u) + 'px 0 ' + Math.round(12 * u) + 'px', borderRadius: Math.round(13.33 * u), background: '#ffffff', color: '#0c0f14', fontFamily: "'Inter', sans-serif", fontSize: Math.round(21.44 * u), fontWeight: 398, letterSpacing: '.0153em', whiteSpace: 'nowrap' },
+        linkIcon: { flexShrink: 0, width: Math.round(24 * u), height: Math.round(24 * u), color: '#4496f4', transform: 'rotate(-45deg)', marginRight: Math.round(5 * u) },
+        // Lieu — pill blanc, pin violette #6e3bef, Inter wght525 15.31u
+        locStyle: { display: 'inline-flex', alignItems: 'center', height: Math.round(36 * u), padding: '0 ' + Math.round(11.33 * u) + 'px 0 ' + Math.round(10.33 * u) + 'px', borderRadius: Math.round(12 * u), background: '#ffffff', color: '#0f1014', fontFamily: "'Inter', sans-serif", fontSize: Math.round(15.31 * u), fontWeight: 525, letterSpacing: '-.006em', whiteSpace: 'nowrap' },
+        locIcon: { flexShrink: 0, width: Math.round(15 * u), height: Math.round(18 * u), color: '#6e3bef', marginRight: Math.round(6 * u) },
+        // Sondage — Saira wght618 wdth68, h52u header + Inter wght560 options
+        pollOptList: pollOpts.map(o => ({ label: o, style: { height: Math.round(48 * u), borderRadius: Math.round(24 * u), background: '#f0f1f5', display: 'flex', alignItems: 'center', paddingLeft: Math.round(16 * u), fontFamily: "'Inter', sans-serif", fontSize: Math.round(14.88 * u), fontWeight: 560, letterSpacing: '-.05em', color: '#0c0f14' } })),
+        pollHead: { height: Math.round(52 * u), background: '#0b0e13', color: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 ' + Math.round(16 * u) + 'px', fontFamily: "'Saira', sans-serif", fontWeight: 618, fontStretch: '68%', fontSize: Math.round(21.24 * u), letterSpacing: '.008em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+        pollBody: { padding: Math.round(8 * u) + 'px ' + Math.round(8.33 * u) + 'px', display: 'flex', flexDirection: 'column', gap: Math.round(8 * u) },
+        pollWrap: { width: Math.round(240 * u), borderRadius: Math.round(24 * u), overflow: 'hidden', background: '#ffffff' },
+        // Question — 279×143u, r12u, avatar 47u, Inter
+        qCard: { position: 'relative', width: Math.round(279 * u), height: Math.round(143 * u), borderRadius: Math.round(12 * u), background: '#ffffff', marginTop: Math.round(23.5 * u), overflow: 'visible' },
+        qAvatar: { position: 'absolute', left: '50%', top: 0, width: Math.round(47 * u), height: Math.round(47 * u), marginTop: -Math.round(23.5 * u), marginLeft: -Math.round(23.5 * u), borderRadius: '50%', background: '#fff', padding: Math.round(2.33 * u) },
+        qAvatarInner: { display: 'block', width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(160deg, #c9c9cf, #8e8e96)' },
+        qHead: { position: 'absolute', left: Math.round(16 * u), right: Math.round(16 * u), top: Math.round(52 * u), transform: 'translateY(-50%)', textAlign: 'center', whiteSpace: 'normal', fontFamily: "'Inter', sans-serif", fontSize: Math.round(20.4 * u), letterSpacing: '-.036em', fontWeight: 360, lineHeight: 1.2, color: '#000' },
+        qField: { position: 'absolute', left: Math.round(16 * u), right: Math.round(16 * u), bottom: Math.round(16 * u), height: Math.round(48.67 * u), borderRadius: Math.round(7 * u), background: '#dfdfdf', color: '#595959', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', sans-serif", fontSize: Math.round(14.36 * u), letterSpacing: '-.02em', fontWeight: 364 },
         // Countdown
-        cdCard: { width: 210, padding: '12px 14px', borderRadius: 14, background: 'linear-gradient(135deg,' + c + ',#1b1f33)', color: '#ffffff', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
+        cdCard: { width: Math.round(210 * u), padding: Math.round(12 * u) + 'px ' + Math.round(14 * u) + 'px', borderRadius: Math.round(14 * u), background: 'linear-gradient(135deg,' + c + ',#1b1f33)', color: '#ffffff', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
         // Slider
         barStyle: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '62%', borderRadius: 99, background: 'linear-gradient(90deg,#e7e7ec,' + c + ')' },
-        knobStyle: { position: 'absolute', left: '62%', top: '50%', transform: 'translate(-50%,-50%)', fontSize: 26, color: c, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,.25))' },
+        knobStyle: { position: 'absolute', left: '62%', top: '50%', transform: 'translate(-50%,-50%)', fontSize: Math.round(26 * u), color: c, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,.25))' },
         }; }
   STYPES = [['lifestyle', 'Lifestyle', '#2dd4a8', 'sun', null], ['gym', 'GYM', '#4ade80', 'barbell', ['lea', 'nina', 'sofia']], ['cta', 'CTA', '#f5b04c', 'megaphone-simple', null], ['promo', 'Promo', '#f472b6', 'tag', ['lea', 'sofia', 'clara']], ['repost', 'Repost', '#8db4fd', 'repeat', null], ['question', 'Question', '#a5a0f5', 'chat-circle-dots', null], ['bts', 'Coulisses', '#fb923c', 'camera', ['lea', 'maya', 'nina', 'alba']]];
   MOMS = [['matin', 'Matin', '7h–10h', 420, 600, 'sun-horizon'], ['midi', 'Midi', '11h30–13h30', 690, 810, 'fork-knife'], ['aprem', 'Après-midi', '14h–17h', 840, 1020, 'sun'], ['finap', 'Fin d\'aprem', '17h–19h30', 1020, 1170, 'cloud-sun'], ['diner', 'Dîner', '19h30–21h', 1170, 1260, 'wine'], ['soiree', 'Soirée', '21h–23h30', 1260, 1410, 'moon'], ['nuit', 'Nuit', '23h30–3h', 1410, 1620, 'moon-stars']];
@@ -4284,7 +4398,7 @@ class Component extends DCLogic {
         // Generic text field (not for link, poll, mention, music, location)
         hasText: !['music', 'link', 'poll', 'mention', 'location'].includes(sel.kind), text: sel.text, setText: e => updEl(sel.id, { text: e.target.value }),
         isTextKind: sel.kind === 'text',
-        textVariants: (() => { const sc = sel.color || '#ffffff'; return [['shadow', 'Aa', { color: sc, textShadow: '0 0 6px rgba(0,0,0,.8), 0 1px 8px rgba(0,0,0,.5)' }], ['highlight', 'Aa', { background: sc, color: '#fff', borderRadius: 6, padding: '2px 8px', textShadow: '0 1px 2px rgba(0,0,0,.2)' }], ['bg', 'Aa', { background: 'rgba(0,0,0,.7)', color: sc, borderRadius: 6, padding: '2px 8px' }], ['glow', 'Aa', { color: '#fff', WebkitTextStroke: '0.5px ' + sc, textShadow: '0 0 8px ' + sc + ', 0 0 16px ' + sc + '88' }]].map(v => { const on = (sel.textVariant || 'shadow') === v[0]; return { label: v[1], on, go: () => updEl(sel.id, { textVariant: v[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 34, padding: '0 10px', borderRadius: 8, fontSize: 16, fontWeight: 800, cursor: 'pointer', border: '1.5px solid ' + (on ? 'rgba(124,108,246,.65)' : 'rgba(255,255,255,.08)'), background: on ? 'rgba(124,108,246,.12)' : 'rgba(255,255,255,.03)', ...v[2] } }; }); })(),
+        textVariants: (() => { const sc = sel.color || '#ffffff'; const sbg = this.swBg(sc); return [['highlight', 'Aa', { background: sbg, color: sc, borderRadius: 6, padding: '2px 8px', fontFamily: "'Saira', sans-serif", fontWeight: 540, fontStretch: '62%' }], ['shadow', 'Aa', { color: sc, textShadow: '0 0 6px rgba(0,0,0,.8), 0 1px 8px rgba(0,0,0,.5)', fontFamily: "'Saira', sans-serif", fontWeight: 540, fontStretch: '62%' }], ['glow', 'Aa', { color: '#fff', WebkitTextStroke: '0.5px ' + sc, textShadow: '0 0 8px ' + sc + ', 0 0 16px ' + sc + '88', fontFamily: "'Saira', sans-serif", fontWeight: 540, fontStretch: '62%' }]].map(v => { const on = (sel.textVariant || 'highlight') === v[0]; return { label: v[1], on, go: () => updEl(sel.id, { textVariant: v[0] }), style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 34, padding: '0 10px', borderRadius: 8, fontSize: 16, cursor: 'pointer', border: '1.5px solid ' + (on ? 'rgba(124,108,246,.65)' : 'rgba(255,255,255,.08)'), background: on ? 'rgba(124,108,246,.12)' : 'rgba(255,255,255,.03)', ...v[2] } }; }); })(),
         // Location: autocomplete via IG API
         isLocation: sel.kind === 'location', locQ: sel.text || '', setLocQ: e => { updEl(sel.id, { text: e.target.value }); if (e.target.value.length >= 2) this._searchPlace(e.target.value); }, locResults: (this.state._placeResults || []).map(p => ({ label: p.name, sub: p.address || p.city || '', pick: () => { updEl(sel.id, { text: p.name, locationPk: p.pk, locationAddr: p.address }); this.setState({ _placeResults: [] }); } })), hasLocResults: !!(this.state._placeResults || []).length,
         // Link: URL + title
