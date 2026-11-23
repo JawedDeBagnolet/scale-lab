@@ -1656,6 +1656,9 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;gap:3px"><span style="flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.9)"></span><span style="flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.35)"></span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.3);border:1.5px solid rgba(255,255,255,.8)"></span><span style="font-size:12.5px;font-weight:600;color:#ffffff">{{ seUser }}</span><span style="font-size:11.5px;color:rgba(255,255,255,.7)">2 h</span></div>
 </div>
+<sc-if value="{{ seGuides.showCx }}"><div style="{{ seGuides.cxStyle }}"></div></sc-if>
+<sc-if value="{{ seGuides.showTop }}"><div style="{{ seGuides.topStyle }}"></div></sc-if>
+<sc-if value="{{ seGuides.showBot }}"><div style="{{ seGuides.botStyle }}"></div></sc-if>
 <sc-for list="{{ seEls }}" as="el" hint-placeholder-count="2">
 <div onPointerDown="{{ el.down }}" onMouseEnter="{{ el.hoverIn }}" onMouseLeave="{{ el.hoverOut }}" style="{{ el.wrap }}">
 <sc-if value="{{ el.showHandles }}"><span onPointerDown="{{ el.rotDown }}" title="Rotation" style="{{ el.rotHandle }}"><i class="ph ph-arrows-clockwise" style="font-size:10px;color:#fff"></i></span><span onPointerDown="{{ el.resDown }}" title="Redimensionner" style="{{ el.resHandle }}"><i class="ph ph-arrows-out" style="font-size:10px;color:#fff"></i></span></sc-if>
@@ -4166,7 +4169,10 @@ class Component extends DCLogic {
     const W = 338, H = 600;
     const setSt = p => this.setState(x => ({ story: { ...x.story, ...p } }));
     const updEl = (id, p) => this.setState(x => ({ story: { ...x.story, els: x.story.els.map(e => e.id === id ? { ...e, ...p } : e) } }));
-    const clampX = v => Math.round(Math.max(0, Math.min(W, v))), clampY = v => Math.round(Math.max(0, Math.min(H, v)));
+    const SAFE_TOP = 78, SAFE_BOT = 560, SNAP_LINES = [SAFE_TOP, H / 2, SAFE_BOT]; // header bottom, center, bottom safe
+    const clampX = v => Math.round(Math.max(10, Math.min(W - 10, v)));
+    const clampY = v => { let y = Math.round(Math.max(SAFE_TOP, Math.min(SAFE_BOT, v))); for (const s of SNAP_LINES) { if (Math.abs(y - s) < 6) { y = s; break; } } return y; };
+    const snapX = v => { const cx = W / 2; return Math.abs(v - cx) < 6 ? cx : v; };
     const addEl = (kind, x, y) => { const d = this.STK[kind]; const id = 'e' + Date.now(); const extra = kind === 'music' ? { sound: 's1', mstyle: 'card', lyrics: this.LYR.s1 } : kind === 'link' ? { linkUrl: '' } : kind === 'poll' ? { pollOpts: ['Oui', 'Non'] } : {}; this.setState(z => ({ story: { ...z.story, els: z.story.els.concat([{ id, kind, x: x == null ? W / 2 : x, y: y == null ? H / 2 : y, scale: 1, rot: 0, text: kind === 'mention' ? '@' + z.story.username : d[3], color: d[4], ...extra }]), sel: id } })); };
     this._cvRef = this._cvRef || React.createRef();
     const sel = st.els.find(e => e.id === st.sel);
@@ -4183,8 +4189,9 @@ class Component extends DCLogic {
       seDeselect: () => { if (this.state.story && this.state.story.sel) setSt({ sel: null }); },
       seCanvasRef: this._cvRef,
       seDragOver: e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; },
-      seDrop: e => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); if (!this.STK[k] || !this._cvRef.current) return; const r = this._cvRef.current.getBoundingClientRect(); addEl(k, clampX(e.clientX - r.left), clampY(e.clientY - r.top)); },
+      seDrop: e => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); if (!this.STK[k] || !this._cvRef.current) return; const r = this._cvRef.current.getBoundingClientRect(); addEl(k, snapX(clampX(e.clientX - r.left)), clampY(e.clientY - r.top)); },
       seCanvas: { position: 'relative', width: W, height: H, borderRadius: 36, overflow: 'hidden', background: st.color, touchAction: 'none' },
+      seGuides: (() => { if (!sel) return { showCx: false, showTop: false, showBot: false }; return { showCx: sel.x === Math.round(W / 2), showTop: sel.y === SAFE_TOP, showBot: sel.y === SAFE_BOT, cxStyle: { position: 'absolute', left: W / 2, top: 0, width: 1, height: H, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 }, topStyle: { position: 'absolute', left: 0, top: SAFE_TOP, width: W, height: 1, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 }, botStyle: { position: 'absolute', left: 0, top: SAFE_BOT, width: W, height: 1, background: 'rgba(124,108,246,.5)', pointerEvents: 'none', zIndex: 5 } }; })(),
       seBg: { position: 'absolute', inset: 0, background: this.storyBg(st), pointerEvents: 'none' },
       seUser: st.username, setSeUser: e => setSt({ username: e.target.value.replace(/^@/, '') }),
       seEmpty: !st.els.length,
@@ -4212,7 +4219,7 @@ class Component extends DCLogic {
         down: e => { e.stopPropagation(); e.preventDefault();
           const sx = e.clientX, sy = e.clientY, ox = el.x, oy = el.y;
           if (!on) setSt({ sel: el.id });
-          const mv = ev => updEl(el.id, { x: clampX(ox + ev.clientX - sx), y: clampY(oy + ev.clientY - sy) });
+          const mv = ev => updEl(el.id, { x: snapX(clampX(ox + ev.clientX - sx)), y: clampY(oy + ev.clientY - sy) });
           const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
           window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
         } }; }),
@@ -4255,7 +4262,9 @@ class Component extends DCLogic {
         // Persist to backend in live mode
         const SD = window.SCALE_DATA;
         if (this._isLive() && SD && SD.apiAsync) {
-          const payload = { persona_id: obj.persona, name: obj.name, story_type: obj.type, username: obj.username, color: obj.color, media_ids: obj.media, bg_idx: obj.bgIdx, elements: obj.els, moments: obj.moments };
+          const pid = obj.persona && obj.persona.length > 10 ? obj.persona : (this.pers()[0] || {}).id || null;
+          const mids = (obj.media || []).filter(id => id && id.length > 10);
+          const payload = { persona_id: pid, name: obj.name, story_type: obj.type, username: obj.username, color: obj.color, media_ids: mids, bg_idx: obj.bgIdx, elements: obj.els, moments: obj.moments };
           if (isNew) {
             SD.apiAsync('POST', '/posting/story-templates', payload).then(r => {
               if (r && r.id) { obj.id = r.id; this.setState(x => ({ storyTpls: [obj].concat(x.storyTpls), story: { ...x.story, id: r.id, name: obj.name } })); this.toastMsg('Template de story créé'); }
