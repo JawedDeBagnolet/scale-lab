@@ -15,12 +15,13 @@ from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.posting import Media
 
 logger = logging.getLogger("thumb_generator")
 
 GATEWAY_BASE = os.environ.get("GATEWAY_URL", "https://api.scalelab.win")
-API_SECRET = os.environ.get("API_SECRET", "")
+API_SECRET = settings.api_secret
 
 THUMB_W = 300
 THUMB_H = 375
