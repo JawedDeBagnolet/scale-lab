@@ -2216,7 +2216,15 @@ class Component extends DCLogic {
     slider: ['heart', 'Emoji slider', 'Slider', 'Tu es motivé·e ?', '#fb7185'], hashtag: ['hash', 'Hashtag', 'Hashtag', '#routine', '#2dd4a8'],
     location: ['map-pin', 'Lieu', 'Lieu', 'Paris, France', '#38bdf8'], music: ['music-notes', 'Musique', 'Musique', 'Midnight Drive · Nova Lane', '#a5a0f5']
   };
-  SW = ['#ffffff', '#16171f', '#8b7cf6', '#5b8def', '#2dd4a8', '#f5b04c', '#f472b6', '#fb7185', '#38bdf8'];
+  // IG story color palette — 3 pages (~27 colors)
+  SW = [
+    // Page 1: vifs
+    '#ffffff', '#000000', '#386bd4', '#58c255', '#b8cc2a', '#f5c33b', '#f5922a', '#e6553a', '#d93569', '#a033b8',
+    // Page 2: tons chauds/naturels
+    '#ed2a2a', '#e8577a', '#f0a0b8', '#f8d0d8', '#fce0c8', '#d4a06a', '#c08040', '#6b3520', '#1e4d2b',
+    // Page 3: gris (noir → blanc)
+    '#1a1a1a', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3', '#cccccc', '#e6e6e6'
+  ];
   _isLive() { return (window.SCALE_DATA && window.SCALE_DATA._live) || window.location.hostname === 'scalelab.win'; }
   // === IndexedDB thumbnail cache ===
   _idbOpen() {
@@ -3691,7 +3699,7 @@ class Component extends DCLogic {
     return out;
   }
   LYR = { s1: 'On roule sous les néons\nla ville nous appartient', s2: 'Tout devient flou\nquand tu souris', s3: 'Garde la lumière\nencore un peu', s4: 'On recommence\ncomme si de rien', s5: 'Un café crème\net le monde attendra', s6: 'La marée descend\nmoi je reste là', s7: 'Des avions en papier\nplein le ciel', s8: 'Respire\net étire le temps', s9: 'Inspire lentement\nlaisse partir', s10: 'Dimanche doux\nrien ne presse', s11: 'Pluie de néon\nsur le boulevard', s12: 'Matin lent\nlumière dorée', s13: 'Le cœur qui bat\nplus vite que la ville', s14: 'Sur la terrasse\nle soleil reste', s15: 'Plus forte\nchaque jour', s16: 'L\'heure bleue\nnous va si bien', s17: 'Petites victoires\ngrands sourires', s18: 'Hall d\'hôtel\nminuit passé', s19: 'Légère\ncomme l\'air', s20: 'Départ tardif\non s\'en fiche' };
-  elSound(el) { return (el.sound && this.snd(el.sound)) || this.sounds().find(x => (el.text || '').indexOf(x.title) === 0) || this.sounds()[0]; }
+  elSound(el) { return (el.sound && this.snd(el.sound)) || this.sounds().find(x => (el.text || '').indexOf(x.title) === 0) || this.sounds()[0] || { id: '_none', title: 'Aucun son', artist: '', cover: '' }; }
   coverArt(sid) { const snd = this.snd(sid); if (snd && snd.cover) return 'center / cover no-repeat url("' + snd.cover + '")'; let h = 0; String(sid).split('').forEach(ch => { h = (h * 31 + ch.charCodeAt(0)) % 360; }); const h2 = (h + 55) % 360; return 'radial-gradient(90% 70% at 25% 20%, hsla(' + h2 + ',85%,72%,.85), transparent 60%), radial-gradient(80% 80% at 90% 100%, hsla(' + ((h + 200) % 360) + ',70%,45%,.9), transparent 70%), linear-gradient(135deg, hsl(' + h + ',62%,38%), hsl(' + ((h + 30) % 360) + ',55%,18%))'; }
   musicVals(el) {
     const sd = this.elSound(el); const st = el.mstyle || 'card'; const c = el.color || '#a5a0f5'; const art = this.coverArt(sd.id); const lyr = (el.lyrics || this.LYR[sd.id] || this.LYR.s1);
