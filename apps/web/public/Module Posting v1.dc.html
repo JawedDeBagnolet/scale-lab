@@ -4168,15 +4168,15 @@ class Component extends DCLogic {
         scHint: kind === 'story' ? 'Collections de stories du quotidien : elles alimentent les stories autonomes des plans. Chacune regroupe les templates d\'une persona pour un type.' : 'Collections À la une : chacune devient une story à la une épinglée sur le profil, avec ses variantes de nom.',
         scNew: () => this.setState({ scEd: { id: null, kind, name: '', persona: fp === 'all' ? 'lea' : fp, type: 'lifestyle', names: ['À la une'], icon: 'star', tpls: [], draft: '', byP: {} } }),
         scEmpty: !list.length,
-        scCards: list.map(c => { const per = this.P(c.persona); const ts = this.scTpls(c); const pd = this.poolData(c.id); const t = c.kind === 'story' ? this.stype(c.type) : null; return {
-          name: c.kind === 'hl' ? this.hlNames(c)[0] : c.name, sub: (c.byP ? Object.keys(c.byP).map(pid => this.P(pid).name).join(', ') : per.name) + ' · ' + (t ? t.label : this.hlNames(c).join(' · ')), pDot: this.dot(per.color, 7), thumbs: thumbs(ts), n: ts.length, uniq: pd ? pd.uniqAll : 0, moms: momStrip(pd),
+        scCards: list.map(c => { const per = this.P(c.persona) || { name: '?', color: '#888' }; const ts = this.scTpls(c); const pd = this.poolData(c.id); const t = c.kind === 'story' ? this.stype(c.type) : null; return {
+          name: c.kind === 'hl' ? this.hlNames(c)[0] : c.name, sub: (c.byP ? Object.keys(c.byP).map(pid => (this.P(pid) || { name: '?' }).name).join(', ') : per.name) + ' · ' + (t ? t.label : this.hlNames(c).join(' · ')), pDot: this.dot(per.color, 7), thumbs: thumbs(ts), n: ts.length, uniq: pd ? pd.uniqAll : 0, moms: momStrip(pd),
           icon: t ? t.icon : 'ph ph-' + c.icon, cover: t ? { width: 38, height: 38, flex: 'none', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.color, background: t.color + '1f', border: '1px solid ' + t.color + '55' } : { width: 40, height: 40, flex: 'none', borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f2f3fa', background: 'linear-gradient(135deg,' + per.color + '55,#1b1f33)', boxShadow: '0 0 0 2px #0f1220, 0 0 0 3.5px #f5c77e' },
           open: () => this.setState({ scEd: { ...JSON.parse(JSON.stringify(c)), names: this.hlNames(c), draft: '', byP: c.byP ? JSON.parse(JSON.stringify(c.byP)) : c.kind === 'story' ? { [c.persona]: { tpls: c.tpls.slice() } } : { [c.persona]: { vars: c.vars ? JSON.parse(JSON.stringify(c.vars)) : [{ id: 'v1', tpls: c.tpls.slice() }], vi: 0 } }, pickOpen: false } }) }; })
       });
     }
     const e = s.scEd;
     if (e) {
-      const eu = p => this.setState(x => ({ scEd: { ...x.scEd, ...p } })); const per = this.P(e.persona); const isStory = e.kind === 'story';
+      const eu = p => this.setState(x => ({ scEd: { ...x.scEd, ...p } })); const per = this.P(e.persona) || { name: '?', color: '#888', id: e.persona }; const isStory = e.kind === 'story';
       const avail = (s.storyTpls || []).filter(t => t.persona === e.persona && (!isStory || t.type === e.type)); const bpS = e.byP || {}; const myS = (bpS[e.persona] || { tpls: [] }).tpls || []; const selSet = (isStory ? myS : e.tpls).filter(id => avail.some(t => t.id === id)); const setSel = tp => eu({ byP: { ...bpS, [e.persona]: { ...(bpS[e.persona] || {}), tpls: tp } } }); const typeOk = true;
       const pd = { n: selSet.length, uniqAll: 0, tpls: avail.filter(t => selSet.indexOf(t.id) >= 0).map(t => ({ media: this.tplMediaKey(t), moments: this.tplMoms(t) })) }; const set = {}; pd.tpls.forEach(t => { set[t.media] = 1; }); pd.uniqAll = Object.keys(set).length;
       const names = e.names && e.names.length ? e.names : ['À la une']; const addName = () => { const v = (e.draft || '').trim(); if (!v || names.indexOf(v) >= 0) return; eu({ names: names.concat([v]), draft: '' }); };
@@ -4254,7 +4254,7 @@ class Component extends DCLogic {
       Object.assign(out, {
         plCount: plans.length + ' plan' + (plans.length > 1 ? 's' : '') + ' · ' + plans.filter(p => p.status === 'active').length + ' actif' + (plans.filter(p => p.status === 'active').length > 1 ? 's' : ''),
         plEmpty: !plans.length, plNew: () => this.openPlan(null),
-        plCards: plans.map(p => { const per = this.P(p.persona); const on = p.status === 'active'; const wk = this.planWeek(p); const mx = Math.max(1, ...wk.map(d => d.length)); const stc = on ? '#2dd4a8' : '#f5b04c'; return {
+        plCards: plans.map(p => { const per = this.P(p.persona) || { name: '?', color: '#888', city: '' }; const on = p.status === 'active'; const wk = this.planWeek(p); const mx = Math.max(1, ...wk.map(d => d.length)); const stc = on ? '#2dd4a8' : '#f5b04c'; return {
           name: p.name, av: this.avStyle(per.color, 38, 11), ini: per.name.slice(0, 2).toUpperCase(), pDot: this.dot(per.color, 7), pName: per.name, city: per.city,
           stLabel: on ? 'Actif' : 'En pause', stStyle: { ...this.badge(stc), cursor: 'pointer' }, stDot: { width: 6, height: 6, borderRadius: 99, background: stc }, toggleTitle: on ? 'Mettre en pause' : 'Reprendre',
           toggle: e => { e.stopPropagation(); this.setState(x => ({ plans: x.plans.map(q => q.id === p.id ? { ...q, status: on ? 'paused' : 'active' } : q) })); this.toastMsg(on ? 'Plan en pause' : 'Plan repris'); },
@@ -4268,7 +4268,7 @@ class Component extends DCLogic {
     const pu = patch => this.setState(x => ({ planEd: { ...x.planEd, ...patch } }));
     const ru = (id, patch) => this.setState(x => ({ planEd: { ...x.planEd, rules: x.planEd.rules.map(r => r.id === id ? { ...r, ...patch } : r) } }));
     const hu = (id, patch) => this.setState(x => ({ planEd: { ...x.planEd, hls: x.planEd.hls.map(h => h.id === id ? { ...h, ...patch } : h) } }));
-    const per = this.P(pe.persona); const types = this.typesFor(pe.persona);
+    const per = this.P(pe.persona) || { name: '?', color: '#888', city: '', id: pe.persona }; const types = this.typesFor(pe.persona);
     const wk = this.planWeek(pe); const total = wk.reduce((a, d) => a + d.length, 0);
         const nOver = pe.rules.filter(r => { const i = this.ruleInfo(r, pe); return i.over || i.poolOver || !i.pd || !i.uniq; }).length;
     const byType = {}; wk.forEach(d => d.forEach(x => { if (!x.over) byType[x.type.id] = (byType[x.type.id] || 0) + 1; }));
