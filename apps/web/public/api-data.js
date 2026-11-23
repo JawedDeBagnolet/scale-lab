@@ -1394,7 +1394,9 @@ if ('serviceWorker' in navigator) {
           populate(publications, safe(apiFetchSync('/posting/publications')).map(xPublication));
           populate(storyTemplates,   safe(apiFetchSync('/posting/story-templates')).map(xStoryTemplate));
           populate(storyCollections, safe(apiFetchSync('/posting/story-collections')).map(xStoryCollection));
-          populate(storyTypes,       safe(apiFetchSync('/posting/story-types')).map(xStoryType));
+          var rawST = apiFetchSync('/posting/story-types');
+          console.log('[Scale Lab] story-types raw:', rawST);
+          populate(storyTypes,       safe(rawST).map(xStoryType));
           D.postingOverview = apiFetchSync('/posting/overview');
           if (!D.postingOverview || Array.isArray(D.postingOverview)) D.postingOverview = { total_collections: 0, total_medias: 0, total_templates: 0, total_campagnes: 0, active_campagnes: 0, total_publications: 0, published: 0, planned: 0, failed: 0 };
           console.log('[Scale Lab] Module posting :', medias.length, 'medias,', templates.length, 'templates,', publications.length, 'publications,', storyTemplates.length, 'story tpls');
