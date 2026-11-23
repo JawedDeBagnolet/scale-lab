@@ -4117,7 +4117,7 @@ class Component extends DCLogic {
       const SD = window.SCALE_DATA;
       if (this._isLive() && SD && SD.apiAsync) {
         // Find first active compte for API call
-        const acc = this.accounts().find(a => a.plat === 'ig' && a.status === 'idle');
+        const acc = this.accounts().find(a => a.plat === 'ig' && (a.status === 'idle' || a.status === 'ok'));
         if (!acc) { this.setState({ _placeResults: [] }); return; }
         SD.apiAsync('GET', '/ig/search/places?q=' + encodeURIComponent(q) + '&compte_id=' + acc.id).then(r => {
           if (Array.isArray(r)) this.setState({ _placeResults: r.slice(0, 8) });
@@ -4198,7 +4198,8 @@ class Component extends DCLogic {
         hoverOut: () => { if (this.state._hoverEl === el.id) this.setState({ _hoverEl: null }); },
         rotDown: e => { e.stopPropagation(); e.preventDefault();
           const sx = e.clientX, oRot = el.rot;
-          const mv = ev => updEl(el.id, { rot: Math.round(Math.max(-180, Math.min(180, oRot + (ev.clientX - sx) / 1.5))) });
+          const snap = v => { const snaps = [-180, -90, 0, 90, 180]; for (const s of snaps) { if (Math.abs(v - s) < 5) return s; } return v; };
+          const mv = ev => updEl(el.id, { rot: snap(Math.round(Math.max(-180, Math.min(180, oRot + (ev.clientX - sx) / 1.5)))) });
           const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
           window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
         },
@@ -4242,7 +4243,7 @@ class Component extends DCLogic {
         openSoundModal: () => this.setState({ audio: { tab: 'trend', q: '', sel: sel.sound ? [sel.sound] : [], multi: false, target: 'storySticker', stickerId: sel.id }, playing: null }),
         x: String(sel.x), y: String(sel.y), setX: e => updEl(sel.id, { x: clampX(parseInt(e.target.value, 10) || 0) }), setY: e => updEl(sel.id, { y: clampY(parseInt(e.target.value, 10) || 0) }),
         scale: Math.round(sel.scale * 100), scaleLabel: Math.round(sel.scale * 100) + ' %', setScale: e => updEl(sel.id, { scale: Number(e.target.value) / 100 }),
-        rot: sel.rot, rotLabel: sel.rot + '°', setRot: e => updEl(sel.id, { rot: Number(e.target.value) }),
+        rot: sel.rot, rotLabel: sel.rot + '°', setRot: e => { let v = Number(e.target.value); const snaps = [-180, -90, 0, 90, 180]; for (const s of snaps) { if (Math.abs(v - s) < 4) { v = s; break; } } updEl(sel.id, { rot: v }); },
         swatches: this.SW.map(c => swatch(c, sel.color === c, () => updEl(sel.id, { color: c }))) } : { swatches: [] },
       seP: this.pers().map(p => ({ label: p.name, hasDot: true, hasIcon: false, dot: this.dot(p.color, 7), title: '', style: { ...this.chip((st.persona || 'lea') === p.id, p.color), height: 26, padding: '0 8px', fontSize: 11.5 }, go: () => { const ok = this.typesFor(p.id).some(t => t.id === st.type); setSt({ persona: p.id, type: ok ? st.type : (this.typesFor(p.id)[0] || {}).id }); } })),
       seT: this.typesFor(st.persona || 'lea').map(t => ({ label: t.label, hasIcon: true, hasDot: false, icon: t.icon, title: '', style: { ...this.chip(st.type === t.id, t.color), height: 26, padding: '0 8px', fontSize: 11.5 }, go: () => setSt({ type: t.id }) })),
