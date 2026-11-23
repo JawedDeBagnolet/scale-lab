@@ -4149,7 +4149,7 @@ class Component extends DCLogic {
     const map = (pid, r) => ({ ...r, hl: null, pool: colls.find(c => c.kind === 'story' && c.persona === pid && c.type === r.type) ? 'sc_' + pid + '_' + r.type : '' });
     const plans = (s.plans || []).map(p => ({ ...p, anti: /^pl\d$/.test(p.id) ? 5 : p.anti, rules: p.rules.map(r => map(p.persona, r)), hlc: colls.filter(c => c.kind === 'hl' && c.persona === p.persona).map(c => c.id) }));
     const routines = {}; Object.keys(s.routines || {}).forEach(k => { const rt = s.routines[k]; routines[k] = { ...rt, blocks: rt.blocks.map(b => map(k, b)) }; });
-    this.setState({ scVer: 2, stypes: s.stypes || stypes, storyTpls: tpls, storyColls: colls, plans, routines, planEd: null, scKind: 'story', scPersona: (this.pers()[0] || {}).id || 'lea', stTplPersona: (this.pers()[0] || {}).id || 'lea', typeDraft: { name: '', color: '#4ade80', icon: 'sparkle', personas: this.pers().map(p => p.id) } });
+    this.setState({ scVer: 2, stypes: s.stypes || stypes, storyTpls: tpls, storyColls: colls, plans, routines, planEd: null, scKind: 'story', scPersona: (this.pers()[0] || {}).id || 'lea', stTplPersona: 'all', typeDraft: { name: '', color: '#4ade80', icon: 'sparkle', personas: this.pers().map(p => p.id) } });
   }
   scVals() {
     const s = this.state; const out = { scEdOpen: false, stTypesOpen: false, scOpenTypes: () => this.setState({ typesOpen: true, ddOpen: null }) };
@@ -4360,9 +4360,9 @@ class Component extends DCLogic {
         storySubSeg: [['templates', 'Templates', 'squares-four'], ['builder', 'Builder', 'magic-wand'], ['planner', 'Planner', 'calendar-dots'], ['colls', 'Collections', 'stack']].map(t => ({ label: t[1], icon: 'ph ph-' + t[2], style: this.segStyle(s.storySub === t[0]), go: () => this.setState({ storySub: t[0] }) })),
         stTemplates: s.storySub === 'templates', stBuilder: s.storySub === 'builder', stPlanner: s.storySub === 'planner', stColls: s.storySub === 'colls',
         storyEmpty: !s.storyTpls.length, storyLiked: s.storyTpls.filter(t => (s.stLikes || {})[t.id]).map(t => ({ name: t.name, edit: () => this.openStory(t) })), likedLead: s.storyTpls.some(t => (s.stLikes || {})[t.id]) ? 'ou partir d\'un favori' : 'Like des templates (♥) pour pouvoir partir d\'eux ici',
-        stTplPers: [{ id: 'all', label: 'Toutes' }].concat(this.pers().map(p => ({ id: p.id, label: p.name, color: p.color }))).map(o => ({ label: o.label, hasDot: !!o.color, hasIcon: false, dot: o.color ? this.dot(o.color, 8) : {}, title: '', style: this.chip((s.stTplPersona || 'lea') === o.id, o.color), go: () => this.setState({ stTplPersona: o.id }) })),
-        stTplCount: s.storyTpls.filter(t => (s.stTplPersona || 'lea') === 'all' || t.persona === (s.stTplPersona || 'lea')).length + ' templates',
-        storyCards: s.storyTpls.filter(t => (s.stTplPersona || 'lea') === 'all' || t.persona === (s.stTplPersona || 'lea')).map(t => { const kinds = []; t.els.forEach(e => { if (kinds.indexOf(e.kind) < 0) kinds.push(e.kind); }); return {
+        stTplPers: [{ id: 'all', label: 'Toutes' }].concat(this.pers().map(p => ({ id: p.id, label: p.name, color: p.color }))).map(o => ({ label: o.label, hasDot: !!o.color, hasIcon: false, dot: o.color ? this.dot(o.color, 8) : {}, title: '', style: this.chip((s.stTplPersona || 'all') === o.id, o.color), go: () => this.setState({ stTplPersona: o.id }) })),
+        stTplCount: s.storyTpls.filter(t => (s.stTplPersona || 'all') === 'all' || t.persona === s.stTplPersona).length + ' templates',
+        storyCards: s.storyTpls.filter(t => (s.stTplPersona || 'all') === 'all' || t.persona === s.stTplPersona).map(t => { const kinds = []; t.els.forEach(e => { if (kinds.indexOf(e.kind) < 0) kinds.push(e.kind); }); return {
           name: t.name, username: t.username, meta: (t.persona && this.P(t.persona) ? this.P(t.persona).name + ' · ' + this.stype(t.type).label + ' · ' : '') + t.els.length + ' sticker' + (t.els.length > 1 ? 's' : '') + ' · modifié ' + (t.updated ? 'il y a ' + t.updated + ' j' : "aujourd\'hui"),
           els: t.els.map(el => { const v = this.stkVals(el, false); return { ...v, wrap: { ...v.wrap, cursor: 'default', outline: 'none', pointerEvents: 'none' } }; }),
           stage: { position: 'absolute', left: 0, top: 0, width: 338, height: 600, transformOrigin: '0 0', transform: 'scale(' + (190 / 338) + ')', pointerEvents: 'none' },
