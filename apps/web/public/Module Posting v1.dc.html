@@ -2899,7 +2899,7 @@ class Component extends DCLogic {
   }
   ovStyle(z, a) { const glass = 'Verre' === 'Verre'; return { position: 'fixed', inset: 0, zIndex: z, overscrollBehavior: 'contain', background: glass ? 'rgba(5,6,12,' + (a || .3) + ')' : 'rgba(5,6,12,.62)', backdropFilter: glass ? 'none' : 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "var(--app-font,'Manrope'),system-ui,sans-serif", color: '#e8eaf3' }; }
   openEd(kind, src) {
-    const d = { kind, id: null, exists: false, name: '', ready: false, plat: kind === 'tpl' ? null : 'th', persona: null, account: null, type: kind === 'tpl' ? null : 'th_text', media: [], sound: null, sounds: [], caption: '', lang: 'FR', fc: '', showFc: false, feed: false, feedCfg: { min: 1, max: 3, beh: 'pf1' }, variants: [], scheduledAt: null, stats: null, status: null };
+    const d = { kind, id: null, exists: false, name: '', ready: false, plat: kind === 'tpl' ? null : 'th', persona: null, account: null, type: kind === 'tpl' ? null : 'th_text', media: [], sound: null, sounds: [], caption: '', lang: 'FR', fc: '', showFc: false, feed: false, feedCfg: { min: 1, max: 3, beh: null }, variants: [], scheduledAt: null, stats: null, status: null };
     if (src && kind === 'post') Object.assign(d, { id: src.id, exists: true, plat: src.plat, persona: src.persona, account: src.acc, type: src.type, media: src.media.slice(), caption: src.caption, lang: src.lang || 'FR', fc: src.fc || '', showFc: !!src.fc, scheduledAt: src.status === 'scheduled' ? src.date : null, status: src.status, sound: src.sound || null });
     if (src && kind === 'tpl') Object.assign(d, { id: src.id, exists: true, name: src.name, ready: src.ready, plat: src.plat, persona: src.persona, type: src.type, media: src.media.slice(), caption: src.caption, lang: src.lang || 'FR', fc: src.fc || '', showFc: !!src.fc, sound: src.sound !== undefined ? src.sound : (src.sounds || [])[0] || null, stats: src.stats, mVars: JSON.parse(JSON.stringify(src.mVars || [])), fcVars: (src.fcVars || []).slice() });
     d.mVars = d.mVars || []; d.mvIdx = 0; d.fcVars = d.fcVars || []; d.fcIdx = 0; this.setState({ ed: d, sched: null, accMenu: false, accQ: '', pvRaw: false, pvIdx: 0, pvTh: null });
@@ -3193,7 +3193,6 @@ class Component extends DCLogic {
   collAvg(c) { const a = this.collUnits(c).map(x => x.stats).filter(x => x.posted); if (!a.length) return null; return { impr: a.reduce((s, x) => s + x.impr, 0) / a.length, eng: a.reduce((s, x) => s + x.eng, 0) / a.length, score: Math.round(a.reduce((s, x) => s + this.cstat(x), 0) / a.length) }; }
   collEng(id) { const c = ((this.state && this.state.colls) || []).find(x => x.id === id); const a = c && this.collAvg(c); return a ? a.eng : 4; }
   BEH = [['b1', 'Naturel', 'Like 8 % · Story 25 %'], ['b2', 'Discret', 'Like 3 % · Story 10 %'], ['b3', 'Engagé', 'Like 18 % · Com. 2 %'], ['b4', 'Warmup doux', 'Like 5 % · Follow 1 %'], ['b5', 'Scroll passif', 'Aucune interaction']];
-  POST_BEH = [['pf1', 'Feed naturel', 'Scroll feed · Like 5 %'], ['pf2', 'Feed engagé', 'Scroll feed · Like 12 %'], ['pr1', 'Reels passif', 'Scroll reels · Like 3 %'], ['pr2', 'Reels actif', 'Scroll reels · Like 10 %'], ['pm1', 'Mixte', 'Feed 60 % + Reels 40 %'], ['pm2', 'Scroll seul', 'Aucune interaction']];
   mvArr(arr, a, b) { const x = arr.slice(); const [it] = x.splice(a, 1); x.splice(b, 0, it); return x; }
   dnd(key, i, n, move) {
     const s = this.state; const over = !!s.dragOver && s.dragOver.key === key && s.dragOver.i === i; const dragging = !!s.dragging && s.dragging.key === key && s.dragging.i === i;
@@ -3225,7 +3224,16 @@ class Component extends DCLogic {
   feedUI(cfg, patch, postPub) {
     const c = this.feedNorm(cfg);
     const fields = [['min', 'Min'], ['max', 'Max']].map((k, i) => ({ sep: i === 1, ...this.numField(cfg && cfg[k[0]] === '' ? '' : c[k[0]], 1, 60, v => { const p = { [k[0]]: v }; if (v !== '') { if (k[0] === 'min' && v > c.max) p.max = v; if (k[0] === 'max' && v < c.min) p.min = v; } patch(p); }) }));
-    const behList = postPub ? this.POST_BEH : this.BEH;
+    let behList;
+    if (postPub) {
+      // Vrais presets du module Comportements — uniquement feed et reels (pas profile)
+      const SD = window.SCALE_DATA;
+      const raw = (SD && SD.behaviors || []).filter(b => b.type === 'feed' || b.type === 'reels');
+      behList = raw.map(b => [b.id, b.name, (b.type === 'reels' ? 'Reels' : 'Feed') + ' · Like ' + (b.p && b.p.like || 0) + ' %']);
+      if (!behList.length) behList = this.BEH; // fallback demo
+    } else {
+      behList = this.BEH;
+    }
     return { durFields: fields, behs: behList.map(b => { const on = c.beh === b[0]; return { name: b[1], sub: b[2], go: () => patch({ beh: b[0] }), style: { ...this.chip(on), height: 'auto', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 13px' } }; }) };
   }
   fmtDelay(v) { v = +v || 0; return v < 60 ? v + ' min' : Math.floor(v / 60) + ' h' + (v % 60 ? ' ' + this.pad(v % 60) : ''); }

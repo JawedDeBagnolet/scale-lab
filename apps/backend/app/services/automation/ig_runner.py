@@ -395,40 +395,32 @@ async def _publish_post(drv, nav, sess, values, log):
         try:
             feed_min = values.get("feed_duration_min", 1)
             feed_max = values.get("feed_duration_max", 3)
-            feed_beh = values.get("feed_beh", "pf1")
-            # Determiner le type de session selon le comportement choisi
-            # pf* = feed, pr* = reels, pm1 = mixte, pm2 = scroll passif
-            like_pct = 0.05
-            if feed_beh in ("pf2", "pr2"):
-                like_pct = 0.12
-            elif feed_beh in ("pf1", "pr1", "pm1"):
-                like_pct = 0.05
-            elif feed_beh == "pm2":
-                like_pct = 0.0
+            preset_id = values.get("feed_preset_id")
 
-            if feed_beh.startswith("pr"):
-                # Session reels
+            # Charger le preset depuis la DB pour connaitre son type et sa config
+            preset_type = "feed"
+            preset_cfg = {}
+            preset_name = "default"
+            if preset_id:
+                from app.db import async_session
+                from app.models.comportement import Preset
+                async with async_session() as db:
+                    preset = await db.get(Preset, preset_id)
+                    if preset:
+                        preset_type = preset.session_type or "feed"
+                        preset_cfg = preset.config or {}
+                        preset_name = preset.name
+
+            like_pct = (preset_cfg.get("p", {}).get("like", 5)) / 100.0
+
+            if preset_type == "reels":
                 from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
-                log("\n--- Session reels post-publication (%d-%d min, %s) ---" % (feed_min, feed_max, feed_beh))
-                reels_cfg = {"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct}
-                await run_reels_session(drv, nav, config=reels_cfg, log=log)
-            elif feed_beh == "pm1":
-                # Mixte : feed 60% + reels 40%
-                from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-                from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
-                import random as _rnd
-                total = _rnd.uniform(feed_min, feed_max)
-                f_dur = total * 0.6
-                r_dur = total * 0.4
-                log("\n--- Session mixte post-publication (feed %.0f + reels %.0f min) ---" % (f_dur, r_dur))
-                await run_feed_session(drv, nav, config={"duration_min": f_dur, "duration_max": f_dur, "like_pct": like_pct}, log=log)
-                await run_reels_session(drv, nav, config={"duration_min": r_dur, "duration_max": r_dur, "like_pct": like_pct}, log=log)
+                log("\n--- Session reels post-publication (%d-%d min, preset=%s) ---" % (feed_min, feed_max, preset_name))
+                await run_reels_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct, "_preset_name": preset_name, "_preset_id": preset_id or ""}, log=log)
             else:
-                # Feed (pf1, pf2, pm2)
                 from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-                log("\n--- Session feed post-publication (%d-%d min, %s) ---" % (feed_min, feed_max, feed_beh))
-                feed_cfg = {"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct}
-                await run_feed_session(drv, nav, config=feed_cfg, log=log)
+                log("\n--- Session feed post-publication (%d-%d min, preset=%s) ---" % (feed_min, feed_max, preset_name))
+                await run_feed_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct, "_preset_name": preset_name, "_preset_id": preset_id or ""}, log=log)
         except Exception as e:
             log("   ⚠ session post-pub echouee: %s" % str(e)[:100])
 
@@ -509,16 +501,28 @@ async def _publish_reel(drv, nav, sess, values, log):
         try:
             feed_min = values.get("feed_duration_min", 1)
             feed_max = values.get("feed_duration_max", 3)
-            feed_beh = values.get("feed_beh", "pf1")
-            like_pct = 0.12 if feed_beh in ("pf2", "pr2") else (0.0 if feed_beh == "pm2" else 0.05)
-            if feed_beh.startswith("pr"):
+            preset_id = values.get("feed_preset_id")
+            preset_type = "feed"
+            preset_cfg = {}
+            preset_name = "default"
+            if preset_id:
+                from app.db import async_session
+                from app.models.comportement import Preset
+                async with async_session() as db:
+                    preset = await db.get(Preset, preset_id)
+                    if preset:
+                        preset_type = preset.session_type or "feed"
+                        preset_cfg = preset.config or {}
+                        preset_name = preset.name
+            like_pct = (preset_cfg.get("p", {}).get("like", 5)) / 100.0
+            if preset_type == "reels":
                 from app.services.automation.ig_iphone.interact.reels_session import run_reels_session
-                log("\n--- Session reels post-reel (%d-%d min) ---" % (feed_min, feed_max))
-                await run_reels_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct}, log=log)
+                log("\n--- Session reels post-reel (%d-%d min, preset=%s) ---" % (feed_min, feed_max, preset_name))
+                await run_reels_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct, "_preset_name": preset_name}, log=log)
             else:
                 from app.services.automation.ig_iphone.interact.feed_session import run_feed_session
-                log("\n--- Session feed post-reel (%d-%d min) ---" % (feed_min, feed_max))
-                await run_feed_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct}, log=log)
+                log("\n--- Session feed post-reel (%d-%d min, preset=%s) ---" % (feed_min, feed_max, preset_name))
+                await run_feed_session(drv, nav, config={"duration_min": feed_min, "duration_max": feed_max, "like_pct": like_pct, "_preset_name": preset_name}, log=log)
         except Exception as e:
             log("   ⚠ session post-pub echouee: %s" % str(e)[:100])
 

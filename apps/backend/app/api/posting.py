@@ -326,7 +326,7 @@ async def dispatch_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
             feed_cfg = pub.stickers.get("feed_cfg", {})
             values["feed_duration_min"] = feed_cfg.get("min", 1)
             values["feed_duration_max"] = feed_cfg.get("max", 3)
-            values["feed_beh"] = feed_cfg.get("beh", "pf1")
+            values["feed_preset_id"] = feed_cfg.get("beh")  # UUID du preset comportement
     # Remove None values
     values = {k: v for k, v in values.items() if v is not None}
 
