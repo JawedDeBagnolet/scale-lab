@@ -318,8 +318,15 @@ async def dispatch_publication(pid: UUID, db: AsyncSession = Depends(get_db)):
     }
     values["username"] = compte.handle
     # Audio query from stickers or publication extras
-    if pub.stickers and pub.stickers.get("audio_query"):
-        values["audio_query"] = pub.stickers["audio_query"]
+    if pub.stickers:
+        if pub.stickers.get("audio_query"):
+            values["audio_query"] = pub.stickers["audio_query"]
+        if pub.stickers.get("feed_session"):
+            values["feed_session"] = True
+            feed_cfg = pub.stickers.get("feed_cfg", {})
+            values["feed_duration_min"] = feed_cfg.get("min", 1)
+            values["feed_duration_max"] = feed_cfg.get("max", 3)
+            values["feed_beh"] = feed_cfg.get("beh", "pf1")
     # Remove None values
     values = {k: v for k, v in values.items() if v is not None}
 
