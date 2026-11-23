@@ -581,19 +581,25 @@ async def _post_first_comment(driver, log, comment: str, username: str = "") -> 
     await driver.ht.type_text(comment)
     await asyncio.sleep(random.uniform(1.0, 2.0))
 
-    # 5. Envoyer (bouton "Publier" ou fleche)
-    send_el = await driver.find_element(text="Publier", clickable=True, refresh=True)
+    # 5. Envoyer via tap_element natif "Publier un commentaire"
+    sent = await driver.ht.tap_by_text("Publier un commentaire")
+    if sent:
+        log("   [1er commentaire] ✓ commentaire poste")
+        await asyncio.sleep(random.uniform(1.5, 2.5))
+        return True
+    # Fallback: chercher dans l'arbre
+    send_el = await driver.find_element(contains="Publier un commentaire", clickable=True, refresh=True)
     if not send_el:
-        send_el = await driver.find_element(contains="Envoyer", clickable=True, refresh=True)
+        send_el = await driver.find_element(contains="Publier", clickable=True)
     if send_el:
         tap = send_el.get('tap', {})
-        log("   [1er commentaire] envoi (y=%d)" % tap.get('y', 0))
+        log("   [1er commentaire] envoi fallback (y=%d)" % tap.get('y', 0))
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(random.uniform(1.5, 2.5))
         log("   [1er commentaire] ✓ commentaire poste")
         return True
     else:
-        log("   [1er commentaire] ! bouton Publier/Envoyer non trouve")
+        log("   [1er commentaire] ! bouton Publier non trouve")
         await _dump_screen(driver, log, "no_send_comment")
         return False
 
