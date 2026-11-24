@@ -14,6 +14,7 @@ Usage:
     from app.services.automation.ig_iphone.interact.story_stickers import (
         add_link_sticker, add_poll_sticker, add_question_sticker,
         add_location_sticker, add_mention_sticker, add_music_sticker,
+        add_text_sticker, add_to_highlight, publish_story, open_story_editor,
     )
 """
 
@@ -61,7 +62,7 @@ async def _tap_done(driver, log):
     sinon fallback aux coordonnees (328, 69).
     """
     # Chercher dans l'arbre
-    el = await driver.find_element(contains="C'est fait", clickable=True, refresh=True)
+    el = await driver.find_element(contains="C’est fait", clickable=True, refresh=True)
     if not el:
         el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
     if el:
@@ -222,31 +223,47 @@ async def add_mention_sticker(driver, username, variant_taps=0, log=print):
         await asyncio.sleep(2)
 
     # Selectionner le compte dans les resultats
-    # Le premier resultat pertinent (nom en majuscules souvent)
+    # Match exact sur le username recherche, y > 100 (sous la barre de recherche)
     els = await driver.find_elements(clickable=True, refresh=True)
-    _skip = ("Rechercher", "Annuler", "Effacer", "Fermer", "C'est fait",
-             "Activer", "Sticker de mention")
     best = None
     for e in els:
-        t = (e.get('text', '') or '')
-        r = e.get('rect', {})
-        if (t and not any(s in t for s in _skip)
-                and r.get('y', 0) > 100 and r.get('width', 0) > 100):
+        t = (e.get('text', '') or '').strip()
+        tp = e.get('tap', {})
+        y = tp.get('y', 0)
+        if t.lower() == username.lower() and y > 100:
             best = e
             break
 
     if best:
         tap = best.get('tap', {})
-        log("   selectionne '%s'" % (best.get('text', '')[:30]))
+        log("   selectionne '%s' @ (%d, %d)" % (best.get('text', '')[:30], tap['x'], tap['y']))
         await driver.ht.tap(tap['x'], tap['y'])
         await asyncio.sleep(1)
+    else:
+        log("   ! match exact non trouve pour '%s', fallback premier resultat" % username)
+        # Fallback: premier element sous la barre de recherche
+        for e in els:
+            tp = e.get('tap', {})
+            r = e.get('rect', {})
+            if tp.get('y', 0) > 100 and r.get('height', 0) > 40:
+                t = (e.get('text', '') or '')
+                if t and t not in ("Rechercher", "Annuler", "Effacer"):
+                    log("   fallback: '%s'" % t[:30])
+                    await driver.ht.tap(tp['x'], tp['y'])
+                    await asyncio.sleep(1)
+                    break
 
-    # Premier "C'est fait" (invisible dans l'arbre → fallback coords)
-    await _tap_done(driver, log)
+    # "C’est fait" est invisible dans l’arbre sur cet ecran → coords directes
+    log("   -> C’est fait (coords 331, 91)")
+    await driver.ht.tap(331, 91)
+    await driver.wait('transition')
     await asyncio.sleep(0.5)
 
-    # Deuxieme "C'est fait" pour confirmer l'ajout
-    await _tap_done(driver, log)
+    # Deuxieme "C’est fait" pour confirmer l’ajout
+    log("   -> C’est fait x2 (coords 331, 91)")
+    await driver.ht.tap(331, 91)
+    await driver.wait('transition')
+    await asyncio.sleep(1)
 
     # Variantes visuelles
     if variant_taps > 0:
@@ -558,27 +575,35 @@ async def add_music_sticker(driver, song=None, artist=None,
     # Styles disponibles dans le dump:
     #   "uniquement de la musique" | "affichage dynamique" |
     #   "machine à écrire" | "affichage cube" | "karaoké" | "bouton musique"
-    if style:
-        target = style.lower()
-        found = False
-        for attempt in range(4):
-            els = await driver.find_elements(clickable=True, refresh=True)
-            for e in els:
-                t = (e.get("text", "") or "").lower()
-                if target in t or (target == "karaoké" and "karaok" in t):
-                    tap = e.get("tap", {})
-                    log("   style: '%s' @ (%d, %d)" % (t.strip()[:30], tap["x"], tap["y"]))
-                    await driver.ht.tap(tap["x"], tap["y"])
-                    await asyncio.sleep(1)
-                    found = True
-                    break
-            if found:
+    # Style par defaut: "uniquement de la musique" (pas de sticker visible)
+    target = (style or "uniquement de la musique").lower()
+    found = False
+    for attempt in range(4):
+        els = await driver.find_elements(clickable=True, refresh=True)
+        for e in els:
+            t = (e.get("text", "") or "").lower()
+            if target in t or (target == "karaoké" and "karaok" in t):
+                tap = e.get("tap", {})
+                log("   style: '%s' @ (%d, %d)" % (t.strip()[:30], tap["x"], tap["y"]))
+                await driver.ht.tap(tap["x"], tap["y"])
+                await asyncio.sleep(1)
+                found = True
                 break
-            # Scroll horizontal pour trouver le style
-            await driver.ht.swipe(350, 541, 100, 541, 300)
+        if found:
+            break
+        # Le style cherche est hors ecran → taper sur le premier element
+        # visible pour scroller dans sa direction (gauche = debut de la liste)
+        style_els = [e for e in els
+                     if e.get('tap', {}).get('y', 0) == 541
+                     and (e.get('text', '') or '').strip()]
+        if style_els:
+            first = style_els[0]
+            tap = first.get('tap', {})
+            log("   navigation styles: tap '%s'" % (first.get('text', '')[:20]))
+            await driver.ht.tap(tap['x'], tap['y'])
             await asyncio.sleep(0.8)
-        if not found:
-            log("   ! style '%s' non trouve" % style)
+    if not found:
+        log("   ! style '%s' non trouve" % target)
 
     # Modifier la duree du clip
     if clip_duration:
@@ -690,6 +715,54 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
         await asyncio.sleep(2)
 
     log("   highlight ajoute")
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Sticker Texte
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def add_text_sticker(driver, text, style=None, log=print):
+    """Ajoute du texte sur la story.
+
+    Flow: "Texte, bouton" → Ecrire → (optionnel: choisir style) → "C’est fait".
+
+    Le bouton s'appelle "Texte, bouton" dans l'arbre (pas "Aa").
+
+    Args:
+        text: le texte a afficher
+        style: style visuel parmi "Modern", "Classic", "Signature" (optionnel)
+    """
+    log("   [sticker] texte -> '%s'" % text[:30])
+
+    el = await driver.find_element(contains="Texte, bouton", clickable=True, refresh=True)
+    if not el:
+        log("   ! bouton Texte non trouve")
+        return False
+    tap = el.get('tap', {})
+    await driver.ht.tap(tap['x'], tap['y'])
+    await driver.wait('transition')
+    await asyncio.sleep(1)
+
+    # Ecrire le texte
+    await driver.type_text(text, method="natural")
+    await asyncio.sleep(0.5)
+
+    # Choisir le style si demande
+    if style:
+        style_el = await driver.find_element(
+            contains="style du texte : %s" % style, clickable=True, refresh=True)
+        if style_el:
+            tap = style_el.get('tap', {})
+            log("   style: '%s'" % style)
+            await driver.ht.tap(tap['x'], tap['y'])
+            await asyncio.sleep(0.5)
+        else:
+            log("   ! style '%s' non trouve" % style)
+
+    # Valider
+    await _tap_done(driver, log)
+    log("   texte ajoute")
     return True
 
 
