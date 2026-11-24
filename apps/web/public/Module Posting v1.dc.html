@@ -1571,7 +1571,8 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);font-size:12.5px;font-weight:600;color:#f2f3fa"><span style="flex:1">Total par semaine</span><span style="font-variant-numeric:tabular-nums">{{ pe2Total }}</span></div>
 <sc-if value="{{ pe2Warn }}"><div style="display:flex;align-items:flex-start;gap:7px;font-size:11.5px;line-height:1.45;color:#f5c77e"><i class="ph ph-warning" style="font-size:13px;margin-top:1px"></i>{{ pe2WarnText }}</div></sc-if>
 </div>
-<div style="display:flex;gap:10px">
+<sc-if value="{{ pe2HasDepth }}"><div style="{{ pe2DepthStyle }}"><i class="{{ pe2DepthIcon }}" style="font-size:18px;color:{{ pe2DepthColor }}"></i><div><div style="font-size:13px;font-weight:600;color:#f2f3fa">{{ pe2Depth }}</div><div style="font-size:11px;color:#8a91a8;margin-top:1px">{{ pe2DepthSub }}</div></div></div></sc-if>
+<div style="display:flex;gap:10px"><sc-if value="{{ pe2CanDel }}"><div onClick="{{ pe2Del }}" style="flex:0;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1px solid rgba(239,68,68,.3);color:#ef4444;cursor:pointer" style-hover="background:rgba(239,68,68,.08)"><i class="ph ph-trash" style="font-size:16px"></i></div></sc-if>
 <div onClick="{{ pe2Close }}" style="flex:1;display:flex;align-items:center;justify-content:center;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa">Annuler</div>
 <div onClick="{{ pe2Save }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(99,102,241,.35)" style-hover="box-shadow:0 4px 24px rgba(99,102,241,.55)"><i class="ph ph-floppy-disk" style="font-size:16px"></i>{{ pe2SaveLabel }}</div>
 </div>
@@ -2971,6 +2972,7 @@ class Component extends DCLogic {
     if (this._isLive() && window.SCALE_DATA && window.SCALE_DATA.apiAsync) {
       window.SCALE_DATA.apiAsync('GET', '/posting/story-types').then(r => { if (Array.isArray(r) && r.length) { this._storyTypesDB = r; this.setState({ stypes: r.map(t => ({ id: t.slug, dbId: t.id, label: t.label, color: t.color || '#4ade80', icon: t.icon || 'sparkle', personas: t.personas && t.personas.length ? t.personas : this.pers().map(p => p.id) })) }); } });
       window.SCALE_DATA.apiAsync('GET', '/posting/story-collections').then(r => { if (Array.isArray(r) && r.length) { this.setState({ storyColls: r.map(c => ({ id: c.id, persona: c.persona_id || null, name: c.name || '', kind: c.kind || 'story', type: c.story_type || null, tpls: c.template_ids || [], byP: c.by_persona || {}, names: c.highlight_name ? [c.highlight_name] : ['À la une'], icon: c.highlight_icon || 'star', schedule: c.schedule || {}, updated: 0 })) }); } });
+      window.SCALE_DATA.apiAsync('GET', '/posting/story-planners').then(r => { if (Array.isArray(r) && r.length) { this.setState({ plans: r.map(p => ({ id: p.id, name: p.name, persona: p.persona_id || null, status: p.status || 'active', anti: p.anti_repetition_days || 3, seed: p.seed || 1, cycle: p.cycle || 0, depthDays: p.depth_days || 0, rules: p.rules || [], hlc: (p.highlight_collections || []), hlCfg: p.highlight_config || {} })) }); } });
     }
     // Auto-load more on scroll near bottom (virtual scroll for media grid)
     this._mediaScroll = () => {
@@ -3989,7 +3991,8 @@ class Component extends DCLogic {
     return { pd, avail, moms, uniq, cap, weekly, over: weekly > cap + 1e-9, shared: same.length > 1, poolDemand, poolCap, poolOver: same.length > 1 && poolDemand > poolCap + 1e-9 };
   }
   planTotal(pl) { return this.planWeek(pl).reduce((s, d) => s + d.length, 0); }
-  openPlan(p) { const per = p ? p.persona : 'lea'; this.setState({ rtSel: null, bdDay: 0, planEd: p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', persona: per, anti: 14, status: 'active', seed: Math.floor(Math.random() * 90) + 1, rules: [{ id: 'r' + Date.now(), type: 'lifestyle', freqMode: 'week', n: 5, moments: ['matin', 'aprem'], pool: 'sp1' }], hls: [] } }); }
+  openPlan(p) { const defP = (this.pers()[0] || {}).id || null; const per = p ? p.persona : defP; this.setState({ rtSel: null, bdDay: 0, planEd: p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', persona: per, anti: 3, status: 'active', seed: Math.floor(Math.random() * 90) + 1, rules: [{ id: 'r' + Date.now(), type: (this.typesFor(per)[0] || {}).id || 'lifestyle', freqMode: 'week', n: 5, moments: ['matin', 'aprem'], pool: '' }], hlc: [], hlCfg: {} } }); }
+  deletePlan(id) { this.setState(x => ({ plans: (x.plans || []).filter(p => p.id !== id), planEd: null })); const SD = window.SCALE_DATA; if (this._isLive() && SD && SD.apiAsync && id && id.length > 10) SD.apiAsync('DELETE', '/posting/story-planners/' + id); this.toastMsg('Plan supprimé'); }
   seedRoutines() { if (this._isLive()) return [];
     const b = (id, type, days, from, to, n, pool, p) => ({ id, type, days, from, to, n, pool, p: p == null ? 100 : p });
     const WD = [0, 1, 2, 3, 4], ALL = [0, 1, 2, 3, 4, 5, 6];
@@ -4286,6 +4289,8 @@ class Component extends DCLogic {
     const hu = (id, patch) => this.setState(x => ({ planEd: { ...x.planEd, hls: x.planEd.hls.map(h => h.id === id ? { ...h, ...patch } : h) } }));
     const per = this.P(pe.persona) || { name: '?', color: '#888', city: '', id: pe.persona }; const types = this.typesFor(pe.persona);
     const wk = this.planWeek(pe); const total = wk.reduce((a, d) => a + d.length, 0);
+    // Depth: count variants (template × media) across all rule pools
+    const depthInfo = (() => { let tv = 0; const um = new Set(); pe.rules.forEach(r => { const pd = this.poolData(r.pool, pe.persona); if (pd) { pd.tpls.forEach(t => { if (t.media && t.media.indexOf('solid:') !== 0) um.add(t.media); }); tv += pd.tpls.length; } }); const ppd = Math.max(.1, total / 7); return { tv, um: um.size, ppd: Math.round(ppd * 10) / 10, days: tv > 0 ? Math.floor(tv / ppd) : 0 }; })();
         const nOver = pe.rules.filter(r => { const i = this.ruleInfo(r, pe); return i.over || i.poolOver || !i.pd || !i.uniq; }).length;
     const byType = {}; wk.forEach(d => d.forEach(x => { if (!x.over) byType[x.type.id] = (byType[x.type.id] || 0) + 1; }));
     const glass = this.glassPanel(); const pvCols = s.planMode === 'hebdo' ? 'minmax(0,1fr)' : 'minmax(0,1fr) 380px';
@@ -4331,8 +4336,18 @@ class Component extends DCLogic {
         items: d.map(x => ({ pinned: !!x.rule.hl && !x.over, time: this.fmtHM(x.t % 1440), typeIcon: x.type.icon, momIcon: 'ph ph-' + x.mom[5], title: x.type.label + ' · ' + x.mom[1] + ' (' + x.mom[2] + ')' + (x.over ? ' · hors capacité, ne sera pas publiée' : ' · ' + x.media), style: { display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 7, fontSize: 11, fontWeight: 600, color: x.over ? '#f5c77e' : x.type.color, background: x.over ? 'transparent' : x.type.color + '1a', border: '1px ' + (x.over ? 'dashed rgba(245,176,76,.7)' : 'solid ' + x.type.color + '44'), opacity: x.over ? .8 : 1 } })) })),
       pe2Sum: Object.keys(byType).map(k => { const t = [].concat.apply([], wk).find(x => x.type.id === k).type; return { label: t.label, n: byType[k], dot: { width: 8, height: 8, borderRadius: 99, background: t.color, boxShadow: '0 0 8px ' + t.color + '88' } }; }),
       pe2Total: wk.reduce((a, d) => a + d.filter(x => !x.over).length, 0) + (wk.some(d => d.some(x => x.over)) ? ' (+' + wk.reduce((a, d) => a + d.filter(x => x.over).length, 0) + ' hors capacité)' : ''), pe2Warn: nOver > 0, pe2WarnText: nOver + ' règle' + (nOver > 1 ? 's dépassent' : ' dépasse') + ' ce que ses pools permettent avec ' + (+pe.anti || 0) + ' j d\'anti-repeat. Les stories en pointillés ne seront pas publiées.',
+      pe2Depth: depthInfo.days > 0 ? depthInfo.days + ' jours de contenu unique' : 'Pas de contenu', pe2DepthSub: depthInfo.tv + ' variantes · ' + depthInfo.um + ' médias uniques · ' + depthInfo.ppd + '/jour', pe2HasDepth: depthInfo.tv > 0,
+      pe2DepthStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: depthInfo.days >= 7 ? 'rgba(34,197,94,.08)' : depthInfo.days >= 3 ? 'rgba(245,158,11,.08)' : 'rgba(239,68,68,.08)', border: '1px solid ' + (depthInfo.days >= 7 ? 'rgba(34,197,94,.3)' : depthInfo.days >= 3 ? 'rgba(245,158,11,.3)' : 'rgba(239,68,68,.3)') },
+      pe2DepthIcon: depthInfo.days >= 7 ? 'ph ph-check-circle' : depthInfo.days >= 3 ? 'ph ph-warning' : 'ph ph-x-circle', pe2DepthColor: depthInfo.days >= 7 ? '#22c55e' : depthInfo.days >= 3 ? '#f59e0b' : '#ef4444',
+      pe2Del: pe.id ? () => this.deletePlan(pe.id) : null, pe2CanDel: !!pe.id,
       pe2SaveLabel: pe.id ? 'Enregistrer' : (pe.status === 'active' ? 'Créer et activer' : 'Créer le plan'),
-      pe2Save: () => { const obj = { ...pe, id: pe.id || 'pl' + Date.now(), name: pe.name.trim() || per.name + ' · plan stories', anti: +pe.anti || 0, rules: pe.rules.map(r => ({ ...r, n: +r.n || 1 })), hls: pe.hls.map(h => ({ ...h, name: h.name.trim() || 'À la une', every: +h.every || 1 })) }; this.setState(x => ({ plans: pe.id ? x.plans.map(p => p.id === pe.id ? obj : p) : [obj].concat(x.plans || []), planEd: null })); this.toastMsg(pe.id ? 'Plan mis à jour' : 'Plan créé'); }
+      pe2Save: () => { const obj = { ...pe, id: pe.id || 'pl' + Date.now(), name: pe.name.trim() || per.name + ' · plan stories', anti: +pe.anti || 0, rules: pe.rules.map(r => ({ ...r, n: +r.n || 1 })), hls: pe.hls.map(h => ({ ...h, name: h.name.trim() || 'À la une', every: +h.every || 1 })) };
+        const SD = window.SCALE_DATA; const live = this._isLive() && SD && SD.apiAsync;
+        if (live) { const pid = obj.persona && obj.persona.length > 10 ? obj.persona : null; const payload = { name: obj.name, persona_id: pid, status: obj.status, rules: obj.rules, highlight_collections: obj.hlc || [], highlight_config: obj.hlCfg || {}, anti_repetition_days: obj.anti, seed: obj.seed || 1 };
+          if (pe.id && pe.id.length > 10) { SD.apiAsync('PATCH', '/posting/story-planners/' + pe.id, payload); }
+          else { SD.apiAsync('POST', '/posting/story-planners', payload).then(r => { if (r && r.id) { obj.id = r.id; this.setState(x => ({ plans: (x.plans || []).map(p => p.id === obj.id || p.id === pe.id ? { ...obj, id: r.id } : p) })); } }); }
+        }
+        this.setState(x => ({ plans: pe.id ? (x.plans || []).map(p => p.id === pe.id ? obj : p) : [obj].concat(x.plans || []), planEd: null })); this.toastMsg(pe.id ? 'Plan mis à jour' : 'Plan créé'); }
     });
     return out;
   }
