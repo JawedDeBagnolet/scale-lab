@@ -4026,7 +4026,9 @@ class Component extends DCLogic {
   planRange(pl, n) {
     if (!n) n = 30;
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const weeks = {}, hlUsed = {}, mediaN = {}, out = [];
+    const weeks = {}, hlUsed = {}, out = [];
+    const anti = +(pl.anti || 0); const minGap = anti + 1;
+    const lastPost = {}; // per rule id: last J posted
     for (let j = 1; j <= n; j++) {
       const dt = new Date(today); dt.setDate(dt.getDate() + j);
       const wd = (dt.getDay() + 6) % 7;
@@ -4043,6 +4045,9 @@ class Component extends DCLogic {
           items.push({ ...x, media: 'story ' + hlUsed[id] + ' / ' + (len || '?') + ' de la séquence' });
           return;
         }
+        const rk = x.rule ? x.rule.id : 'x';
+        if (anti > 0 && lastPost[rk] !== undefined && j - lastPost[rk] < minGap) return;
+        lastPost[rk] = j;
         items.push({ ...x });
       });
       out.push({ j, date: dt, wd, items, we: wd >= 5, monday: wd === 0 });
