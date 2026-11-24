@@ -143,6 +143,47 @@ class StoryTemplateOut(StoryTemplateBase):
     model_config = {"from_attributes": True}
 
 
+# --- Story Planner -----------------------------------------------------------
+
+class StoryPlannerBase(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    persona_id: UUID | None = None
+    status: str = Field(default="active", max_length=20)
+    rules: list[dict] = []
+    highlight_collections: list = []
+    highlight_config: dict = {}
+    anti_repetition_days: int = 3
+    seed: int = 1
+
+class StoryPlannerCreate(StoryPlannerBase):
+    pass
+
+class StoryPlannerUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    persona_id: UUID | None = None
+    status: str | None = Field(default=None, max_length=20)
+    rules: list[dict] | None = None
+    highlight_collections: list | None = None
+    highlight_config: dict | None = None
+    anti_repetition_days: int | None = None
+    seed: int | None = None
+
+class StoryPlannerOut(StoryPlannerBase):
+    id: UUID
+    cycle: int = 0
+    depth_days: int = 0
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+class DepthEstimation(BaseModel):
+    total_variants: int
+    unique_medias: int
+    variants_per_day: float
+    depth_days: int
+    by_type: dict = {}
+
+
 # --- Story Type --------------------------------------------------------------
 
 class StoryTypeBase(BaseModel):

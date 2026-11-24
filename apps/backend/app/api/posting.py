@@ -31,11 +31,16 @@ from app.schemas.posting import (
     StoryTypeCreate,
     StoryTypeOut,
     StoryTypeUpdate,
+    StoryPlannerCreate,
+    StoryPlannerOut,
+    StoryPlannerUpdate,
+    DepthEstimation,
     TemplateCreate,
     TemplateOut,
     TemplateUpdate,
 )
 from app.services import posting as service
+from app.services import story_planner
 
 router = APIRouter()
 
@@ -298,6 +303,90 @@ async def delete_story_type(sid: UUID, db: AsyncSession = Depends(get_db)):
     if not t:
         raise HTTPException(404, "story type not found")
     await service.delete_story_type(db, t)
+
+
+# --- Story Planners -----------------------------------------------------------
+
+@router.get("/story-planners", response_model=list[StoryPlannerOut])
+async def list_story_planners(
+    persona_id: UUID | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.list_story_planners(db, persona_id=persona_id)
+
+
+@router.get("/story-planners/{sid}", response_model=StoryPlannerOut)
+async def get_story_planner(sid: UUID, db: AsyncSession = Depends(get_db)):
+    p = await service.get_story_planner(db, sid)
+    if not p:
+        raise HTTPException(404, "story planner not found")
+    return p
+
+
+@router.post("/story-planners", response_model=StoryPlannerOut, status_code=201)
+async def create_story_planner(data: StoryPlannerCreate, db: AsyncSession = Depends(get_db)):
+    return await service.create_story_planner(db, data)
+
+
+@router.patch("/story-planners/{sid}", response_model=StoryPlannerOut)
+async def update_story_planner(sid: UUID, data: StoryPlannerUpdate, db: AsyncSession = Depends(get_db)):
+    p = await service.get_story_planner(db, sid)
+    if not p:
+        raise HTTPException(404, "story planner not found")
+    return await service.update_story_planner(db, p, data)
+
+
+@router.delete("/story-planners/{sid}", status_code=204)
+async def delete_story_planner(sid: UUID, db: AsyncSession = Depends(get_db)):
+    p = await service.get_story_planner(db, sid)
+    if not p:
+        raise HTTPException(404, "story planner not found")
+    await service.delete_story_planner(db, p)
+
+
+@router.post("/story-planners/{sid}/estimate", response_model=DepthEstimation)
+async def estimate_planner_depth(sid: UUID, db: AsyncSession = Depends(get_db)):
+    """Estimate how many days of unique content a planner has."""
+    p = await service.get_story_planner(db, sid)
+    if not p:
+        raise HTTPException(404, "story planner not found")
+
+    # Get collections referenced by the planner's rules
+    colls = []
+    for rule in (p.rules or []):
+        pool_id = rule.get("pool")
+        if pool_id:
+            c = await service.get_story_collection(db, pool_id)
+            if c:
+                colls.append({
+                    "id": str(c.id), "type": c.story_type,
+                    "template_ids": c.template_ids or [],
+                    "by_persona": c.by_persona or {},
+                })
+
+    # Get all referenced templates
+    tpl_ids = set()
+    for c in colls:
+        for tid in (c.get("template_ids") or []):
+            tpl_ids.add(tid)
+        for pdata in (c.get("by_persona") or {}).values():
+            for tid in (pdata.get("tpls") or []):
+                tpl_ids.add(tid)
+
+    templates = []
+    for tid in tpl_ids:
+        try:
+            t = await service.get_story_template(db, UUID(tid))
+        except (ValueError, TypeError):
+            continue
+        if t:
+            templates.append({
+                "id": str(t.id),
+                "media_ids": t.media_ids or [],
+                "moments": t.moments or [],
+            })
+
+    return story_planner.estimate_depth(colls, templates, p.rules or [])
 
 
 # --- Campagnes ----------------------------------------------------------------

@@ -158,6 +158,34 @@ class StoryCollection(Base):
     )
 
 
+class StoryPlanner(Base):
+    """Planner de stories — programme la publication automatique."""
+    __tablename__ = "story_planners"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(200))
+    persona_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("personas.id", ondelete="SET NULL"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active, paused
+    rules: Mapped[list[dict]] = mapped_column(JSONB, default=list)  # [{type, freqMode, n, moments, pool}]
+    highlight_collections: Mapped[list] = mapped_column(JSONB, default=list)  # [collection_id, ...]
+    highlight_config: Mapped[dict] = mapped_column(JSONB, default=dict)  # {coll_id: {mode, n}}
+    anti_repetition_days: Mapped[int] = mapped_column(Integer, default=3)
+    seed: Mapped[int] = mapped_column(Integer, default=1)
+    cycle: Mapped[int] = mapped_column(Integer, default=0)  # incremented on re-shuffle
+    loop_cache: Mapped[dict | None] = mapped_column(JSONB)  # cached generated loop
+    depth_days: Mapped[int] = mapped_column(Integer, default=0)  # estimated depth
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class StoryType(Base):
     """Type/catégorie de story (Lifestyle, GYM, CTA, Promo, etc.)."""
     __tablename__ = "story_types"

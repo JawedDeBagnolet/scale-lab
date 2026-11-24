@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.posting import (
-    Campagne, Collection, Media, Publication, StoryCollection, StoryTemplate, StoryType, Template,
+    Campagne, Collection, Media, Publication, StoryCollection, StoryPlanner, StoryTemplate, StoryType, Template,
 )
 from app.schemas.posting import (
     CampagneCreate,
@@ -23,6 +23,8 @@ from app.schemas.posting import (
     StoryTemplateUpdate,
     StoryTypeCreate,
     StoryTypeUpdate,
+    StoryPlannerCreate,
+    StoryPlannerUpdate,
     TemplateCreate,
     TemplateUpdate,
 )
@@ -407,4 +409,40 @@ async def update_story_type(db: AsyncSession, t: StoryType, data: StoryTypeUpdat
 
 async def delete_story_type(db: AsyncSession, t: StoryType) -> None:
     await db.delete(t)
+    await db.commit()
+
+
+# --- Story Planners -----------------------------------------------------------
+
+async def list_story_planners(
+    db: AsyncSession, *, persona_id: UUID | None = None,
+) -> Sequence[StoryPlanner]:
+    q = select(StoryPlanner).order_by(StoryPlanner.updated_at.desc())
+    if persona_id:
+        q = q.where(StoryPlanner.persona_id == persona_id)
+    return (await db.execute(q)).scalars().all()
+
+
+async def get_story_planner(db: AsyncSession, sid: UUID) -> StoryPlanner | None:
+    return await db.get(StoryPlanner, sid)
+
+
+async def create_story_planner(db: AsyncSession, data: StoryPlannerCreate) -> StoryPlanner:
+    p = StoryPlanner(**data.model_dump())
+    db.add(p)
+    await db.commit()
+    await db.refresh(p)
+    return p
+
+
+async def update_story_planner(db: AsyncSession, p: StoryPlanner, data: StoryPlannerUpdate) -> StoryPlanner:
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(p, key, value)
+    await db.commit()
+    await db.refresh(p)
+    return p
+
+
+async def delete_story_planner(db: AsyncSession, p: StoryPlanner) -> None:
+    await db.delete(p)
     await db.commit()
