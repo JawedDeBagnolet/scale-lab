@@ -1538,15 +1538,17 @@ select option { background: #151827; color: #e8eaf3; }
 
 <sc-if value="{{ pe2HasSide }}" hint-placeholder-val="{{ true }}"><div style="position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;gap:14px;padding:22px 22px 22px;border-left:1px solid rgba(255,255,255,.07)">
 <sc-if value="{{ pe2A }}" hint-placeholder-val="{{ true }}">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Aperçu semaine</span><span onClick="{{ pe2Reroll }}" title="Re-tirer les heures" style="display:flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#aab0c5;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-shuffle" style="font-size:12px"></i>Re-tirer</span></div>
-<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-<sc-for list="{{ pe2Week }}" as="d" hint-placeholder-count="7">
-<div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:start;padding:9px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)">
-<div style="padding-top:3px"><div style="font-size:12.5px;font-weight:600;color:#f2f3fa">{{ d.label }}</div></div>
-<div style="display:flex;flex-wrap:wrap;gap:5px;min-height:26px;align-items:center"><sc-for list="{{ d.items }}" as="it" hint-placeholder-count="2"><span title="{{ it.title }}" style="{{ it.style }}"><i class="{{ it.typeIcon }}" style="font-size:11px"></i><i class="{{ it.momIcon }}" style="font-size:11px;opacity:.75"></i><sc-if value="{{ it.pinned }}"><i class="ph-fill ph-push-pin" style="font-size:10px;color:#f5c77e"></i></sc-if><span style="font-variant-numeric:tabular-nums">{{ it.time }}</span></span></sc-for><sc-if value="{{ d.empty }}"><span style="font-size:11.5px;color:#3d4257">Aucune story</span></sc-if></div>
-</div>
+<div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Aperçu · 30 jours</span><span onClick="{{ pe2Reroll }}" title="Re-tirer" style="display:flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#aab0c5;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-shuffle" style="font-size:12px"></i>Re-tirer</span><span onClick="{{ pe2OpenCal }}" title="Voir en calendrier" style="display:flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#aab0c5;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-calendar-dots" style="font-size:13px"></i>Calendrier</span></div>
+<div style="position:relative;flex:1;min-height:0"><div style="position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding-bottom:6px;-webkit-mask:linear-gradient(#000 calc(100% - 22px),transparent);mask:linear-gradient(#000 calc(100% - 22px),transparent)">
+<sc-for list="{{ pe2PvRows }}" as="r" hint-placeholder-count="10">
+<sc-if value="{{ r.isHeader }}"><div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 2px 5px;background:#0f1220;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5b6175">{{ r.text }}</div></sc-if>
+<sc-if value="{{ r.isReuse }}"><div style="display:flex;align-items:center;gap:7px;margin:2px 0;padding:7px 10px;border-radius:10px;border:1px dashed rgba(245,176,76,.45);font-size:11px;line-height:1.4;color:#f5c77e"><i class="ph ph-arrows-clockwise" style="font-size:13px"></i>{{ r.text }}</div></sc-if>
+<sc-if value="{{ r.isRow }}"><div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:{{ r.bg }}">
+<div><div style="font-size:12.5px;font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">J+{{ r.j }}</div><div style="font-size:10.5px;color:#5b6175;margin-top:1px;white-space:nowrap">{{ r.dateStr }}</div></div>
+<div style="display:flex;flex-wrap:wrap;gap:5px;min-height:24px;align-items:center"><sc-for list="{{ r.items }}" as="it" hint-placeholder-count="2"><span title="{{ it.title }}" style="{{ it.style }}"><i class="{{ it.typeIcon }}" style="font-size:11px"></i><i class="{{ it.momIcon }}" style="font-size:11px;opacity:.75"></i><sc-if value="{{ it.pinned }}"><i class="ph-fill ph-push-pin" style="font-size:10px;color:#f5c77e"></i></sc-if><span style="font-variant-numeric:tabular-nums">{{ it.time }}</span></span></sc-for><sc-if value="{{ r.empty }}"><span style="font-size:11.5px;color:#3d4257">Aucune story</span></sc-if></div>
+</div></sc-if>
 </sc-for>
-</div>
+</div></div>
 </sc-if>
 <sc-if value="{{ pe2C }}">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Aperçu par compte</span><div style="display:flex;gap:2px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:2px"><sc-for list="{{ bdDaySeg }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</div></sc-for></div></div>
@@ -1569,12 +1571,53 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012))">
 <sc-for list="{{ pe2Sum }}" as="x" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c5c9d8"><span style="{{ x.dot }}"></span><span style="flex:1">{{ x.label }}</span><span style="font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ x.n }}</span></div></sc-for>
 <div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);font-size:12.5px;font-weight:600;color:#f2f3fa"><span style="flex:1">Total par semaine</span><span style="font-variant-numeric:tabular-nums">{{ pe2Total }}</span></div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aab0c5"><span style="flex:1">Sur les 30 prochains jours</span><span style="font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ pe2Tot30 }}</span></div>
 <sc-if value="{{ pe2Warn }}"><div style="display:flex;align-items:flex-start;gap:7px;font-size:11.5px;line-height:1.45;color:#f5c77e"><i class="ph ph-warning" style="font-size:13px;margin-top:1px"></i>{{ pe2WarnText }}</div></sc-if>
 </div>
 <sc-if value="{{ pe2HasDepth }}"><div style="{{ pe2DepthStyle }}"><i class="{{ pe2DepthIcon }}" style="font-size:18px;color:{{ pe2DepthColor }}"></i><div><div style="font-size:13px;font-weight:600;color:#f2f3fa">{{ pe2Depth }}</div><div style="font-size:11px;color:#8a91a8;margin-top:1px">{{ pe2DepthSub }}</div></div></div></sc-if>
 <div style="display:flex;gap:10px"><sc-if value="{{ pe2CanDel }}"><div onClick="{{ pe2Del }}" style="flex:0;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1px solid rgba(239,68,68,.3);color:#ef4444;cursor:pointer" style-hover="background:rgba(239,68,68,.08)"><i class="ph ph-trash" style="font-size:16px"></i></div></sc-if>
 <div onClick="{{ pe2Close }}" style="flex:1;display:flex;align-items:center;justify-content:center;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.1);color:#c5c9d8;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa">Annuler</div>
 <div onClick="{{ pe2Save }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6d5ef0,#4b7bf5);color:#ffffff;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(99,102,241,.35)" style-hover="box-shadow:0 4px 24px rgba(99,102,241,.55)"><i class="ph ph-floppy-disk" style="font-size:16px"></i>{{ pe2SaveLabel }}</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ pvCalOpen }}">
+<div onClick="{{ pvCalClose }}" style="position:absolute;inset:0;z-index:75;background:rgba(5,6,12,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:24px">
+<div onClick="{{ stopProp }}" style="width:min(1320px,100%);height:calc(100vh - 48px);max-height:940px;display:grid;grid-template-columns:minmax(0,1fr) 300px;border-radius:20px;overflow:hidden;background:#0f1220;border:1px solid rgba(255,255,255,.09);box-shadow:0 30px 80px rgba(0,0,0,.6)">
+<div style="min-width:0;min-height:0;display:flex;flex-direction:column;padding:22px 24px 20px;gap:12px">
+<div style="display:flex;align-items:flex-start;gap:10px">
+<div><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px;font-weight:600;letter-spacing:-.01em;color:#f2f3fa">Calendrier du plan</div><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:600;color:#c5c9d8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)">J+1 → J+30</span></div><div style="font-size:12.5px;color:#8a91a8;margin-top:5px">{{ pvCalSub }}</div></div>
+<span style="flex:1"></span>
+<span onClick="{{ pvCalReroll }}" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#aab0c5;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa"><i class="ph ph-shuffle" style="font-size:13px"></i>Re-tirer</span>
+<span onClick="{{ pvCalClose }}" title="Fermer" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px"><span style="font-size:14px;font-weight:600;color:#c5c9d8">{{ pvCalMonths }}</span><div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:#8a91a8"><sc-for list="{{ pvCalLeg }}" as="lg" hint-placeholder-count="3"><span style="display:flex;align-items:center;gap:5px"><i style="width:8px;height:8px;border-radius:99px;display:inline-block;background:{{ lg.color }}"></i>{{ lg.label }}</span></sc-for></div></div>
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;font-size:11px;font-weight:600;color:#5b6175;letter-spacing:.04em;padding:0 2px"><span>Lundi</span><span>Mardi</span><span>Mercredi</span><span>Jeudi</span><span>Vendredi</span><span>Samedi</span><span>Dimanche</span></div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:6px">
+<sc-for list="{{ pvCalCells }}" as="c" hint-placeholder-count="35"><div onClick="{{ c.pick }}" style="{{ c.cellStyle }}">
+<div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;font-weight:600;color:{{ c.numColor }};font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px"><b>{{ c.num }}</b><sc-if value="{{ c.month }}"><em style="font-size:10px;font-weight:500;font-style:normal;color:#5b6175">{{ c.month }}</em></sc-if></span><span style="margin-left:auto;font-size:10.5px;font-weight:600;color:{{ c.jnColor }};font-variant-numeric:tabular-nums">{{ c.jn }}</span></div>
+<div style="display:flex;flex-direction:column;gap:3px"><sc-for list="{{ c.items }}" as="it" hint-placeholder-count="2"><span title="{{ it.title }}" style="{{ it.chipStyle }}"><i class="{{ it.typeIcon }}" style="font-size:11px"></i><i class="{{ it.momIcon }}" style="font-size:11px;opacity:.75"></i><sc-if value="{{ it.pinned }}"><i class="ph-fill ph-push-pin" style="font-size:10px;color:#f5c77e"></i></sc-if><span style="font-variant-numeric:tabular-nums">{{ it.time }}</span></span></sc-for><sc-if value="{{ c.hasMore }}"><span style="font-size:11px;font-weight:600;color:#8a91a8;padding-left:2px">+{{ c.moreN }} autres</span></sc-if></div>
+</div></sc-for>
+</div>
+</div>
+<div style="min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:22px 20px 20px;border-left:1px solid rgba(255,255,255,.07)">
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Jour sélectionné</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div><div style="font-size:15px;font-weight:600;color:#f2f3fa">{{ pvSelTitle }}</div><div style="font-size:12px;font-weight:500;color:#8a91a8;margin-top:3px">{{ pvSelSub }}</div></div>
+<sc-for list="{{ pvSelItems }}" as="si" hint-placeholder-count="2"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02)">
+<div style="display:flex;align-items:center;gap:8px"><span title="{{ si.title }}" style="{{ si.chipStyle }}"><i class="{{ si.typeIcon }}" style="font-size:11px"></i><i class="{{ si.momIcon }}" style="font-size:11px;opacity:.75"></i><sc-if value="{{ si.pinned }}"><i class="ph-fill ph-push-pin" style="font-size:10px;color:#f5c77e"></i></sc-if><span style="font-variant-numeric:tabular-nums">{{ si.time }}</span></span><span style="font-size:12.5px;font-weight:600;color:#f2f3fa">{{ si.typeName }}</span></div>
+<div style="font-size:11.5px;color:#8a91a8">{{ si.detail }}</div>
+</div></sc-for>
+<sc-if value="{{ pvSelEmpty }}"><div style="font-size:12px;color:#3d4257">Aucune story ce jour-là.</div></sc-if>
+</div>
+<span style="flex:1"></span>
+<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a91a8">Sur 30 jours</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012))">
+<sc-for list="{{ pvCal30Sum }}" as="x" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c5c9d8"><span style="width:8px;height:8px;border-radius:99px;background:{{ x.color }};box-shadow:0 0 8px {{ x.color }}88"></span><span style="flex:1">{{ x.label }}</span><span style="font-weight:600;color:#f2f3fa;font-variant-numeric:tabular-nums">{{ x.n }}</span></div></sc-for>
+<div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);font-size:12.5px;font-weight:600;color:#f2f3fa"><span style="flex:1">Total</span><span style="font-variant-numeric:tabular-nums">{{ pvCal30Tot }}</span></div>
+<div style="display:flex;align-items:flex-start;gap:7px;font-size:11.5px;line-height:1.45;color:#f5c77e"><i class="ph ph-arrows-clockwise" style="font-size:13px;margin-top:1px"></i>{{ pvCal30Depth }}</div>
+</div>
+</div>
 </div>
 </div>
 </sc-if>
@@ -3962,7 +4005,7 @@ class Component extends DCLogic {
     (pl.rules || []).forEach((r, ri) => {
       const n = Math.max(1, +r.n || 1); const occ = []; const info = this.ruleInfo(r, pl);
       const anti = +(pl.anti || 0); const uniq = Math.max(1, info.uniq || 1);
-      const minGap = anti > 0 ? Math.ceil(anti / uniq) : 1;
+      const minGap = anti > 0 ? Math.ceil((anti + 1) / uniq) : 1;
       if (r.days && r.days.length && r.freqMode === 'week' && n === r.days.length) r.days.forEach(d => occ.push(d));
       else if (r.freqMode === 'every') { const start = Math.floor(rnd() * n); for (let d = start; d < 7; d += n) occ.push(d); }
       else { const gap = Math.max(minGap, Math.floor(7 / n)); const start = Math.floor(rnd() * 7); for (let i = 0; i < n; i++) occ.push((start + i * gap) % 7); }
@@ -3972,6 +4015,51 @@ class Component extends DCLogic {
     (pl.hlc || []).forEach((id, hi) => { const c = this.scList().find(x => x.id === id); if (!c) return; const cfg = (pl.hlCfg || {})[id] || { mode: 'every', n: 3 }; const n = Math.max(1, +cfg.n || 1); const occ = []; if (cfg.mode === 'every') { const start = Math.floor(rnd() * n); for (let d = start; d < 7; d += n) occ.push(d); } else { const start = Math.floor(rnd() * 7); for (let i = 0; i < n; i++) occ.push((start + Math.floor(i * 7 / n)) % 7); } const nm = this.hlNames(c)[0]; occ.forEach((d, k) => { const mo = this.MOMS[Math.floor(rnd() * 6)]; const t = mo[3] + Math.floor(rnd() * (mo[4] - mo[3])); days[d].push({ rule: { id: 'hl_' + id, isHl: true }, type: { id: 'hl_' + id, label: 'À la une · ' + nm, color: '#f5c77e', icon: 'ph ph-' + c.icon }, mom: mo, t, over: false, media: 'story ' + (k + 1) + ' de la séquence' }); }); });
     days.forEach(d => d.sort((a, b) => a.t - b.t));
     return days;
+  }
+  hlSeqLen(collId, persona) {
+    const c = this.scList().find(x => x.id === collId);
+    if (!c) return 0;
+    const vars = this.hlVarsFor ? this.hlVarsFor(c, persona) : [];
+    if (!vars.length) return 0;
+    return Math.min.apply(null, vars.map(v => (v.tpls || []).length)) || 0;
+  }
+  planRange(pl, n) {
+    if (!n) n = 30;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weeks = {}, hlUsed = {}, mediaN = {}, out = [];
+    for (let j = 1; j <= n; j++) {
+      const dt = new Date(today); dt.setDate(dt.getDate() + j);
+      const wd = (dt.getDay() + 6) % 7;
+      const mon = new Date(dt); mon.setDate(dt.getDate() - wd);
+      const wk = mon.getFullYear() * 400 + mon.getMonth() * 32 + mon.getDate();
+      if (!weeks[wk]) weeks[wk] = this.planWeek({ ...pl, seed: (pl.seed || 1) * 31 + wk % 997 });
+      const items = [];
+      weeks[wk][wd].forEach(x => {
+        if (x.rule && x.rule.isHl) {
+          const id = x.rule.id;
+          hlUsed[id] = (hlUsed[id] || 0) + 1;
+          const len = this.hlSeqLen(id.replace('hl_', ''), pl.persona);
+          if (len && hlUsed[id] > len) return;
+          items.push({ ...x, media: 'story ' + hlUsed[id] + ' / ' + (len || '?') + ' de la séquence' });
+          return;
+        }
+        items.push({ ...x });
+      });
+      out.push({ j, date: dt, wd, items, we: wd >= 5, monday: wd === 0 });
+    }
+    return out;
+  }
+  pvHm(t) { t = t % 1440; return ('0' + Math.floor(t / 60)).slice(-2) + ':' + ('0' + (t % 60)).slice(-2); }
+  PV_DL = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  PV_ML = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  PV_MLL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  PV_DAYL = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  pvChip(x, depth) {
+    const c = x.type.color || '#8a91a8'; const icon = x.type.icon || 'sparkle'; const momIcon = x.mom ? (x.mom[5] || x.mom[4] || 'sun') : 'sun';
+    return { typeIcon: 'ph ph-' + icon, momIcon: 'ph ph-' + momIcon, time: this.pvHm(x.t), pinned: !!(x.rule && x.rule.isHl), title: (x.type.label || x.type.id || '') + ' · ' + (x.mom ? x.mom[1] : '') + ' · ' + (x.media || ''),
+      typeName: x.type.label || x.type.id || '', detail: (x.mom ? x.mom[1] : '') + ' · ' + (x.media || ''),
+      style: { display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 7, fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: c, background: c + '1a', border: '1px solid ' + c + '44' },
+      chipStyle: { display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 7px', borderRadius: 7, fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: c, background: c + '1a', border: '1px solid ' + c + '44', alignSelf: 'flex-start', maxWidth: '100%', overflow: 'hidden' } };
   }
   POOLMOM = { lifestyle: ['matin', 'midi', 'aprem', 'finap', 'diner', 'soiree'], gym: ['matin', 'aprem', 'finap'], cta: ['midi', 'finap', 'diner', 'soiree'], promo: ['midi', 'finap', 'diner'], repost: ['midi', 'aprem', 'soiree'], question: ['diner', 'soiree', 'nuit'], bts: ['aprem', 'finap'], hl: ['matin', 'midi', 'aprem', 'finap', 'diner', 'soiree', 'nuit'], sp2: ['matin', 'midi', 'aprem'], sp13: ['matin', 'finap'] };
   poolData(id, pid) {
@@ -3984,7 +4072,7 @@ class Component extends DCLogic {
   }
   uniqFor(pd, moms) { if (!pd) return 0; const set = {}; pd.tpls.forEach(t => { if (!moms || t.moments.some(m => moms.indexOf(m) >= 0)) set[t.media] = 1; }); return Object.keys(set).length; }
   momAvail(pd) { const o = {}; this.MOMS.forEach(m => { o[m[0]] = this.uniqFor(pd, [m[0]]); }); return o; }
-  capWeek(uniq, anti) { return anti > 0 ? uniq * Math.ceil(7 / anti) : 99; }
+  capWeek(uniq, anti) { return anti > 0 ? uniq * Math.ceil(7 / (anti + 1)) : 99; }
   ruleInfo(r, pl) {
     const anti = +pl.anti || 0; const pd = this.poolData(r.pool, pl.persona); const avail = pd ? this.momAvail(pd) : {};
     const sel = (r.moments || []).filter(m => avail[m] > 0); const moms = sel.length ? sel : Object.keys(avail).filter(k => avail[k] > 0);
@@ -3993,7 +4081,7 @@ class Component extends DCLogic {
     return { pd, avail, moms, uniq, cap, weekly, over: weekly > cap + 1e-9, shared: same.length > 1, poolDemand, poolCap, poolOver: same.length > 1 && poolDemand > poolCap + 1e-9 };
   }
   planTotal(pl) { return this.planWeek(pl).reduce((s, d) => s + d.length, 0); }
-  openPlan(p) { const defP = (this.pers()[0] || {}).id || null; const per = p ? p.persona : defP; const base = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', persona: per, anti: 3, status: 'active', seed: Math.floor(Math.random() * 90) + 1, rules: [{ id: 'r' + Date.now(), type: (this.typesFor(per)[0] || {}).id || 'lifestyle', freqMode: 'week', n: 5, moments: ['matin', 'aprem'], pool: '' }], hlc: [], hlCfg: {} }; if (!base.hls) base.hls = []; if (!base.hlc) base.hlc = []; if (!base.hlCfg) base.hlCfg = {}; if (!base.rules) base.rules = []; this.setState({ rtSel: null, bdDay: 0, planEd: base }); }
+  openPlan(p) { const defP = (this.pers()[0] || {}).id || null; const per = p ? p.persona : defP; const base = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', persona: per, anti: 3, status: 'active', seed: Math.floor(Math.random() * 90) + 1, rules: [{ id: 'r' + Date.now(), type: (this.typesFor(per)[0] || {}).id || 'lifestyle', freqMode: 'week', n: 5, moments: ['matin', 'aprem'], pool: '' }], hlc: [], hlCfg: {} }; if (!base.hls) base.hls = []; if (!base.hlc) base.hlc = []; if (!base.hlCfg) base.hlCfg = {}; if (!base.rules) base.rules = []; this.setState({ rtSel: null, bdDay: 0, pvCalOpen: false, pvSel: 1, planEd: base }); }
   deletePlan(id) { this.setState(x => ({ plans: (x.plans || []).filter(p => p.id !== id), planEd: null })); const SD = window.SCALE_DATA; if (this._isLive() && SD && SD.apiAsync && id && id.length > 10) SD.apiAsync('DELETE', '/posting/story-planners/' + id); this.toastMsg('Plan supprimé'); }
   seedRoutines() { if (this._isLive()) return [];
     const b = (id, type, days, from, to, n, pool, p) => ({ id, type, days, from, to, n, pool, p: p == null ? 100 : p });
@@ -4267,7 +4355,7 @@ class Component extends DCLogic {
     return out;
   }
   planVals() {
-    const s = this.state; const out = { peOpen2: false };
+    const s = this.state; const out = { peOpen2: false, pvCalOpen: false };
     const DL = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const freqLabel = r => r.freqMode === 'every' ? (r.n > 1 ? ' tous les ' + r.n + ' j' : ' chaque jour') : ' ' + r.n + '/sem';
     if (s.tab === 'story' && s.storySub === 'planner') {
@@ -4341,6 +4429,35 @@ class Component extends DCLogic {
       pe2Depth: depthInfo.days > 0 ? depthInfo.days + ' jours de contenu unique' : 'Pas de contenu', pe2DepthSub: depthInfo.tv + ' variantes · ' + depthInfo.um + ' médias uniques · ' + depthInfo.ppd + '/jour', pe2HasDepth: depthInfo.tv > 0,
       pe2DepthStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: depthInfo.days >= 7 ? 'rgba(34,197,94,.08)' : depthInfo.days >= 3 ? 'rgba(245,158,11,.08)' : 'rgba(239,68,68,.08)', border: '1px solid ' + (depthInfo.days >= 7 ? 'rgba(34,197,94,.3)' : depthInfo.days >= 3 ? 'rgba(245,158,11,.3)' : 'rgba(239,68,68,.3)') },
       pe2DepthIcon: depthInfo.days >= 7 ? 'ph ph-check-circle' : depthInfo.days >= 3 ? 'ph ph-warning' : 'ph ph-x-circle', pe2DepthColor: depthInfo.days >= 7 ? '#22c55e' : depthInfo.days >= 3 ? '#f59e0b' : '#ef4444',
+      pe2OpenCal: () => this.setState({ pvCalOpen: true, pvSel: 1 }),
+      ...(() => { const range = this.planRange(pe, 30); const ML = this.PV_ML; const DLs = this.PV_DL; const MLL = this.PV_MLL; const DAYL = this.PV_DAYL;
+        const pvRows = []; let lastMon = null;
+        range.forEach((d, i) => { const mon = new Date(d.date); mon.setDate(mon.getDate() - d.wd); const monKey = mon.toDateString();
+          if (monKey !== lastMon) { lastMon = monKey; pvRows.push({ isHeader: true, isRow: false, isReuse: false, text: i === 0 ? 'Cette semaine' : 'Semaine du ' + mon.getDate() + ' ' + ML[mon.getMonth()] }); }
+          pvRows.push({ isHeader: false, isRow: true, isReuse: false, j: d.j, dateStr: DLs[d.date.getDay()] + ' ' + d.date.getDate() + (d.date.getDate() === 1 || i === 0 ? ' ' + ML[d.date.getMonth()] : ''), bg: d.we ? 'rgba(255,255,255,.012)' : 'rgba(255,255,255,.02)', items: d.items.map(x => this.pvChip(x, depthInfo.days)), empty: !d.items.length, isDepthMark: d.j === depthInfo.days }); });
+        const dIdx = pvRows.findIndex(r => r.isDepthMark); if (dIdx >= 0 && depthInfo.days > 0 && depthInfo.days < 30) pvRows.splice(dIdx + 1, 0, { isHeader: false, isRow: false, isReuse: true, text: 'Fin du contenu unique : à partir de J+' + (depthInfo.days + 1) + ', les médias déjà publiés reviennent.' });
+        const tot30 = range.reduce((a, d) => a + d.items.length, 0); const calOut = { pe2PvRows: pvRows, pe2Tot30: tot30 + ' stories' };
+        if (s.pvCalOpen) {
+          const first = new Date(range[0].date); first.setDate(first.getDate() - range[0].wd); const lastD = range[range.length - 1].date; const end = new Date(lastD); end.setDate(end.getDate() + (6 - ((end.getDay() + 6) % 7)));
+          const byKey = {}; range.forEach(d => { byKey[d.date.toDateString()] = d; }); const calCells = []; const todayD = new Date(); todayD.setHours(0, 0, 0, 0); const selJ = s.pvSel || 1;
+          for (let dt = new Date(first); dt <= end; dt.setDate(dt.getDate() + 1)) { const snap = new Date(dt); const d = byKey[snap.toDateString()]; const isToday = snap.toDateString() === todayD.toDateString(); const wd = (snap.getDay() + 6) % 7; const isSel = d && d.j === selJ; const isOut = !d; const showMonth = snap.getDate() === 1 || snap.getTime() === first.getTime();
+            const borderC = isSel ? 'rgba(124,108,246,.85)' : isOut ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)'; const bgC = isSel ? 'rgba(124,108,246,.09)' : wd >= 5 ? 'rgba(255,255,255,.012)' : isOut ? 'transparent' : 'rgba(255,255,255,.022)';
+            calCells.push({ num: snap.getDate(), month: showMonth ? ML[snap.getMonth()] : '', jn: isToday ? "Aujourd'hui" : d ? 'J+' + d.j : '', numColor: isOut ? '#343849' : '#c5c9d8', jnColor: isToday || isSel ? '#a5a0f5' : '#5b6175',
+              items: d ? d.items.slice(0, d.items.length > 3 ? 2 : 3).map(x => this.pvChip(x, depthInfo.days)) : [], hasMore: d && d.items.length > 3, moreN: d ? d.items.length - 2 : 0,
+              pick: d ? (() => { const jj = d.j; return () => this.setState({ pvSel: jj }); })() : null,
+              cellStyle: { position: 'relative', minHeight: 0, padding: '8px 8px 7px', borderRadius: 12, border: '1px solid ' + borderC, background: bgC, display: 'flex', flexDirection: 'column', gap: 5, cursor: isOut ? 'default' : 'pointer', overflow: 'hidden', boxShadow: isSel ? '0 0 0 1px rgba(124,108,246,.5)' : 'none' } }); }
+          const calMonths = (() => { const a = first.getMonth(), b = end.getMonth(); const txt = a === b ? MLL[a] : MLL[a] + ' – ' + MLL[b]; return txt.charAt(0).toUpperCase() + txt.slice(1) + ' ' + end.getFullYear(); })();
+          const selDay = range.find(d => d.j === selJ) || range[0]; const calLeg = {}; range.forEach(d => d.items.forEach(x => { calLeg[x.type.label || x.type.id] = x.type.color || '#8a91a8'; }));
+          const cal30 = {}; let cal30Tot = 0; range.forEach(d => d.items.forEach(x => { const k = x.type.label || x.type.id; if (!cal30[k]) cal30[k] = [0, x.type.color || '#8a91a8']; cal30[k][0]++; cal30Tot++; }));
+          Object.assign(calOut, { pvCalOpen: true, pvCalCells: calCells, pvCalMonths: calMonths,
+            pvCalSub: per.name + ' · Instagram · du ' + range[0].date.getDate() + ' ' + ML[range[0].date.getMonth()] + ' au ' + lastD.getDate() + ' ' + ML[lastD.getMonth()] + ' · ' + tot30 + ' stories',
+            pvCalLeg: Object.keys(calLeg).map(k => ({ label: k, color: calLeg[k] })), pvCalClose: () => this.setState({ pvCalOpen: false }), pvCalReroll: () => pu({ seed: Math.floor(Math.random() * 900) + 1 }),
+            pvSelTitle: DAYL[selDay.date.getDay()].charAt(0).toUpperCase() + DAYL[selDay.date.getDay()].slice(1) + ' ' + selDay.date.getDate() + ' ' + MLL[selDay.date.getMonth()],
+            pvSelSub: 'J+' + selDay.j + ' · ' + (selDay.items.length ? selDay.items.length + ' stor' + (selDay.items.length > 1 ? 'ies' : 'y') : 'aucune story'),
+            pvSelItems: selDay.items.map(x => { const re = selDay.j > depthInfo.days && !(x.rule && x.rule.isHl); const ch = this.pvChip(x, depthInfo.days); return { ...ch, detail: (x.mom ? x.mom[1] : '') + ' · ' + (x.media || '') + (re ? ' · réutilisé' : '') }; }), pvSelEmpty: !selDay.items.length,
+            pvCal30Sum: Object.keys(cal30).map(k => ({ label: k, n: cal30[k][0], color: cal30[k][1] })), pvCal30Tot: cal30Tot, pvCal30Depth: 'Contenu unique jusqu\'à J+' + depthInfo.days + ', médias réutilisés ensuite.' });
+        }
+        return calOut; })(),
       pe2Del: pe.id ? () => this.deletePlan(pe.id) : null, pe2CanDel: !!pe.id,
       pe2SaveLabel: pe.id ? 'Enregistrer' : (pe.status === 'active' ? 'Créer et activer' : 'Créer le plan'),
       pe2Save: () => { const obj = { ...pe, id: pe.id || 'pl' + Date.now(), name: pe.name.trim() || per.name + ' · plan stories', anti: +pe.anti || 0, rules: (pe.rules || []).map(r => ({ ...r, n: +r.n || 1 })), hls: (pe.hls || []).map(h => ({ ...h, name: h.name.trim() || 'À la une', every: +h.every || 1 })) };
