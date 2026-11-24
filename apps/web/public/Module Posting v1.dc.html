@@ -4165,7 +4165,7 @@ class Component extends DCLogic {
   }
   scVals() {
     const s = this.state; const out = { scEdOpen: false, stTypesOpen: false, scOpenTypes: () => this.setState({ typesOpen: true, ddOpen: null }) };
-    const colls = this.scList(); const kind = s.scKind || 'story'; const fp = s.scPersona || 'lea';
+    const colls = this.scList(); const kind = s.scKind || 'story'; const fp = s.scPersona || 'all';
     const thumbs = ts => { const arr = ts.slice(0, 4).map(t => ({ has: true, ...this.stkMini(t, 56), style: { position: 'relative', width: 56, height: 100, flex: 'none', overflow: 'hidden', borderRadius: 8, background: this.storyBg(t), border: '1px solid rgba(255,255,255,.06)' } })); while (arr.length < 4) arr.push({ has: false, els: [], stage: {}, style: { width: 56, height: 100, flex: 'none', borderRadius: 8, background: 'rgba(255,255,255,.03)', border: '1px dashed rgba(255,255,255,.06)' } }); return arr; };
     const momStrip = pd => { const av = pd ? this.momAvail(pd) : {}; return this.MOMS.map(m => ({ title: m[1] + ' · ' + (av[m[0]] || 0) + ' médias', style: { width: 6, height: 14, borderRadius: 2, background: av[m[0]] ? 'rgba(165,160,245,' + Math.min(1, .35 + av[m[0]] / 6) + ')' : 'rgba(255,255,255,.07)' } })); };
     const chipS = (on, c) => this.chip(on, c);
