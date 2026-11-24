@@ -3982,7 +3982,7 @@ class Component extends DCLogic {
   }
   uniqFor(pd, moms) { if (!pd) return 0; const set = {}; pd.tpls.forEach(t => { if (!moms || t.moments.some(m => moms.indexOf(m) >= 0)) set[t.media] = 1; }); return Object.keys(set).length; }
   momAvail(pd) { const o = {}; this.MOMS.forEach(m => { o[m[0]] = this.uniqFor(pd, [m[0]]); }); return o; }
-  capWeek(uniq, anti) { return anti > 0 ? Math.floor(7 * uniq / anti) : 99; }
+  capWeek(uniq, anti) { return anti > 0 ? uniq * Math.ceil(7 / anti) : 99; }
   ruleInfo(r, pl) {
     const anti = +pl.anti || 0; const pd = this.poolData(r.pool, pl.persona); const avail = pd ? this.momAvail(pd) : {};
     const sel = (r.moments || []).filter(m => avail[m] > 0); const moms = sel.length ? sel : Object.keys(avail).filter(k => avail[k] > 0);
