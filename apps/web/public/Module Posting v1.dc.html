@@ -3961,13 +3961,15 @@ class Component extends DCLogic {
     const days = Array.from({ length: 7 }, () => []);
     (pl.rules || []).forEach((r, ri) => {
       const n = Math.max(1, +r.n || 1); const occ = []; const info = this.ruleInfo(r, pl);
+      const anti = +(pl.anti || 0); const uniq = Math.max(1, info.uniq || 1);
+      const minGap = anti > 0 ? Math.ceil(anti / uniq) : 1;
       if (r.days && r.days.length && r.freqMode === 'week' && n === r.days.length) r.days.forEach(d => occ.push(d));
-      else if (r.freqMode === 'every') { for (let d = ri % n; d < 7; d += n) occ.push(d); }
-      else for (let i = 0; i < n; i++) occ.push(Math.floor((i * 7) / n + (ri * .37) % (7 / n)) % 7);
+      else if (r.freqMode === 'every') { const start = Math.floor(rnd() * n); for (let d = start; d < 7; d += n) occ.push(d); }
+      else { const gap = Math.max(minGap, Math.floor(7 / n)); const start = Math.floor(rnd() * 7); for (let i = 0; i < n; i++) occ.push((start + i * gap) % 7); }
       const moms = info.moms.length ? info.moms : this.MOMS.map(m => m[0]); const capN = Math.floor(info.cap + 1e-9); let mi = 0;
       occ.forEach((d, k) => { const mo = this.MOMS.find(m => m[0] === moms[Math.floor(rnd() * moms.length)]) || this.MOMS[0]; const t = mo[3] + Math.floor(rnd() * (mo[4] - mo[3])); const over = k >= capN; const media = info.pd && !over ? 'Média #' + ((mi++ * 7 + ri * 3) % Math.max(1, info.uniq) + 1) : ''; days[d].push({ rule: r, type: this.stype(r.type), mom: mo, t, over, media }); });
     });
-    (pl.hlc || []).forEach((id, hi) => { const c = this.scList().find(x => x.id === id); if (!c) return; const cfg = (pl.hlCfg || {})[id] || { mode: 'every', n: 3 }; const n = Math.max(1, +cfg.n || 1); const occ = []; if (cfg.mode === 'every') { for (let d = (hi + 1) % n; d < 7; d += n) occ.push(d); } else for (let i = 0; i < n; i++) occ.push(Math.floor((i * 7) / n + .5 + hi * .3) % 7); const nm = this.hlNames(c)[0]; occ.forEach((d, k) => { const mo = this.MOMS[Math.floor(rnd() * 6)]; const t = mo[3] + Math.floor(rnd() * (mo[4] - mo[3])); days[d].push({ rule: { id: 'hl_' + id, isHl: true }, type: { id: 'hl_' + id, label: 'À la une · ' + nm, color: '#f5c77e', icon: 'ph ph-' + c.icon }, mom: mo, t, over: false, media: 'story ' + (k + 1) + ' de la séquence' }); }); });
+    (pl.hlc || []).forEach((id, hi) => { const c = this.scList().find(x => x.id === id); if (!c) return; const cfg = (pl.hlCfg || {})[id] || { mode: 'every', n: 3 }; const n = Math.max(1, +cfg.n || 1); const occ = []; if (cfg.mode === 'every') { const start = Math.floor(rnd() * n); for (let d = start; d < 7; d += n) occ.push(d); } else { const start = Math.floor(rnd() * 7); for (let i = 0; i < n; i++) occ.push((start + Math.floor(i * 7 / n)) % 7); } const nm = this.hlNames(c)[0]; occ.forEach((d, k) => { const mo = this.MOMS[Math.floor(rnd() * 6)]; const t = mo[3] + Math.floor(rnd() * (mo[4] - mo[3])); days[d].push({ rule: { id: 'hl_' + id, isHl: true }, type: { id: 'hl_' + id, label: 'À la une · ' + nm, color: '#f5c77e', icon: 'ph ph-' + c.icon }, mom: mo, t, over: false, media: 'story ' + (k + 1) + ' de la séquence' }); }); });
     days.forEach(d => d.sort((a, b) => a.t - b.t));
     return days;
   }
