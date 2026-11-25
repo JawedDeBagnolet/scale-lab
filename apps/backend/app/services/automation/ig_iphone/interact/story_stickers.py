@@ -658,7 +658,13 @@ async def add_music_sticker(driver, song=None, artist=None,
 async def add_to_highlight(driver, highlight_name=None, create_new=False, log=print):
     """Ajoute la story publiee a un contenu a la une.
 
-    Appeler APRES publication de la story.
+    Appeler depuis l'ecran de visionnage de la story (post-publication).
+    Utilise l'OCR (ocr_screen) pour localiser les highlights existants
+    et le bouton "Nouveau" qui ne sont pas dans l'arbre d'accessibilite.
+
+    Flow valide:
+      Story ouverte → "Mettre à la une" → bottom sheet →
+      (Nouveau ou highlight existant) → nom → "Ajouter" → popup "C'est fait"
 
     Args:
         highlight_name: nom du highlight a utiliser/creer
@@ -668,51 +674,134 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
         highlight_name or "(premier disponible)",
         " (nouveau)" if create_new else ""))
 
-    # Depuis le profil ou l'ecran post-publication
-    el = await driver.find_element(contains="la une", clickable=True, refresh=True)
+    # 1. Tap "Mettre à la une" depuis l'ecran story
+    el = await driver.find_element(contains="Mettre", clickable=True, refresh=True)
     if not el:
-        # Essayer via le menu de creation
-        el = await driver.find_element(contains="À la une", clickable=True, refresh=True)
+        el = await driver.find_element(contains="la une", clickable=True, refresh=True)
     if not el:
         log("   ! bouton highlight non trouve")
         return False
     tap = el.get('tap', {})
     await driver.ht.tap(tap['x'], tap['y'])
-    await driver.wait('transition')
     await asyncio.sleep(1.5)
+    await _human_pause(0.3, 0.6)
+
+    # 2. Bottom sheet: "Ajouter au contenu à la une" apparait
+    #    Les highlights existants et "Nouveau" ne sont PAS dans l'arbre
+    #    d'accessibilite → on utilise l'OCR pour les localiser.
 
     if highlight_name and not create_new:
-        # Chercher un highlight existant par son nom
-        existing = await driver.find_element(text=highlight_name, clickable=True, refresh=True)
-        if existing:
-            tap = existing.get('tap', {})
-            log("   selectionne highlight '%s'" % highlight_name)
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(1)
+        # Chercher un highlight existant par OCR
+        ocr = await driver.ht._call("ocr_screen")
+        found = False
+        if ocr:
+            import json
+            try:
+                content = ocr.get("content", [])
+                if content and isinstance(content, list):
+                    data = json.loads(content[0].get("text", "{}"))
+                    for item in data.get("texts", []):
+                        if highlight_name.lower() in item.get("text", "").lower():
+                            tx = item["tap"]["x"]
+                            ty = item["tap"]["y"]
+                            log("   OCR: highlight '%s' trouve a (%d, %d)" % (
+                                highlight_name, tx, ty))
+                            await driver.ht.tap(tx, ty)
+                            found = True
+                            break
+            except Exception:
+                pass
 
-    if create_new and highlight_name:
-        # Creer un nouveau highlight avec ce nom
-        new_btn = await driver.find_element(contains="Nouveau", clickable=True, refresh=True)
-        if not new_btn:
-            new_btn = await driver.find_element(contains="Ajouter", clickable=True, refresh=True)
-        if new_btn:
-            tap = new_btn.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await asyncio.sleep(1)
-            await driver.type_text(highlight_name, method="natural")
+        if not found:
+            # Fallback: chercher dans l'arbre d'accessibilite
+            existing = await driver.find_element(
+                text=highlight_name, clickable=True, refresh=True)
+            if existing:
+                tap = existing.get('tap', {})
+                log("   highlight '%s' trouve dans arbre" % highlight_name)
+                await driver.ht.tap(tap['x'], tap['y'])
+                found = True
+
+        if not found:
+            log("   ! highlight '%s' non trouve, creation..." % highlight_name)
+            create_new = True
+
+    if create_new:
+        # Le bouton "Nouveau" n'est pas dans l'arbre → OCR
+        ocr = await driver.ht._call("ocr_screen")
+        nouveau_found = False
+        if ocr:
+            import json
+            try:
+                content = ocr.get("content", [])
+                if content and isinstance(content, list):
+                    data = json.loads(content[0].get("text", "{}"))
+                    for item in data.get("texts", []):
+                        txt = item.get("text", "").lower()
+                        if "nouveau" in txt or "new" in txt:
+                            tx = item["tap"]["x"]
+                            ty = item["tap"]["y"]
+                            log("   OCR: Nouveau a (%d, %d)" % (tx, ty))
+                            await driver.ht.tap(tx, ty)
+                            nouveau_found = True
+                            break
+            except Exception:
+                pass
+        if not nouveau_found:
+            # Fallback coords (valide sur iPhone X)
+            log("   Nouveau (fallback 65, 744)")
+            await driver.ht.tap(65, 744)
+        await asyncio.sleep(1.5)
+        await _human_pause(0.2, 0.5)
+
+        # 3. Ecran de saisie du nom
+        if highlight_name:
+            await driver.ht.type_text(highlight_name)
             await asyncio.sleep(0.5)
 
-    # Confirmer
-    done = await driver.find_element(contains="Ajouter", clickable=True, refresh=True)
+    await _human_pause(0.3, 0.6)
+
+    # 4. Confirmer: tap "Ajouter" par coordonnees (l'arbre renvoie
+    #    "Ajouter à la barre..." au lieu du bouton "Ajouter")
+    ajouter = await driver.find_element(text="Ajouter", clickable=True, refresh=True)
+    if ajouter:
+        tap = ajouter.get('tap', {})
+        # Verifier que c'est le bon "Ajouter" (pas "Ajouter à la barre...")
+        el_text = ajouter.get("text", "")
+        if len(el_text) < 15:
+            await driver.ht.tap(tap['x'], tap['y'])
+        else:
+            # C'est le mauvais → utiliser l'OCR pour trouver le vrai
+            ocr = await driver.ht._call("ocr_screen")
+            if ocr:
+                import json
+                try:
+                    content = ocr.get("content", [])
+                    if content and isinstance(content, list):
+                        data = json.loads(content[0].get("text", "{}"))
+                        for item in data.get("texts", []):
+                            if item.get("text", "").strip().lower() == "ajouter":
+                                await driver.ht.tap(
+                                    item["tap"]["x"], item["tap"]["y"])
+                                break
+                except Exception:
+                    pass
+    else:
+        # Fallback: coordonnees validees (188, 342)
+        log("   Ajouter (fallback 188, 342)")
+        await driver.ht.tap(188, 342)
+    await asyncio.sleep(2)
+
+    # 5. Popup de confirmation → "C'est fait"
+    done = await driver.find_element(
+        contains="C\u2019est fait", clickable=True, refresh=True)
     if not done:
-        done = await driver.find_element(contains="Termin", clickable=True, refresh=True)
-    if not done:
-        done = await driver.find_element(contains="Suivant", clickable=True, refresh=True)
+        done = await driver.find_element(
+            contains="Termin", clickable=True, refresh=True)
     if done:
         tap = done.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
-        await driver.wait('transition')
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
     log("   highlight ajoute")
     return True
@@ -805,9 +894,9 @@ async def open_story_editor(driver, media_index=0, log=print):
     log("   [story] ouverture editeur...")
 
     # 1. Menu de creation
-    menu = await driver.find_element(contains="Appuyez pour ouvrir le menu de création", clickable=True, refresh=True)
+    menu = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
     if not menu:
-        menu = await driver.find_element(contains="menu de création", clickable=True, refresh=True)
+        menu = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
     if menu:
         tap = menu.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
