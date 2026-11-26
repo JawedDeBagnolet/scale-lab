@@ -1040,21 +1040,11 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(124,108,246,.5);background:rgba(124,108,246,.08)">
 <div style="{{ edStoryTplThumb }}"><div style="{{ edStoryTplStage }}"><sc-for list="{{ edStoryTplEls }}" as="el" hint-placeholder-count="2"><div style="{{ el.wrap }}"><sc-if value="{{ el.isText }}"><div style="{{ el.textStyle }}">{{ el.text }}</div></sc-if><sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if></div></sc-for></div></div>
 <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:#f2f3fa">{{ edStoryTplName }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">{{ edStoryTplMeta }}</div></div>
-<span onClick="{{ clearStoryTpl }}" title="Changer de template" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;font-size:12px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.06)">Changer</span>
+<span onClick="{{ openStoryPicker }}" title="Changer de template" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;font-size:12px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.06)">Changer</span>
 </div>
 </sc-if>
 <sc-if value="{{ edStoryTplNone }}">
-<sc-if value="{{ edStoryTplEmpty }}"><div style="padding:28px 16px;border-radius:12px;border:1px dashed rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><i class="ph ph-film-strip" style="font-size:22px;color:#5b6175"></i><div style="font-size:12.5px;color:#8a91a8">Aucun template de story disponible</div><div style="font-size:11.5px;color:#5b6175">Crée des templates dans le Story Builder</div></div></sc-if>
-<sc-if value="{{ edStoryTplHas }}">
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px">
-<sc-for list="{{ edStoryTpls }}" as="st" hint-placeholder-count="4">
-<div onClick="{{ st.pick }}" style="{{ st.wrap }}" style-hover="border-color:rgba(124,108,246,.7);box-shadow:0 0 12px rgba(124,108,246,.2)">
-<div style="{{ st.stage }}"><sc-for list="{{ st.els }}" as="el" hint-placeholder-count="1"><div style="{{ el.wrap }}"></div></sc-for></div>
-<div style="position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(transparent,rgba(8,9,16,.85));border-radius:0 0 9px 9px"><div style="font-size:9px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.name }}</div></div>
-</div>
-</sc-for>
-</div>
-</sc-if>
+<div onClick="{{ openStoryPicker }}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border-radius:12px;border:1px dashed rgba(255,255,255,.18);color:#aab0c5;font-size:12.5px;font-weight:500;cursor:pointer" style-hover="border-color:rgba(148,163,184,.55);color:#f2f3fa;background:rgba(255,255,255,.03)"><i class="ph ph-film-strip" style="font-size:16px"></i>Choisir depuis les templates</div>
 </sc-if>
 </div>
 </sc-if>
@@ -2317,6 +2307,37 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 
+<sc-if value="{{ spkOpen }}">
+<div onClick="{{ spkCancel }}" style="{{ spkOuter }}">
+<div onClick="{{ stopProp }}" data-modal-scroll="1" style="{{ spkInner }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+<div style="font-size:18px;font-weight:600;color:#f2f3fa">Templates de story</div>
+<span onClick="{{ spkCancel }}" style="width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8a91a8;cursor:pointer;border:1px solid rgba(255,255,255,.08)" style-hover="background:rgba(255,255,255,.06);color:#f2f3fa"><i class="ph ph-x" style="font-size:16px"></i></span>
+</div>
+<sc-if value="{{ spkEmpty }}"><div style="padding:48px 20px;text-align:center"><i class="ph ph-film-strip" style="font-size:28px;color:#5b6175"></i><div style="font-size:13px;color:#8a91a8;margin-top:10px">Aucun template disponible pour cette persona</div><div style="font-size:12px;color:#5b6175;margin-top:4px">Crée des templates dans le Story Builder</div></div></sc-if>
+<sc-if value="{{ spkHas }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px">
+<sc-for list="{{ spkItems }}" as="st" hint-placeholder-count="6">
+<div onClick="{{ st.pick }}" style="{{ st.wrap }}" style-hover="border-color:rgba(124,108,246,.7);box-shadow:0 0 16px rgba(124,108,246,.25)">
+<div style="{{ st.stage }}"><sc-for list="{{ st.els }}" as="el" hint-placeholder-count="1"><div style="{{ el.wrap }}"></div></sc-for></div>
+<div style="position:absolute;left:8px;right:8px;top:8px;display:flex;align-items:center;gap:5px"><span style="{{ st.avStyle }}"></span><span style="font-size:9px;font-weight:600;color:#ffffff">{{ st.username }}</span></div>
+<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(8,9,16,.88))">
+<div style="font-size:11px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.name }}</div>
+<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">{{ st.meta }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<div style="display:flex;align-items:center;gap:10px;padding-top:4px">
+<span style="font-size:12px;color:#8a91a8">{{ spkCount }}</span>
+<span style="flex:1"></span>
+<div onClick="{{ spkCancel }}" style="height:40px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;color:#c5c9d8;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:rgba(255,255,255,.05);color:#f2f3fa">Annuler</div>
+</div>
+</div>
+</div>
+</sc-if>
+
 <sc-if value="{{ auOpen }}">
 <div onClick="{{ auCancel }}" style="{{ auOuter }}">
 <div onClick="{{ stopProp }}" data-modal-scroll="1" style="{{ auInner }}">
@@ -2399,7 +2420,7 @@ class Component extends DCLogic {
   TYPES = { th: [['th_text', 'Thread (texte)', 0], ['th_media', 'Thread + médias', 2], ['pfp', 'Photo de profil', 2]], ig: [['reel', 'Reel', 1], ['car', 'Post / Carousel', 2], ['story', 'Story', 1], ['pfp', 'Photo de profil', 2]], x: [['tw', 'Tweet', 0], ['tw_img', 'Tweet + médias', 2], ['pfp', 'Photo de profil', 2]] };
   LIMIT = { th: 500, ig: 2200, x: 280 };
   MAXM = { th_media: 20, car: 20, tw_img: 4 };
-  state = { tab: 'pub', navCollapsed: false, q: '', pubStatus: 'all', pubPlat: 'all', pubOrigin: 'all', openBatch: {}, menu: null, posts: this.seedPosts(), tpls: this.seedTpls(), camps: this.seedCamps(), ed: null, sched: null, picker: null, audio: null, wiz: null, campOpen: null, kill: false, sel: {}, confirm: null, toast: null, tplPersona: 'all', tplPlat: 'all', tplSort: 'recent', accMenu: false, accQ: '', playing: null, pvRaw: false, liked: { s2: true, s5: true, s9: true }, mediaSub: 'medias', mPath: [], extraMedia: [], delMedia: {}, upload: null, aiDesc: null, descs: this.seedDescs(), sTab: 'trend', sQ: '', sSort: 'default', sPage: 0, sSearched: false, sndMenu: null, storySub: 'templates', plans: this.seedPlans(), planEd: null, routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0, storyTpls: this.seedStories(), story: null, storyLoad: false, colls: this.seedColls(), collView: null, collPersona: 'all', collPlat: 'all', collType: 'all', coSort: 'score', coBulk: null, coNewCap: '', coEditCap: null, newColl: null, itemEd: null, groups: this.seedGroups(), grouping: null, hoverGroup: null, coHover: null, genIds: {}, dockQ: [], dockOpen: false, dockDismissed: true };
+  state = { tab: 'pub', navCollapsed: false, q: '', pubStatus: 'all', pubPlat: 'all', pubOrigin: 'all', openBatch: {}, menu: null, posts: this.seedPosts(), tpls: this.seedTpls(), camps: this.seedCamps(), ed: null, sched: null, picker: null, audio: null, wiz: null, campOpen: null, kill: false, sel: {}, confirm: null, toast: null, tplPersona: 'all', tplPlat: 'all', tplSort: 'recent', accMenu: false, accQ: '', playing: null, pvRaw: false, liked: { s2: true, s5: true, s9: true }, mediaSub: 'medias', mPath: [], extraMedia: [], delMedia: {}, upload: null, aiDesc: null, descs: this.seedDescs(), sTab: 'trend', sQ: '', sSort: 'default', sPage: 0, sSearched: false, sndMenu: null, storySub: 'templates', plans: this.seedPlans(), planEd: null, routines: this.seedRoutines(), rtPersona: (this.pers()[0] || {}).id || 'lea', rtSel: null, bdPersona: 'all', bdJitter: 20, bdDay: 0, storyTpls: this.seedStories(), story: null, storyLoad: false, colls: this.seedColls(), collView: null, collPersona: 'all', collPlat: 'all', collType: 'all', coSort: 'score', coBulk: null, coNewCap: '', coEditCap: null, newColl: null, itemEd: null, groups: this.seedGroups(), grouping: null, hoverGroup: null, coHover: null, genIds: {}, dockQ: [], dockOpen: false, dockDismissed: true, storyPicker: null };
   STK = {
     text: ['text-t', 'Texte', 'Texte', 'Ton texte ici', '#ffffff'], mention: ['at', 'Mention', 'Mention', '@', '#8b7cf6'],
     link: ['link', 'Lien', 'Lien', 'lien.bio', '#5b8def'], poll: ['chart-bar-horizontal', 'Sondage', 'Sondage', 'Plutôt matin ou soir ?', '#8b7cf6'],
@@ -3059,7 +3080,7 @@ class Component extends DCLogic {
     setTimeout(() => { const c = document.querySelector('.dc-main-scroll, main, [style*="overflow-y"]'); if (c) c.addEventListener('scroll', this._mediaScroll, { passive: true }); }, 200);
     this._key = e => {
       if (e.key !== 'Escape') return; const s = this.state;
-      if (s.cdNameEdit != null) this.setState({ cdNameEdit: null }); else if (s.cdIconOpen) this.setState({ cdIconOpen: false }); else if (s.wiz && s.wiz.timeOpen) this.setState(x => ({ wiz: { ...x.wiz, timeOpen: null } })); else if (s.grouping && !s.picker && !s.confirm) this.setState({ grouping: null }); else if (s.confirm) this.setState({ confirm: null }); else if (s.audio) this.setState({ audio: null, playing: null }); else if (s.picker) this.setState({ picker: null });
+      if (s.cdNameEdit != null) this.setState({ cdNameEdit: null }); else if (s.cdIconOpen) this.setState({ cdIconOpen: false }); else if (s.wiz && s.wiz.timeOpen) this.setState(x => ({ wiz: { ...x.wiz, timeOpen: null } })); else if (s.grouping && !s.picker && !s.confirm) this.setState({ grouping: null }); else if (s.confirm) this.setState({ confirm: null }); else if (s.audio) this.setState({ audio: null, playing: null }); else if (s.storyPicker) this.setState({ storyPicker: null }); else if (s.picker) this.setState({ picker: null });
       else if (s.aiDesc) this.setState({ aiDesc: null }); else if (s.upload) this.setState({ upload: null }); else if (s.grpEd) this.setState({ grpEd: null }); else if (s.itemEd) this.setState({ itemEd: null }); else if (s.newColl) this.setState({ newColl: null }); else if (s.coEditCap) this.setState({ coEditCap: null });
       else if (s.ddOpen) this.setState({ ddOpen: null }); else if (s.hlIcons) this.setState({ hlIcons: null }); else if (s.typesOpen) this.setState({ typesOpen: false }); else if (s.scEd) this.setState({ scEd: null }); else if (s.planEd) this.setState({ planEd: null }); else if (s.storyLoad) this.setState({ storyLoad: false }); else if (s.story) { if (s.story.sel) this.setState(x => ({ story: { ...x.story, sel: null } })); else this.setState({ story: null }); }
       else if (s.sched) this.setState({ sched: null }); else if (s.accMenu) this.setState({ accMenu: false }); else if (s.ed) this.setState({ ed: null });
@@ -3444,19 +3465,15 @@ class Component extends DCLogic {
       ...(() => {
         if (!(isPost && ed.type === 'story')) return {};
         const allSt = (s.storyTpls || []);
-        const stPer = ed.persona;
-        const stList = stPer ? allSt.filter(t => t.persona === stPer) : allSt;
         const selTpl = ed.storyTplId ? allSt.find(t => t.id === ed.storyTplId) : null;
-        const stMini = t => this.stkMini(t, 80);
         return {
           edStoryTplSel: !!selTpl, edStoryTplNone: !selTpl,
           edStoryTplName: selTpl ? selTpl.name : '',
           edStoryTplMeta: selTpl ? selTpl.els.length + ' stickers · @' + selTpl.username : '',
           edStoryTplThumb: selTpl ? { position: 'relative', width: 48, height: 85, flex: 'none', overflow: 'hidden', borderRadius: 8, background: this.storyBg(selTpl), border: '1px solid rgba(255,255,255,.06)' } : {},
           ...(selTpl ? this.stkMini(selTpl, 48) : { edStoryTplEls: [], edStoryTplStage: {} }),
-          clearStoryTpl: () => this.upd({ storyTplId: null, stickers: null, media: [] }),
-          edStoryTplEmpty: !stList.length, edStoryTplHas: stList.length > 0,
-          edStoryTpls: stList.map(t => { const mini = stMini(t); return { ...mini, name: t.name, wrap: { position: 'relative', width: '100%', aspectRatio: '9/16', overflow: 'hidden', borderRadius: 10, cursor: 'pointer', background: this.storyBg(t), border: '1px solid rgba(255,255,255,.08)', transition: 'border-color .15s, box-shadow .15s' }, pick: () => { const stickerMap = {}; t.els.forEach(el => { stickerMap[el.kind] = stickerMap[el.kind] || []; stickerMap[el.kind].push({ type: el.kind, x: el.x, y: el.y, scale: el.scale, rot: el.rot, text: el.text, color: el.color }); }); this.upd({ storyTplId: t.id, media: t.media.slice(), stickers: { story_template_id: t.id, elements: t.els.map(el => ({ type: el.kind, x: el.x, y: el.y, scale: el.scale, rot: el.rot, text: el.text, color: el.color })) } }); } }; })
+          clearStoryTpl: () => { this.upd({ storyTplId: null, stickers: null, media: [] }); this.setState({ storyPicker: null }); },
+          openStoryPicker: () => this.setState({ storyPicker: true })
         };
       })(),
       lockText: 'Choisis persona, plateforme et type de post pour débloquer les médias',
@@ -4784,7 +4801,7 @@ class Component extends DCLogic {
     this.toastMsg('Campagne lancée · ' + c.name);
   }
   modalVals() {
-    const s = this.state; const out = { wzOpen: false, cdOpen: false, pkOpen: false, auOpen: false, cfOpen: false };
+    const s = this.state; const out = { wzOpen: false, cdOpen: false, pkOpen: false, auOpen: false, cfOpen: false, spkOpen: false };
     const stL = st => st === 'session' ? ['En session', '#2dd4a8'] : st === 'error' ? ['Checkpoint', '#f4728c'] : ['Idle', '#6b7189'];
     const w = s.wiz;
     if (w) {
@@ -4933,6 +4950,22 @@ class Component extends DCLogic {
           else if (pk.target === 'coll') { this.updColl(this.state.collView, c => ({ ...c, media: sel })); this.setState({ picker: null }); } else if (pk.target === 'item') this.setState(x => ({ itemEd: { ...x.itemEd, media: expM }, picker: null }));
           else { this.setEdVar(pk.varIdx || 0, expM); this.setState({ picker: null }); }
         }
+      });
+    }
+
+    if (s.storyPicker && s.ed && s.ed.type === 'story') {
+      const allSt = (s.storyTpls || []);
+      const stPer = s.ed.persona;
+      const stList = stPer ? allSt.filter(t => t.persona === stPer) : allSt;
+      const me = this;
+      Object.assign(out, {
+        spkOpen: true,
+        spkOuter: this.ovStyle(80, .45),
+        spkInner: { width: 'min(820px,100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', overscrollBehavior: 'contain', borderRadius: 20, padding: '20px 22px 22px', display: 'flex', flexDirection: 'column', gap: 16, ...this.glassPanel(), background: 'rgba(17,19,32,.94)' },
+        spkEmpty: !stList.length, spkHas: stList.length > 0,
+        spkCount: stList.length + ' template' + (stList.length > 1 ? 's' : '') + (stPer ? ' · ' + this.P(stPer).name : ''),
+        spkCancel: () => this.setState({ storyPicker: null }),
+        spkItems: stList.map(t => { const mini = me.stkMini(t, 140); return { ...mini, name: t.name, username: t.username, meta: t.els.length + ' sticker' + (t.els.length > 1 ? 's' : ''), avStyle: me.avStyle(me.P(t.persona) ? me.P(t.persona).color : '#6b7189', 18, 99), wrap: { position: 'relative', aspectRatio: '9/16', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', background: me.storyBg(t), border: '1px solid rgba(255,255,255,.08)', transition: 'border-color .15s, box-shadow .15s' }, pick: () => { me.upd({ storyTplId: t.id, media: t.media.slice(), stickers: { story_template_id: t.id, elements: t.els.map(el => ({ type: el.kind, x: el.x, y: el.y, scale: el.scale, rot: el.rot, text: el.text, color: el.color })) } }); me.setState({ storyPicker: null }); } }; })
       });
     }
 
