@@ -372,7 +372,13 @@ async def _add_and_position(driver, sticker, log=print):
 
 
 async def _dismiss_popups(driver, log=print):
-    """Dismiss les popups systeme et IG courants (camera, photos, etc.)."""
+    """Dismiss les popups systeme et IG courants. Silencieux si aucun popup."""
+    try:
+        return await _dismiss_popups_inner(driver, log)
+    except Exception:
+        return False
+
+async def _dismiss_popups_inner(driver, log):
     dismissed = False
     for _ in range(3):
         await asyncio.sleep(0.5)
