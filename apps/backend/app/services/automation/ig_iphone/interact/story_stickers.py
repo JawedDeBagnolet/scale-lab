@@ -28,9 +28,9 @@ import random
 
 async def _open_stickers(driver, log):
     """Ouvre le panneau de stickers (bouton a droite de l'editeur)."""
-    el = await driver.find_element(contains="Stickers, bouton", clickable=True, refresh=True)
+    el = await driver.find_element(text="Stickers, bouton", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Stickers", clickable=True, refresh=True)
+        el = await driver.find_element(text="Stickers", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton Stickers non trouve")
         return False
@@ -43,9 +43,9 @@ async def _open_stickers(driver, log):
 
 async def _close_stickers(driver, log):
     """Ferme le panneau de stickers."""
-    el = await driver.find_element(contains="Fermer l'espace stickers", clickable=True, refresh=True)
+    el = await driver.find_element(text="Fermer l'espace stickers", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Fermer", clickable=True, refresh=True)
+        el = await driver.find_element(text="Fermer", contains=True, clickable=True, refresh=True)
     if el:
         tap = el.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -62,9 +62,9 @@ async def _tap_done(driver, log):
     sinon fallback aux coordonnees (328, 69).
     """
     # Chercher dans l'arbre
-    el = await driver.find_element(contains="C’est fait", clickable=True, refresh=True)
+    el = await driver.find_element(text="C’est fait", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+        el = await driver.find_element(text="Termin", contains=True, clickable=True, refresh=True)
     if el:
         tap = el.get('tap', {})
         log("   -> C'est fait (%d, %d)" % (tap['x'], tap['y']))
@@ -95,7 +95,7 @@ async def _unfreeze_after_sticker(driver, log):
 
 async def _find_sticker_in_menu(driver, name, log):
     """Trouve un sticker par nom dans le panneau ouvert."""
-    el = await driver.find_element(contains=name, clickable=True, refresh=True)
+    el = await driver.find_element(text=name, contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! sticker '%s' non trouve dans le menu" % name)
         return None
@@ -142,7 +142,7 @@ async def add_location_sticker(driver, location, variant_taps=0, log=print):
         await asyncio.sleep(1)
 
     # Rechercher le lieu
-    search = await driver.find_element(contains="Rechercher des lieux", clickable=True, refresh=True)
+    search = await driver.find_element(text="Rechercher des lieux", contains=True, clickable=True, refresh=True)
     if search:
         tap = search.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -151,7 +151,7 @@ async def add_location_sticker(driver, location, variant_taps=0, log=print):
         await asyncio.sleep(2.5)  # attendre les resultats
 
     # Selectionner le premier resultat (format: "Nom du lieu, ...")
-    results = await driver.find_elements(contains="Nom du lieu", clickable=True, refresh=True)
+    results = await driver.find_elements(text="Nom du lieu", contains=True, clickable=True, refresh=True)
     if results:
         tap = results[0].get('tap', {})
         log("   selectionne '%s'" % (results[0].get('text', '')[:50]))
@@ -175,7 +175,7 @@ async def add_location_sticker(driver, location, variant_taps=0, log=print):
 
     # Variantes visuelles (tap sur le sticker pour cycler)
     if variant_taps > 0:
-        sticker = await driver.find_element(contains="Sticker de lieu", clickable=True, refresh=True)
+        sticker = await driver.find_element(text="Sticker de lieu", contains=True, clickable=True, refresh=True)
         if sticker:
             tap = sticker.get('tap', {})
             for i in range(variant_taps):
@@ -214,7 +214,7 @@ async def add_mention_sticker(driver, username, variant_taps=0, log=print):
     await asyncio.sleep(1.5)
 
     # Rechercher le compte
-    search = await driver.find_element(contains="Rechercher des comptes", clickable=True, refresh=True)
+    search = await driver.find_element(text="Rechercher des comptes", contains=True, clickable=True, refresh=True)
     if search:
         tap = search.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -267,7 +267,7 @@ async def add_mention_sticker(driver, username, variant_taps=0, log=print):
 
     # Variantes visuelles
     if variant_taps > 0:
-        sticker = await driver.find_element(contains="Sticker de mention", clickable=True, refresh=True)
+        sticker = await driver.find_element(text="Sticker de mention", contains=True, clickable=True, refresh=True)
         if sticker:
             tap = sticker.get('tap', {})
             for i in range(variant_taps):
@@ -308,14 +308,14 @@ async def add_question_sticker(driver, question=None, log=print):
     # Modifier la question si demande
     if question:
         # Le sticker est deja la, on tape dessus pour l'editer
-        q_el = await driver.find_element(contains="Sticker de question", clickable=True, refresh=True)
+        q_el = await driver.find_element(text="Sticker de question", contains=True, clickable=True, refresh=True)
         if q_el:
             tap = q_el.get('tap', {})
             await driver.ht.tap(tap['x'], tap['y'])
             await asyncio.sleep(1)
 
         # Trouver le champ texte "Posez-moi une question"
-        field = await driver.find_element(contains="Posez-moi une question", clickable=True, refresh=True)
+        field = await driver.find_element(text="Posez-moi une question", contains=True, clickable=True, refresh=True)
         if field:
             tap = field.get('tap', {})
             await driver.ht.tap(tap['x'], tap['y'])
@@ -361,7 +361,7 @@ async def add_poll_sticker(driver, question, options=None, log=print):
     await asyncio.sleep(1.5)
 
     # Ecrire la question — champ "POSEZ UNE QUESTION…"
-    q_field = await driver.find_element(contains="POSEZ UNE QUESTION", clickable=True, refresh=True)
+    q_field = await driver.find_element(text="POSEZ UNE QUESTION", contains=True, clickable=True, refresh=True)
     if q_field:
         tap = q_field.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -393,7 +393,7 @@ async def add_poll_sticker(driver, question, options=None, log=print):
     # Options supplementaires (3e et 4e)
     if options:
         for i in range(2, min(len(options), 4)):
-            add_opt = await driver.find_element(contains="Ajoutez une option", clickable=True, refresh=True)
+            add_opt = await driver.find_element(text="Ajoutez une option", contains=True, clickable=True, refresh=True)
             if add_opt:
                 tap = add_opt.get('tap', {})
                 await driver.ht.tap(tap['x'], tap['y'])
@@ -436,7 +436,7 @@ async def add_link_sticker(driver, url, text=None, log=print):
     await asyncio.sleep(1.5)
 
     # Champ URL — le placeholder est "https://example.com"
-    url_field = await driver.find_element(contains="https://example.com", clickable=True, refresh=True)
+    url_field = await driver.find_element(text="https://example.com", contains=True, clickable=True, refresh=True)
     if not url_field:
         url_field = await driver.find_element(text="URL", clickable=True, refresh=True)
     if url_field:
@@ -449,7 +449,7 @@ async def add_link_sticker(driver, url, text=None, log=print):
     # Personnaliser le texte si demande
     if text:
         await asyncio.sleep(0.5)
-        text_btn = await driver.find_element(contains="Personnaliser le texte du sticker", clickable=True, refresh=True)
+        text_btn = await driver.find_element(text="Personnaliser le texte du sticker", contains=True, clickable=True, refresh=True)
         if text_btn:
             tap = text_btn.get('tap', {})
             await driver.ht.tap(tap['x'], tap['y'])
@@ -485,9 +485,9 @@ async def add_music_sticker(driver, song=None, artist=None,
     log("   [sticker] musique%s" % (" -> '%s'" % song[:30] if song else ""))
 
     # Ouvrir le selecteur audio (bouton a droite de l'editeur)
-    el = await driver.find_element(contains="Audio, bouton", clickable=True, refresh=True)
+    el = await driver.find_element(text="Audio, bouton", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Audio", clickable=True, refresh=True)
+        el = await driver.find_element(text="Audio", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton Audio non trouve")
         return False
@@ -498,7 +498,7 @@ async def add_music_sticker(driver, song=None, artist=None,
 
     # Rechercher le morceau
     if song:
-        search = await driver.find_element(contains="Recherche", clickable=True, refresh=True)
+        search = await driver.find_element(text="Recherche", contains=True, clickable=True, refresh=True)
         if search:
             tap = search.get('tap', {})
             await driver.ht.tap(tap['x'], tap['y'])
@@ -621,7 +621,7 @@ async def add_music_sticker(driver, song=None, artist=None,
         # Ajuster la duree avec le picker
         import re
         for _ in range(20):
-            picker = await driver.find_element(contains="secondes", refresh=True)
+            picker = await driver.find_element(text="secondes", contains=True, refresh=True)
             if not picker:
                 break
             m = re.search(r'(\d+)', picker.get('text', ''))
@@ -636,9 +636,9 @@ async def add_music_sticker(driver, song=None, artist=None,
             await asyncio.sleep(0.6)
 
         # Confirmer le picker
-        all_done = await driver.find_elements(contains="Arr", clickable=True, refresh=True)
+        all_done = await driver.find_elements(text="Arr", contains=True, clickable=True, refresh=True)
         if not all_done:
-            all_done = await driver.find_elements(contains="Termin", clickable=True, refresh=True)
+            all_done = await driver.find_elements(text="Termin", contains=True, clickable=True, refresh=True)
         if all_done:
             best = max(all_done, key=lambda d: d.get('rect', {}).get('y', 0))
             tap = best.get('tap', {})
@@ -675,9 +675,9 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
         " (nouveau)" if create_new else ""))
 
     # 1. Tap "Mettre à la une" depuis l'ecran story
-    el = await driver.find_element(contains="Mettre", clickable=True, refresh=True)
+    el = await driver.find_element(text="Mettre", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="la une", clickable=True, refresh=True)
+        el = await driver.find_element(text="la une", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton highlight non trouve")
         return False
@@ -793,15 +793,20 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
     await asyncio.sleep(2)
 
     # 5. Popup de confirmation → "C'est fait"
+    await asyncio.sleep(1)
     done = await driver.find_element(
-        contains="C\u2019est fait", clickable=True, refresh=True)
+        text="C\u2019est fait", contains=True, clickable=True, refresh=True)
     if not done:
         done = await driver.find_element(
-            contains="Termin", clickable=True, refresh=True)
+            text="Termin", contains=True, clickable=True, refresh=True)
     if done:
         tap = done.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
-        await asyncio.sleep(1)
+    else:
+        # Fallback: tap_element natif MCP (cherche arbre + OCR)
+        log("   C\u2019est fait (fallback tap_element natif)")
+        await driver.ht.tap_by_text("C\u2019est fait", match="contains")
+    await asyncio.sleep(1)
 
     log("   highlight ajoute")
     return True
@@ -824,7 +829,7 @@ async def add_text_sticker(driver, text, style=None, log=print):
     """
     log("   [sticker] texte -> '%s'" % text[:30])
 
-    el = await driver.find_element(contains="Texte, bouton", clickable=True, refresh=True)
+    el = await driver.find_element(text="Texte, bouton", contains=True, clickable=True, refresh=True)
     if not el:
         log("   ! bouton Texte non trouve")
         return False
@@ -840,7 +845,7 @@ async def add_text_sticker(driver, text, style=None, log=print):
     # Choisir le style si demande
     if style:
         style_el = await driver.find_element(
-            contains="style du texte : %s" % style, clickable=True, refresh=True)
+            text="style du texte : %s", contains=True % style, clickable=True, refresh=True)
         if style_el:
             tap = style_el.get('tap', {})
             log("   style: '%s'" % style)
@@ -865,9 +870,9 @@ async def publish_story(driver, log=print):
     Tap sur "Partager dans votre story" (85, 745).
     """
     log("   [story] publication...")
-    el = await driver.find_element(contains="Partager dans votre story", clickable=True, refresh=True)
+    el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="Partager", clickable=True, refresh=True)
+        el = await driver.find_element(text="Partager", contains=True, clickable=True, refresh=True)
     if el:
         tap = el.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -894,9 +899,9 @@ async def open_story_editor(driver, media_index=0, log=print):
     log("   [story] ouverture editeur...")
 
     # 1. Menu de creation
-    menu = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
+    menu = await driver.find_element(text="menu de cr", contains=True, clickable=True, refresh=True)
     if not menu:
-        menu = await driver.find_element(contains="menu de cr", clickable=True, refresh=True)
+        menu = await driver.find_element(text="menu de cr", contains=True, clickable=True, refresh=True)
     if menu:
         tap = menu.get('tap', {})
         await driver.ht.tap(tap['x'], tap['y'])
@@ -918,23 +923,28 @@ async def open_story_editor(driver, media_index=0, log=print):
     await driver.wait('transition')
     await asyncio.sleep(2)
 
-    # 3. Choisir le media
-    # Les miniatures commencent vers y=378 avec espacement ~222px
-    medias = await driver.find_elements(contains="Miniature photo", clickable=True, refresh=True)
-    if medias and media_index < len(medias):
-        tap = medias[media_index].get('tap', {})
-        log("   media #%d selectionne" % media_index)
-        await driver.ht.tap(tap['x'], tap['y'])
-    elif medias:
-        tap = medias[0].get('tap', {})
-        log("   media #0 (fallback)")
+    # 3. Choisir le media (meme logique que publish.py/_select_photo)
+    photos = []
+    for attempt in range(3):
+        els = await driver.find_elements(text="Miniature", contains=True, clickable=True, refresh=True)
+        # Filtrer : garder les elements dans la grille (y > 220 exclut le header)
+        photos = [e for e in els if e.get("tap", {}).get("y", 0) > 350]
+        photos.sort(key=lambda e: (e.get('tap', {}).get('y', 0),
+                                   e.get('tap', {}).get('x', 0)))
+        if photos:
+            break
+        log("   [retry %d] galerie pas encore chargee" % (attempt + 1))
+        await asyncio.sleep(1.5)
+
+    if photos:
+        idx = min(media_index, len(photos) - 1)
+        tap = photos[idx].get('tap', {})
+        log("   media #%d selectionne (y=%d, %d dispo)" % (idx, tap.get('y', 0), len(photos)))
         await driver.ht.tap(tap['x'], tap['y'])
     else:
-        # Fallback : premier media en haut a gauche de la galerie
-        log("   media (fallback 62, 378)")
+        log("   ! aucune photo, fallback (62, 378)")
         await driver.ht.tap(62, 378)
-    await driver.wait('transition')
-    await asyncio.sleep(2)
+    await asyncio.sleep(random.uniform(1.0, 2.0))
 
     # 4. Popup "stories peuvent toucher plus de monde" → OK
     ok_btn = await driver.find_element(text="OK", clickable=True, refresh=True)
