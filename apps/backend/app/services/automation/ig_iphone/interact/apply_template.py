@@ -371,9 +371,70 @@ async def _add_and_position(driver, sticker, log=print):
             await asyncio.sleep(1)
 
 
+async def _dismiss_popups(driver, log=print):
+    """Dismiss les popups systeme et IG courants (camera, photos, etc.)."""
+    dismissed = False
+    for _ in range(3):
+        await asyncio.sleep(0.5)
+        els = await driver.elements
+        all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
+        # Popup systeme: "souhaite accéder" → tap OK
+        if "souhaite acc" in all_text or "would like to access" in all_text:
+            ok = await driver.find_element(text="OK", contains=False, clickable=True)
+            if ok:
+                log("   [popup] systeme -> OK")
+                await driver.ht.tap(ok["tap"]["x"], ok["tap"]["y"])
+                await asyncio.sleep(1)
+                dismissed = True
+                continue
+        # Popup IG: "Autorisez Instagram" → tap Continuer
+        if "Autorisez" in all_text:
+            btn = await driver.find_element(text="Continuer", contains=False, clickable=True)
+            if btn:
+                log("   [popup] IG autorisation -> Continuer")
+                await driver.ht.tap(btn["tap"]["x"], btn["tap"]["y"])
+                await asyncio.sleep(1)
+                dismissed = True
+                # Peut declencher un popup systeme juste apres
+                continue
+        # Popup "Autoriser l'accès" (photos)
+        if "Autoriser l" in all_text:
+            btn = await driver.find_element(text="Autoriser", contains=False, clickable=True)
+            if not btn:
+                btn = await driver.find_element(text="Autoriser l", contains=True, clickable=True)
+            if btn:
+                log("   [popup] autoriser acces -> Autoriser")
+                await driver.ht.tap(btn["tap"]["x"], btn["tap"]["y"])
+                await asyncio.sleep(1)
+                dismissed = True
+                continue
+        break
+    return dismissed
+
+
+async def _verify_screen(driver, expected_texts, label, log=print):
+    """Verifie que l'ecran contient au moins un des textes attendus."""
+    els = await driver.elements
+    all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
+    for txt in expected_texts:
+        if txt.lower() in all_text.lower():
+            log("   [check] %s OK ('%s')" % (label, txt))
+            return True
+    log("   [check] %s — texte attendu non trouve, dismiss popups..." % label)
+    if await _dismiss_popups(driver, log):
+        els = await driver.elements
+        all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
+        for txt in expected_texts:
+            if txt.lower() in all_text.lower():
+                log("   [check] %s OK apres dismiss" % label)
+                return True
+    log("   [check] %s ECHEC" % label)
+    return False
+
+
 async def apply_template(driver, navigator, template, publish=False, photo_index=0, log=print):
-    """Applique un template story complet.
-    
+    """Applique un template story complet avec verification de chaque etape.
+
     Args:
         driver: IGDriver
         navigator: IGNavigator
@@ -384,53 +445,80 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     """
     if isinstance(template, str):
         template = json.loads(template)
-    
+
     from app.services.automation.ig_iphone.interact.publish import _open_create_menu, _select_photo
-    
+
     stickers = template.get("stickers", [])
     context = template.get("context", "free")
-    
+
     log("=== apply_template: %s, %d stickers ===" % (context, len(stickers)))
-    
+
     # 1. Ouvrir creation story
     log("[1] Ouvrir menu creation")
     await _open_create_menu(driver, navigator, log)
     await asyncio.sleep(2)
-    
-    # 2. Tap Story
+    await _dismiss_popups(driver, log)
+
+    # 2. Tap Story + verifier
     log("[2] Tap Story")
     el = await driver.find_element(text="Story", contains=True, clickable=True, refresh=True)
-    if el:
-        await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
-        await asyncio.sleep(2)
-    
-    # 3. Selectionner photo
+    if not el:
+        log("   ! bouton Story non trouve — abandon")
+        return {"published": False, "error": "story_button_not_found"}
+    await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
+    await asyncio.sleep(2)
+    await _dismiss_popups(driver, log)
+
+    # Verifier ecran selection photo
+    if not await _verify_screen(driver, ["galerie", "Boomerang", "Layout"], "selection photo", log):
+        log("   ! ecran selection photo non detecte — abandon")
+        return {"published": False, "error": "photo_selection_not_reached"}
+
+    # 3. Selectionner photo + verifier
     log("[3] Select photo")
     await _select_photo(driver, log, index=photo_index)
     await asyncio.sleep(3)
-    
-    # 4. Ajouter chaque sticker (sauf media_placeholder/repost_media)
+    await _dismiss_popups(driver, log)
+
+    # Verifier editeur story
+    if not await _verify_screen(driver, ["Partager", "Votre story", "menu de cr"], "editeur story", log):
+        log("   ! editeur story non detecte — abandon")
+        return {"published": False, "error": "story_editor_not_reached"}
+
+    # 4. Ajouter chaque sticker
     real_stickers = [s for s in stickers if s.get("type", s.get("kind","")) not in ("media_placeholder", "repost_media")]
-    
+
     for i, sticker in enumerate(real_stickers):
-        log("[4.%d] Sticker: %s" % (i+1, sticker.get("type", sticker.get("kind","?"))))
+        stype = sticker.get("type", sticker.get("kind", "?"))
+        log("[4.%d] Sticker: %s" % (i + 1, stype))
+        await _dismiss_popups(driver, log)
         await _add_and_position(driver, sticker, log)
         await asyncio.sleep(1)
-    
+        await _dismiss_popups(driver, log)
+
     # 5. Publier ou s'arreter
     if publish:
         log("[5] Publication...")
-        el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
-        if not el:
-            el = await driver.find_element(text="Votre story", contains=True, clickable=True, refresh=True)
-        if el:
-            await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
+        await _dismiss_popups(driver, log)
+        share_el = None
+        for attempt in range(3):
+            share_el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
+            if not share_el:
+                share_el = await driver.find_element(text="Votre story", contains=True, clickable=True, refresh=True)
+            if share_el:
+                break
+            log("   tentative %d/3 — bouton non trouve, dismiss popups..." % (attempt + 1))
+            await _dismiss_popups(driver, log)
+            await asyncio.sleep(2)
+
+        if share_el:
+            await driver.ht.tap(share_el["tap"]["x"], share_el["tap"]["y"])
             await asyncio.sleep(random.uniform(3.0, 5.0))
             log("=== Story publiee ===")
             return {"published": True}
         else:
-            log("   ! bouton Partager non trouve")
-            return {"published": False}
+            log("   ! bouton Partager non trouve apres 3 tentatives")
+            return {"published": False, "error": "share_button_not_found"}
     else:
         log("=== STOP - publish=False, story prete ===")
 
