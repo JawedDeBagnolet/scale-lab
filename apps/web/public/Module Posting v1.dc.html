@@ -1033,6 +1033,32 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="3"><div onClick="{{ c.go }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:15px"></i>{{ c.label }}</div></sc-for></div>
 </div>
 <sc-if value="{{ needsMedia }}">
+<sc-if value="{{ edIsStory }}">
+<div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px"><span style="font-size:11.5px;font-weight:500;color:#8a91a8">Template de story</span><sc-if value="{{ edStoryTplSel }}"><span style="font-size:11px;color:#7c6cf6;font-weight:500">{{ edStoryTplName }}</span></sc-if></div>
+<sc-if value="{{ edStoryTplSel }}">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(124,108,246,.5);background:rgba(124,108,246,.08)">
+<div style="{{ edStoryTplThumb }}"><div style="{{ edStoryTplStage }}"><sc-for list="{{ edStoryTplEls }}" as="el" hint-placeholder-count="2"><div style="{{ el.wrap }}"><sc-if value="{{ el.isText }}"><div style="{{ el.textStyle }}">{{ el.text }}</div></sc-if><sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if></div></sc-for></div></div>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:#f2f3fa">{{ edStoryTplName }}</div><div style="font-size:11.5px;color:#8a91a8;margin-top:2px">{{ edStoryTplMeta }}</div></div>
+<span onClick="{{ clearStoryTpl }}" title="Changer de template" style="height:30px;padding:0 11px;border-radius:8px;display:flex;align-items:center;font-size:12px;color:#c5c9d8;cursor:pointer" style-hover="background:rgba(255,255,255,.06)">Changer</span>
+</div>
+</sc-if>
+<sc-if value="{{ edStoryTplNone }}">
+<sc-if value="{{ edStoryTplEmpty }}"><div style="padding:28px 16px;border-radius:12px;border:1px dashed rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><i class="ph ph-film-strip" style="font-size:22px;color:#5b6175"></i><div style="font-size:12.5px;color:#8a91a8">Aucun template de story disponible</div><div style="font-size:11.5px;color:#5b6175">Crée des templates dans le Story Builder</div></div></sc-if>
+<sc-if value="{{ edStoryTplHas }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px">
+<sc-for list="{{ edStoryTpls }}" as="st" hint-placeholder-count="4">
+<div onClick="{{ st.pick }}" style="{{ st.wrap }}" style-hover="border-color:rgba(124,108,246,.7);box-shadow:0 0 12px rgba(124,108,246,.2)">
+<div style="{{ st.stage }}"><sc-for list="{{ st.els }}" as="el" hint-placeholder-count="1"><div style="{{ el.wrap }}"></div></sc-for></div>
+<div style="position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(transparent,rgba(8,9,16,.85));border-radius:0 0 9px 9px"><div style="font-size:9px;font-weight:600;color:#f2f3fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.name }}</div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ edNotStory }}">
 <div>
 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px"><span style="font-size:11.5px;font-weight:500;color:#8a91a8">Médias</span><span style="font-size:11px;color:#5b6175">{{ mediaHint }}</span></div>
 <sc-if value="{{ mvShow }}">
@@ -1058,6 +1084,7 @@ select option { background: #151827; color: #e8eaf3; }
 </div>
 </sc-if>
 </div>
+</sc-if>
 </sc-if>
 <sc-if value="{{ isPostReel }}">
 <div>
@@ -1216,6 +1243,7 @@ select option { background: #151827; color: #e8eaf3; }
 <div style="display:flex;gap:3px"><span style="flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.9)"></span><span style="flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.35)"></span></div>
 <div style="display:flex;align-items:center;gap:8px"><span style="{{ pvAvIg }}">{{ pvIni }}</span><span style="font-size:12px;font-weight:600;color:#ffffff">{{ pvUser }}</span><span style="font-size:11.5px;color:rgba(255,255,255,.7)">{{ pvTime }}</span></div>
 </div>
+<sc-if value="{{ pvStoryTplEls }}"><div style="{{ pvStoryTplStage }}"><sc-for list="{{ pvStoryTplEls }}" as="el" hint-placeholder-count="2"><div style="{{ el.wrap }}"><sc-if value="{{ el.isText }}"><div style="{{ el.textStyle }}">{{ el.text }}</div></sc-if><sc-if value="{{ el.isPill }}"><div style="{{ el.pillStyle }}"><i class="{{ el.icon }}" style="font-size:16px"></i>{{ el.text }}</div></sc-if><sc-if value="{{ el.isQuestion }}"><div style="{{ el.qCard }}"><div style="{{ el.qHead }}">{{ el.text }}</div><div style="{{ el.qField }}">Entrez quelque chose…</div></div></sc-if><sc-if value="{{ el.isPoll }}"><div style="{{ el.pollWrap }}"><div style="{{ el.pollHead }}">{{ el.text }}</div></div></sc-if></div></sc-for></div></sc-if>
 <div style="position:absolute;left:12px;right:12px;bottom:14px;display:flex;align-items:center;gap:10px"><span style="flex:1;height:38px;border-radius:99px;border:1px solid rgba(255,255,255,.55);display:flex;align-items:center;padding:0 14px;font-size:12px;color:rgba(255,255,255,.85)">Envoyer un message</span><i class="ph ph-heart" style="font-size:22px;color:#ffffff"></i><i class="ph ph-paper-plane-tilt" style="font-size:22px;color:#ffffff"></i></div>
 </sc-if>
 <sc-if value="{{ pvIsReel }}">
@@ -3212,7 +3240,7 @@ class Component extends DCLogic {
   }
   ovStyle(z, a) { const glass = 'Verre' === 'Verre'; return { position: 'fixed', inset: 0, zIndex: z, overscrollBehavior: 'contain', background: glass ? 'rgba(5,6,12,' + (a || .3) + ')' : 'rgba(5,6,12,.62)', backdropFilter: glass ? 'none' : 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "var(--app-font,'Manrope'),system-ui,sans-serif", color: '#e8eaf3' }; }
   openEd(kind, src) {
-    const d = { kind, id: null, exists: false, name: '', ready: false, plat: kind === 'tpl' ? null : 'th', persona: null, account: null, type: kind === 'tpl' ? null : 'th_text', media: [], sound: null, sounds: [], caption: '', lang: 'FR', fc: '', showFc: false, feed: false, feedCfg: { min: 1, max: 3, beh: null }, variants: [], scheduledAt: null, stats: null, status: null };
+    const d = { kind, id: null, exists: false, name: '', ready: false, plat: kind === 'tpl' ? null : 'th', persona: null, account: null, type: kind === 'tpl' ? null : 'th_text', media: [], sound: null, sounds: [], caption: '', lang: 'FR', fc: '', showFc: false, feed: false, feedCfg: { min: 1, max: 3, beh: null }, variants: [], scheduledAt: null, stats: null, status: null, storyTplId: null, stickers: null };
     if (src && kind === 'post') Object.assign(d, { id: src.id, exists: true, plat: src.plat, persona: src.persona, account: src.acc, type: src.type, media: src.media.slice(), caption: src.caption, lang: src.lang || 'FR', fc: src.fc || '', showFc: !!src.fc, scheduledAt: src.status === 'scheduled' ? src.date : null, status: src.status, sound: src.sound || null });
     if (src && kind === 'tpl') Object.assign(d, { id: src.id, exists: true, name: src.name, ready: src.ready, plat: src.plat, persona: src.persona, type: src.type, media: src.media.slice(), caption: src.caption, lang: src.lang || 'FR', fc: src.fc || '', showFc: !!src.fc, sound: src.sound !== undefined ? src.sound : (src.sounds || [])[0] || null, stats: src.stats, mVars: JSON.parse(JSON.stringify(src.mVars || [])), fcVars: (src.fcVars || []).slice() });
     d.mVars = d.mVars || []; d.mvIdx = 0; d.fcVars = d.fcVars || []; d.fcIdx = 0; this.setState({ ed: d, sched: null, accMenu: false, accQ: '', pvRaw: false, pvIdx: 0, pvTh: null });
@@ -3264,7 +3292,8 @@ class Component extends DCLogic {
       const stickers = ed.stickers || {};
       if (audioQuery) stickers.audio_query = audioQuery;
       if (ed.feed) { stickers.feed_session = true; stickers.feed_cfg = ed.feedCfg; }
-      const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, stickers: Object.keys(stickers).length ? stickers : null, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null };
+      if (ed.storyTplId) stickers.story_template_id = ed.storyTplId;
+      const payload = { compte_id: obj.acc, caption: obj.caption, status, post_type: postType, media_urls: mediaUrls, first_comment: firstComment, stickers: Object.keys(stickers).length ? stickers : null, scheduled_at: obj.date ? new Date(obj.date).toISOString() : null, story_template_id: ed.storyTplId || null };
       const dispatchPub = function(pubId) { if (!asDraft && !sch) { SD.apiAsync('POST', '/posting/publications/' + pubId + '/publish').then(function(r) { if (r && r.ok) me.toastMsg('Publication lancée sur l\'iPhone'); else me.toastMsg('Erreur dispatch: ' + (r && r.detail || '?'), true); }); } };
       if (ed.id && isUUID(ed.id)) {
         SD.apiPatch('/posting/publications/' + ed.id, payload);
@@ -3306,7 +3335,7 @@ class Component extends DCLogic {
     const stL = st => st === 'session' ? ['En session', '#2dd4a8'] : st === 'error' ? ['Checkpoint', '#f4728c'] : ['Idle', '#6b7189'];
     const setPlat = pl => { const types = this.TYPES[pl]; this.upd({ mVars: [], mvIdx: 0, plat: pl, type: isTpl ? null : types[0][0], media: [], sound: null, sounds: pl === 'ig' ? ed.sounds : [], account: acc && acc.plat === pl ? ed.account : null }); };
     const setPersona = pid => this.upd({ mVars: ed.persona === pid ? ed.mVars : [], mvIdx: ed.persona === pid ? ed.mvIdx : 0, persona: pid, account: null, media: ed.persona === pid ? ed.media : [] });
-    const setType = id => { const m = this.typeOf(id).mode; this.upd({ mVars: [], mvIdx: 0, type: id, media: m === 0 ? [] : m === 1 ? ed.media.slice(0, 1) : ed.media, sound: (id === 'reel' || id === 'car') ? ed.sound : null }); };
+    const setType = id => { const m = this.typeOf(id).mode; this.upd({ mVars: [], mvIdx: 0, type: id, media: m === 0 ? [] : m === 1 ? (id === 'story' ? [] : ed.media.slice(0, 1)) : ed.media, sound: (id === 'reel' || id === 'car') ? ed.sound : null, storyTplId: id === 'story' ? ed.storyTplId : null, stickers: id === 'story' ? ed.stickers : null }); };
 
     const platChips = ['th', 'ig', 'x'].map(pl => ({ label: this.platLabel(pl), icon: this.platIcon(pl), style: this.chip(ed.plat === pl), go: () => setPlat(pl) }));
     const persChips = this.pers().map(p => ({ name: p.name, dotStyle: this.dot(p.color, 8), style: this.chip(ed.persona === p.id, p.color), go: () => setPersona(p.id) }));
@@ -3411,6 +3440,25 @@ class Component extends DCLogic {
       accQ: s.accQ, setAccQ: e => this.setState({ accQ: e.target.value }), accOpts, accEmpty: !accOpts.length,
       accEmptyText: pool.length ? 'Aucun résultat' : 'Aucun compte ' + (ed.plat ? this.platLabel(ed.plat) : '') + ' lié à ' + (per ? per.name : 'cette persona'),
       needsMedia, mediaLocked: locked && needsMedia, mediaEmpty: !locked && !mm.length, hasMedia: !locked && mm.length > 0,
+      edIsStory: isPost && ed.type === 'story', edNotStory: !(isPost && ed.type === 'story'),
+      ...(() => {
+        if (!(isPost && ed.type === 'story')) return {};
+        const allSt = (s.storyTpls || []);
+        const stPer = ed.persona;
+        const stList = stPer ? allSt.filter(t => t.persona === stPer) : allSt;
+        const selTpl = ed.storyTplId ? allSt.find(t => t.id === ed.storyTplId) : null;
+        const stMini = t => this.stkMini(t, 80);
+        return {
+          edStoryTplSel: !!selTpl, edStoryTplNone: !selTpl,
+          edStoryTplName: selTpl ? selTpl.name : '',
+          edStoryTplMeta: selTpl ? selTpl.els.length + ' stickers · @' + selTpl.username : '',
+          edStoryTplThumb: selTpl ? { position: 'relative', width: 48, height: 85, flex: 'none', overflow: 'hidden', borderRadius: 8, background: this.storyBg(selTpl), border: '1px solid rgba(255,255,255,.06)' } : {},
+          ...(selTpl ? this.stkMini(selTpl, 48) : { edStoryTplEls: [], edStoryTplStage: {} }),
+          clearStoryTpl: () => this.upd({ storyTplId: null, stickers: null, media: [] }),
+          edStoryTplEmpty: !stList.length, edStoryTplHas: stList.length > 0,
+          edStoryTpls: stList.map(t => { const mini = stMini(t); return { ...mini, name: t.name, wrap: { position: 'relative', width: '100%', aspectRatio: '9/16', overflow: 'hidden', borderRadius: 10, cursor: 'pointer', background: this.storyBg(t), border: '1px solid rgba(255,255,255,.08)', transition: 'border-color .15s, box-shadow .15s' }, pick: () => { const stickerMap = {}; t.els.forEach(el => { stickerMap[el.kind] = stickerMap[el.kind] || []; stickerMap[el.kind].push({ type: el.kind, x: el.x, y: el.y, scale: el.scale, rot: el.rot, text: el.text, color: el.color }); }); this.upd({ storyTplId: t.id, media: t.media.slice(), stickers: { story_template_id: t.id, elements: t.els.map(el => ({ type: el.kind, x: el.x, y: el.y, scale: el.scale, rot: el.rot, text: el.text, color: el.color })) } }); } }; })
+        };
+      })(),
       lockText: 'Choisis persona, plateforme et type de post pour débloquer les médias',
       mediaHint: mode === 2 ? mm.length + ' / ' + (this.MAXM[ed.type] || 10) + (mm.length > 1 ? ' · glisse pour réordonner' : '') : mode === 1 ? '1 média' : '',
       openPicker: () => this.openPicker(),
@@ -3453,6 +3501,7 @@ class Component extends DCLogic {
       pvLabel: ed.plat ? this.platLabel(ed.plat) + (t ? ' · ' + t.label : '') + (vars.length ? ' · Variante ' + String.fromCharCode(65 + vi) : '') : '',
       pvModes: [['res', 'Résolu'], ['raw', 'Variables']].map(x => { const on = (x[0] === 'raw') === raw; return { label: x[1], go: () => this.setState({ pvRaw: x[0] === 'raw' }), style: { padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', color: on ? '#f2f3fa' : '#8a91a8', background: on ? 'rgba(255,255,255,.1)' : 'transparent' } }; }),
       pvNone: !ed.plat, pvIsTh: ed.plat === 'th', pvIsX: ed.plat === 'x', pvIsIgFeed: ig && !vert, pvIsIgVert: vert, pvIsStory: ed.type === 'story', pvIsReel: ed.type === 'reel',
+      ...(() => { const selT = ed.storyTplId ? (s.storyTpls || []).find(t => t.id === ed.storyTplId) : null; if (!selT || ed.type !== 'story') return { pvStoryTplEls: null }; const pvW = 330; const mini = this.stkMini(selT, pvW); return { pvStoryTplEls: mini.els, pvStoryTplStage: mini.stage }; })(),
       pvUser: user, pvName: per ? per.name : 'Nom', pvIni: this.ini(user), pvTime: sched ? this.pad(sched.getDate()) + ' ' + this.MOS[sched.getMonth()] : 'maintenant',
       pvAv: this.avStyle(color, 36, 99), pvAvX: this.avStyle(color, 38, 99), pvAvSm: this.avStyle(color, 28, 99), pvAvIg: { ...this.avStyle(color, 28, 99), boxShadow: '0 0 0 2px #0c0d14, 0 0 0 3.5px ' + color },
       pvSegs: this.segs(ed.caption, c, raw), pvNoText: !ed.caption.trim(), pvHasFc: ed.showFc && !!fcView.trim(), pvFcSegs: this.segs(fcView, c, raw),
