@@ -490,8 +490,26 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     await asyncio.sleep(3)
     await _dismiss_popups(driver, log)
 
-    # Verifier editeur story
-    if not await _verify_screen(driver, ["Partager", "Votre story", "menu de cr", "Aa", "Fermer la"], "editeur story", log):
+    # Verifier editeur story (pas camera)
+    for retry in range(2):
+        await driver.find_element(text="__refresh__", refresh=True)
+        els = driver.elements
+        all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
+        # Si on est en mode camera ("caméra de la story" visible mais pas "Partager"), retourner
+        if "ra de la story" in all_text.lower() and "partager" not in all_text.lower():
+            log("   [check] mode camera detecte — retour galerie (retry %d)" % (retry + 1))
+            back = await driver.find_element(text="Fermer", contains=True, clickable=True)
+            if back:
+                await driver.ht.tap(back["tap"]["x"], back["tap"]["y"])
+                await asyncio.sleep(2)
+                # Re-selectionner une vraie photo (index+1 pour eviter le meme)
+                await _select_photo(driver, log, index=photo_index + 1)
+                await asyncio.sleep(3)
+                await _dismiss_popups(driver, log)
+                continue
+        break
+
+    if not await _verify_screen(driver, ["Partager dans votre story", "Votre story", "menu de cr", "Dessiner", "Texte, bouton"], "editeur story", log):
         log("   ! editeur story non detecte — abandon")
         return {"published": False, "error": "story_editor_not_reached"}
 
