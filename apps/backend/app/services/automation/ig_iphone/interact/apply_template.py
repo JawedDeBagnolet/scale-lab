@@ -199,8 +199,8 @@ async def _add_and_position(driver, sticker, log=print):
             song_artist = sticker.get("artist", "")
         
         duration = sticker.get("duration_s", 15)
-        style = sticker.get("variant", "uniquement")
-        await add_music_sticker(driver, song=song_title, artist=song_artist, style=style, duration_s=duration, log=log)
+        style = sticker.get("variant", None)
+        await add_music_sticker(driver, song=song_title, artist=song_artist, style=style, clip_duration=duration, log=log)
         # Le sticker musique contient le nom du morceau
         sticker_name = song_title[:15] if song_title else "musique"
         await asyncio.sleep(1)
