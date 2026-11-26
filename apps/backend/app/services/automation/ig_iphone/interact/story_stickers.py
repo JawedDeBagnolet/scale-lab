@@ -150,22 +150,37 @@ async def add_location_sticker(driver, location, variant_taps=0, log=print):
         await driver.type_text(location, method="fast")
         await asyncio.sleep(2.5)  # attendre les resultats
 
-    # Selectionner le premier resultat (format: "Nom du lieu, ...")
-    results = await driver.find_elements(text="Nom du lieu", contains=True, clickable=True, refresh=True)
-    if results:
-        tap = results[0].get('tap', {})
-        log("   selectionne '%s'" % (results[0].get('text', '')[:50]))
-        await driver.ht.tap(tap['x'], tap['y'])
-        await driver.wait('transition')
-        await asyncio.sleep(1.5)
+    # Selectionner le premier resultat de recherche
+    # Les resultats sont des lignes comme "Paris, France" entre y=250 et y=550
+    # (au-dessus = barre de recherche, en-dessous = clavier)
+    results = await driver.find_elements(text=location, contains=True, clickable=True, refresh=True)
+    # Filtrer : garder les resultats dans la zone de resultats (pas search bar, pas clavier)
+    location_results = [
+        r for r in results
+        if 240 < r.get('tap', {}).get('y', 0) < 550
+        and r.get('text', '').lower() != location.lower()  # exclure le texte tape
+    ]
+    if not location_results:
+        # Fallback: chercher "Nom du lieu" (ancien format)
+        results2 = await driver.find_elements(text="Nom du lieu", contains=True, clickable=True, refresh=True)
+        location_results = [r for r in results2 if 240 < r.get('tap', {}).get('y', 0) < 700]
 
-        # Apercu carte → "Ajouter" (188, 740)
+    if location_results:
+        chosen = location_results[0]
+        tap = chosen.get('tap', {})
+        log("   selectionne '%s'" % (chosen.get('text', '')[:50]))
+        await driver.ht.tap(tap['x'], tap['y'])
+        await asyncio.sleep(2)
+
+        # Si un ecran de confirmation "Ajouter" apparait (apercu carte)
         add_btn = await driver.find_element(text="Ajouter", clickable=True, refresh=True)
         if add_btn:
-            tap = add_btn.get('tap', {})
-            await driver.ht.tap(tap['x'], tap['y'])
-            await driver.wait('transition')
-            await asyncio.sleep(1.5)
+            # Verifier que c'est pas "Ajouter un lieu" (y < 600)
+            add_y = add_btn.get('tap', {}).get('y', 0)
+            if add_y > 600:
+                tap = add_btn.get('tap', {})
+                await driver.ht.tap(tap['x'], tap['y'])
+                await asyncio.sleep(1.5)
     else:
         log("   ! aucun resultat pour '%s'" % location)
         return False
