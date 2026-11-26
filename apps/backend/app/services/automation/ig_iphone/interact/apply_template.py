@@ -463,6 +463,11 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
 
     log("=== apply_template: %s, %d stickers ===" % (context, len(stickers)))
 
+    # 0. Naviguer vers le profil (open_story_editor suppose qu'on y est)
+    log("[0] Navigation vers profil")
+    await navigator.go_profile()
+    await asyncio.sleep(1)
+
     # 1-3. Ouvrir editeur story (flow teste E2E : menu creation → Story → photo → popup OK)
     log("[1-3] open_story_editor (media_index=%d)" % photo_index)
     await open_story_editor(driver, media_index=photo_index, log=log)
