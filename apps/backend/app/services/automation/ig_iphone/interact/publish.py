@@ -94,7 +94,7 @@ async def _select_photo(driver, log, index=0) -> bool:
     for attempt in range(3):
         els = await driver.find_elements(contains="Miniature", clickable=True, refresh=True)
         # Filtrer : garder les elements dans la grille (tap.y > 220, exclut header)
-        photos = [e for e in els if e.get('tap', {}).get('y', 0) > 220]
+        photos = [e for e in els if e.get('tap', {}).get('y', 0) > 350]
         photos.sort(key=lambda e: (e.get('tap', {}).get('y', 0), e.get('tap', {}).get('x', 0)))
         if photos:
             break

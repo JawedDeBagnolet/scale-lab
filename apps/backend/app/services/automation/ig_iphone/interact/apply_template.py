@@ -12,6 +12,7 @@ Usage:
 import sys
 import time
 import json
+import asyncio
 
 sys.path.insert(0, "/root")
 
@@ -74,7 +75,7 @@ async def _find_sticker(driver, name_contains, log=print):
 
 async def _move_sticker(driver, sticker_name, target_x, target_y, log=print):
     """Deplace un sticker de sa position actuelle vers la cible."""
-    s = _find_sticker(driver, sticker_name, log)
+    s = await _find_sticker(driver, sticker_name, log)
     if not s:
         log("   ! sticker '%s' non trouve pour drag" % sticker_name)
         return False
@@ -90,7 +91,7 @@ async def _resize_sticker(driver, sticker_name, scale, log=print):
     if abs(scale - 1.0) < 0.05:
         return True  # pas besoin
     
-    s = _find_sticker(driver, sticker_name, log)
+    s = await _find_sticker(driver, sticker_name, log)
     if not s:
         log("   ! sticker '%s' non trouve pour pinch" % sticker_name)
         return False
@@ -109,7 +110,7 @@ async def _rotate_sticker(driver, sticker_name, angle, log=print):
     if abs(angle) < 2:
         return True  # pas besoin
     
-    s = _find_sticker(driver, sticker_name, log)
+    s = await _find_sticker(driver, sticker_name, log)
     if not s:
         log("   ! sticker '%s' non trouve pour rotate" % sticker_name)
         return False
@@ -158,7 +159,7 @@ async def _add_and_position(driver, sticker, log=print):
     log("  [%s] ajout..." % stype)
     
     # Snapshot avant ajout
-    _before = _get_snapshot(driver)
+    _before = await _get_snapshot(driver)
     
     # Nom du sticker pour le retrouver apres ajout
     sticker_name = None
@@ -177,21 +178,21 @@ async def _add_and_position(driver, sticker, log=print):
         
         duration = sticker.get("duration_s", 15)
         style = sticker.get("variant", "uniquement")
-        add_music_sticker(driver, song=song_title, artist=song_artist, style=style, duration_s=duration, log=log)
+        await add_music_sticker(driver, song=song_title, artist=song_artist, style=style, duration_s=duration, log=log)
         # Le sticker musique contient le nom du morceau
         sticker_name = song_title[:15] if song_title else "musique"
         await asyncio.sleep(1)
     
     elif stype == "location":
         place = sticker.get("place", "Paris")
-        add_location_sticker(driver, place, log=log)
+        await add_location_sticker(driver, place, log=log)
         sticker_name = "Sticker de lieu"
         await asyncio.sleep(1)
     
     elif stype == "link":
         url = sticker.get("url", "")
         text = sticker.get("linkText", "")
-        add_link_sticker(driver, url, text=text, log=log)
+        await add_link_sticker(driver, url, text=text, log=log)
         sticker_name = "Sticker de lien"
         await asyncio.sleep(1)
     
@@ -199,13 +200,13 @@ async def _add_and_position(driver, sticker, log=print):
         question = sticker.get("question", "")
         opt1 = sticker.get("opt1", "Oui")
         opt2 = sticker.get("opt2", "Non")
-        add_poll_sticker(driver, question, options=[opt1, opt2], log=log)
+        await add_poll_sticker(driver, question, options=[opt1, opt2], log=log)
         sticker_name = "Sticker de sondage"
         await asyncio.sleep(1)
     
     elif stype == "question":
         prompt = sticker.get("prompt", "")
-        add_question_sticker(driver, prompt, log=log)
+        await add_question_sticker(driver, prompt, log=log)
         sticker_name = "Sticker de question"
         await asyncio.sleep(1)
     
@@ -218,7 +219,7 @@ async def _add_and_position(driver, sticker, log=print):
             await driver.ht._call("input_text", {"text": "@" + username})
             await asyncio.sleep(0.5)
             # Tap Termine
-            el = _find_sticker(driver, "Termin", log)
+            el = await _find_sticker(driver, "Termin", log)
             if el:
                 await driver.ht.tap(el["cx"], el["cy"])
                 await asyncio.sleep(1)
@@ -284,9 +285,9 @@ async def _add_and_position(driver, sticker, log=print):
         sx, sy = _t2s(tx, ty)
         
         # Trouver le sticker: par nom, par diff, ou par OCR
-        found = _find_sticker(driver, sticker_name, log)
+        found = await _find_sticker(driver, sticker_name, log)
         if not found:
-            _after = _get_snapshot(driver)
+            _after = await _get_snapshot(driver)
             found = _find_new_element(_before, _after)
         
         # Position actuelle du sticker
@@ -371,7 +372,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     
     # 1. Ouvrir creation story
     log("[1] Ouvrir menu creation")
-    _open_create_menu(driver, navigator, log)
+    await _open_create_menu(driver, navigator, log)
     await asyncio.sleep(2)
     
     # 2. Tap Story
@@ -383,7 +384,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     
     # 3. Selectionner photo
     log("[3] Select photo")
-    _select_photo(driver, log, index=photo_index)
+    await _select_photo(driver, log, index=photo_index)
     await asyncio.sleep(3)
     
     # 4. Ajouter chaque sticker (sauf media_placeholder/repost_media)
@@ -391,7 +392,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     
     for i, sticker in enumerate(real_stickers):
         log("[4.%d] Sticker: %s" % (i+1, sticker.get("type", sticker.get("kind","?"))))
-        _add_and_position(driver, sticker, log)
+        await _add_and_position(driver, sticker, log)
         await asyncio.sleep(1)
     
     # 5. Publier ou s'arreter
