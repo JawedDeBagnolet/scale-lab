@@ -476,7 +476,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     await _dismiss_popups(driver, log)
 
     # Verifier ecran selection photo
-    if not await _verify_screen(driver, ["galerie", "Boomerang", "Layout"], "selection photo", log):
+    if not await _verify_screen(driver, ["Ajouter à la story", "Miniature photo", "lection de galerie", "centes"], "selection photo", log):
         log("   ! ecran selection photo non detecte — abandon")
         return {"published": False, "error": "photo_selection_not_reached"}
 
@@ -487,7 +487,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     await _dismiss_popups(driver, log)
 
     # Verifier editeur story
-    if not await _verify_screen(driver, ["Partager", "Votre story", "menu de cr"], "editeur story", log):
+    if not await _verify_screen(driver, ["Partager", "Votre story", "menu de cr", "Aa", "Fermer la"], "editeur story", log):
         log("   ! editeur story non detecte — abandon")
         return {"published": False, "error": "story_editor_not_reached"}
 
