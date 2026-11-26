@@ -29,8 +29,8 @@ logger = logging.getLogger("ig_iphone.media")
 IPHONE_TMP = "/var/mobile/Media/th_media"
 LOCAL_TMP = "/tmp/th_media_staging"
 SPOOF_SERVER = "http://127.0.0.1:8502"  # VPS localhost
-MTOUCH_PORT_IPHONE = 8091  # MTOUCH port sur l'iPhone
-MTOUCH_PORT_VPS = 8191     # MTOUCH tunnel sur le VPS (127.0.0.1:8191 → iPhone:8091)
+MTOUCH_PORT_IPHONE = 8195  # RTInject port sur l'iPhone (SpringBoard, /import)
+MTOUCH_PORT_VPS = 8191     # RTInject tunnel sur le VPS (127.0.0.1:8191 → iPhone:8195)
 
 # SSH tunnel ports (VPS → iPhone via reverse tunnel)
 DEFAULT_SSH_PORT = 2223
