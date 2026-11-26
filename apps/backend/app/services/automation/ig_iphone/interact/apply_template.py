@@ -456,62 +456,16 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     if isinstance(template, str):
         template = json.loads(template)
 
-    from app.services.automation.ig_iphone.interact.publish import _open_create_menu, _select_photo
+    from app.services.automation.ig_iphone.interact.story_stickers import open_story_editor
 
     stickers = template.get("stickers", [])
     context = template.get("context", "free")
 
     log("=== apply_template: %s, %d stickers ===" % (context, len(stickers)))
 
-    # 1. Ouvrir creation story
-    log("[1] Ouvrir menu creation")
-    await _open_create_menu(driver, navigator, log)
-    await asyncio.sleep(2)
-    await _dismiss_popups(driver, log)
-
-    # 2. Tap Story + verifier
-    log("[2] Tap Story")
-    el = await driver.find_element(text="Story", contains=True, clickable=True, refresh=True)
-    if not el:
-        log("   ! bouton Story non trouve — abandon")
-        return {"published": False, "error": "story_button_not_found"}
-    await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
-    await asyncio.sleep(2)
-    await _dismiss_popups(driver, log)
-
-    # Verifier ecran selection photo
-    if not await _verify_screen(driver, ["Ajouter à la story", "Miniature photo", "lection de galerie", "centes"], "selection photo", log):
-        log("   ! ecran selection photo non detecte — abandon")
-        return {"published": False, "error": "photo_selection_not_reached"}
-
-    # 3. Selectionner photo + verifier
-    log("[3] Select photo")
-    await _select_photo(driver, log, index=photo_index)
-    await asyncio.sleep(3)
-    await _dismiss_popups(driver, log)
-
-    # Verifier editeur story (pas camera)
-    for retry in range(2):
-        await driver.find_element(text="__refresh__", refresh=True)
-        els = driver.elements
-        all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
-        # Si on est en mode camera ("caméra de la story" visible mais pas "Partager"), retourner
-        if "ra de la story" in all_text.lower() and "partager" not in all_text.lower():
-            log("   [check] mode camera detecte — retour galerie (retry %d)" % (retry + 1))
-            back = await driver.find_element(text="Fermer", contains=True, clickable=True)
-            if back:
-                await driver.ht.tap(back["tap"]["x"], back["tap"]["y"])
-                await asyncio.sleep(2)
-                # Re-selectionner une vraie photo (index+1 pour eviter le meme)
-                await _select_photo(driver, log, index=photo_index + 1)
-                await asyncio.sleep(3)
-                await _dismiss_popups(driver, log)
-                continue
-        break
-
-    if not await _verify_screen(driver, ["Partager dans votre story", "Votre story", "menu de cr", "Dessiner", "Texte, bouton"], "editeur story", log):
-        log("   ! editeur story non detecte — abandon")
-        return {"published": False, "error": "story_editor_not_reached"}
+    # 1-3. Ouvrir editeur story (flow teste E2E : menu creation → Story → photo → popup OK)
+    log("[1-3] open_story_editor (media_index=%d)" % photo_index)
+    await open_story_editor(driver, media_index=photo_index, log=log)
 
     # 4. Ajouter chaque sticker
     real_stickers = [s for s in stickers if s.get("type", s.get("kind","")) not in ("media_placeholder", "repost_media")]
