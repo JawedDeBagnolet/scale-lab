@@ -65,7 +65,10 @@ async def _load_template(db: AsyncSession, template_id: str) -> dict | None:
         "color": tpl.color,
         "media_ids": tpl.media_ids or [],
         "bg_idx": tpl.bg_idx,
-        "stickers": tpl.elements or [],
+        "stickers": [
+            {**s, "type": s.get("type", s.get("kind", "unknown"))}
+            for s in (tpl.elements or [])
+        ],
         "moments": tpl.moments or [],
         "context": "planner",
     }

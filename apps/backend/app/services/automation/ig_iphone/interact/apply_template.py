@@ -149,7 +149,7 @@ async def _add_and_position(driver, sticker, log=print):
         add_poll_sticker, add_question_sticker
     )
     
-    stype = sticker["type"]
+    stype = sticker.get("type", sticker.get("kind", "unknown"))
     tx = sticker.get("x", 540)
     ty = sticker.get("y", 960)
     scale = sticker.get("scale", 1.0)
@@ -228,9 +228,9 @@ async def _add_and_position(driver, sticker, log=print):
         content = sticker.get("content", "Texte")
         # Tap Aa -> ecrire naturellement -> Termine
         log("   [text] -> '%s'" % content[:30])
-        aa = await driver.find_element(contains="Texte, bouton", clickable=True, refresh=True)
+        aa = await driver.find_element(text="Texte, bouton", contains=True, clickable=True, refresh=True)
         if not aa:
-            aa = await driver.find_element(contains="Aa", clickable=True, refresh=True)
+            aa = await driver.find_element(text="Aa", contains=True, clickable=True, refresh=True)
         if aa:
             await driver.ht.tap(aa["tap"]["x"], aa["tap"]["y"])
         else:
@@ -241,7 +241,7 @@ async def _add_and_position(driver, sticker, log=print):
             import random
             await asyncio.sleep(random.uniform(0.03, 0.08))
         await asyncio.sleep(0.5)
-        el = await driver.find_element(contains="Termin", clickable=True, refresh=True)
+        el = await driver.find_element(text="Termin", contains=True, clickable=True, refresh=True)
         if el:
             await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
             await asyncio.sleep(1)
@@ -256,9 +256,9 @@ async def _add_and_position(driver, sticker, log=print):
             return
         await asyncio.sleep(1)
         # Chercher la barre de recherche dans les stickers
-        search = await driver.find_element(contains="Rechercher", clickable=True, refresh=True)
+        search = await driver.find_element(text="Rechercher", contains=True, clickable=True, refresh=True)
         if not search:
-            search = await driver.find_element(contains="rechercher", clickable=True, refresh=True)
+            search = await driver.find_element(text="rechercher", contains=True, clickable=True, refresh=True)
         if search:
             await driver.ht.tap(search["tap"]["x"], search["tap"]["y"])
             await asyncio.sleep(0.5)
@@ -376,7 +376,7 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     
     # 2. Tap Story
     log("[2] Tap Story")
-    el = await driver.find_element(contains="Story", clickable=True, refresh=True)
+    el = await driver.find_element(text="Story", contains=True, clickable=True, refresh=True)
     if el:
         await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
         await asyncio.sleep(2)
@@ -387,17 +387,17 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     await asyncio.sleep(3)
     
     # 4. Ajouter chaque sticker (sauf media_placeholder/repost_media)
-    real_stickers = [s for s in stickers if s["type"] not in ("media_placeholder", "repost_media")]
+    real_stickers = [s for s in stickers if s.get("type", s.get("kind","")) not in ("media_placeholder", "repost_media")]
     
     for i, sticker in enumerate(real_stickers):
-        log("[4.%d] Sticker: %s" % (i+1, sticker["type"]))
+        log("[4.%d] Sticker: %s" % (i+1, sticker.get("type", sticker.get("kind","?"))))
         _add_and_position(driver, sticker, log)
         await asyncio.sleep(1)
     
     # 5. Publier ou s'arreter
     if publish:
         log("[5] Publication...")
-        el = await driver.find_element(contains="Partager dans votre story", clickable=True, refresh=True)
+        el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
         if el:
             await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
             await asyncio.sleep(3)
@@ -458,9 +458,9 @@ async def repost_to_story(driver, log=print):
     await asyncio.sleep(2)
     
     # 2. Tap sur "Ajouter a la story"
-    el = await driver.find_element(contains="Ajouter", clickable=True, refresh=True)
+    el = await driver.find_element(text="Ajouter", contains=True, clickable=True, refresh=True)
     if not el:
-        el = await driver.find_element(contains="story", clickable=True, refresh=True)
+        el = await driver.find_element(text="story", contains=True, clickable=True, refresh=True)
     if el:
         await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
         log("   tap Ajouter a la story")
@@ -481,12 +481,12 @@ async def repost_to_story(driver, log=print):
         pass
     
     # 3. Verifier qu on est dans l editeur story
-    el = await driver.find_element(contains="Partager dans votre story", clickable=True, refresh=True)
+    el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
     if el:
         log("[REPOST] editeur story ouvert")
         return True
     
-    el = await driver.find_element(contains="Texte", clickable=True, refresh=True)
+    el = await driver.find_element(text="Texte", contains=True, clickable=True, refresh=True)
     if el:
         log("[REPOST] editeur story ouvert")
         return True
@@ -503,7 +503,7 @@ async def repost_and_publish(driver, navigator=None, log=print):
         return False
     
     await asyncio.sleep(2)
-    el = await driver.find_element(contains="Partager dans votre story", clickable=True, refresh=True)
+    el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
     if el:
         await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
         log("[REPOST] story publiee!")
