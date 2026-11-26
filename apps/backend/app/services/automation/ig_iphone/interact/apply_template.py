@@ -13,6 +13,7 @@ import sys
 import time
 import json
 import asyncio
+import random
 
 sys.path.insert(0, "/root")
 
@@ -149,12 +150,33 @@ async def _add_and_position(driver, sticker, log=print):
         add_music_sticker, add_location_sticker, add_link_sticker,
         add_poll_sticker, add_question_sticker
     )
-    
+
     stype = sticker.get("type", sticker.get("kind", "unknown"))
     tx = sticker.get("x", 540)
     ty = sticker.get("y", 960)
     scale = sticker.get("scale", 1.0)
-    rotation = sticker.get("rotation", 0)
+    rotation = sticker.get("rotation", sticker.get("rot", 0))
+
+    # Normalize fields from frontend template format → apply_template format
+    # Frontend sends "text" as the universal content field
+    text = sticker.get("text", "")
+    if stype == "location" and "place" not in sticker:
+        sticker = {**sticker, "place": text}
+    elif stype == "question" and "prompt" not in sticker:
+        sticker = {**sticker, "prompt": text}
+    elif stype == "poll" and "question" not in sticker:
+        opts = sticker.get("pollOpts", ["Oui", "Non"])
+        sticker = {**sticker, "question": text, "opt1": opts[0] if opts else "Oui", "opt2": opts[1] if len(opts) > 1 else "Non"}
+    elif stype == "mention" and "username" not in sticker:
+        sticker = {**sticker, "username": text.lstrip("@")}
+    elif stype == "text" and "content" not in sticker:
+        sticker = {**sticker, "content": text}
+    elif stype == "link" and "url" not in sticker:
+        sticker = {**sticker, "url": sticker.get("linkUrl", text), "linkText": text}
+    elif stype == "music" and "song" not in sticker:
+        # text format: "Title · Artist"
+        parts = text.split(" · ", 1) if " · " in text else [text, ""]
+        sticker = {**sticker, "song": parts[0], "artist": parts[1] if len(parts) > 1 else ""}
     
     log("  [%s] ajout..." % stype)
     
@@ -399,16 +421,20 @@ async def apply_template(driver, navigator, template, publish=False, photo_index
     if publish:
         log("[5] Publication...")
         el = await driver.find_element(text="Partager dans votre story", contains=True, clickable=True, refresh=True)
+        if not el:
+            el = await driver.find_element(text="Votre story", contains=True, clickable=True, refresh=True)
         if el:
             await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
-            await asyncio.sleep(3)
+            await asyncio.sleep(random.uniform(3.0, 5.0))
             log("=== Story publiee ===")
+            return {"published": True}
         else:
             log("   ! bouton Partager non trouve")
+            return {"published": False}
     else:
         log("=== STOP - publish=False, story prete ===")
-    
-    return True
+
+    return {"published": False}
 
 
 if __name__ == "__main__":

@@ -432,7 +432,7 @@ async def _publish_post(drv, nav, sess, values, log):
 
 @_handler("ig_story_post")
 async def _publish_story(drv, nav, sess, values, log):
-    """Publish a story."""
+    """Publish a story — with template (elements) or flat stickers."""
     from app.services.automation.ig_iphone.interact.publish import publish_story
     from app.services.automation.ig_iphone.media import push_media_to_gallery, cleanup_gallery_via_mtouch
     from app.config import settings
@@ -450,11 +450,21 @@ async def _publish_story(drv, nav, sess, values, log):
         pushed = True
         await asyncio.sleep(2.0)
 
-    caption = values.get("text", values.get("caption"))
     stickers = values.get("stickers")
-    stats = await publish_story(drv, nav, caption=caption, stickers=stickers, log=log)
 
-    published = stats.get("published", False)
+    # Template path: stickers contains "elements" list with positions
+    if stickers and isinstance(stickers.get("elements"), list) and stickers["elements"]:
+        from app.services.automation.ig_iphone.interact.apply_template import apply_template
+        log("   -> mode template (%d éléments)" % len(stickers["elements"]))
+        template = {"stickers": stickers["elements"], "context": "publish_modal"}
+        stats = await apply_template(drv, nav, template, publish=True, log=log)
+        published = stats.get("published", False) if isinstance(stats, dict) else bool(stats)
+    else:
+        # Flat stickers path (legacy: stickers.link, stickers.poll, etc.)
+        caption = values.get("text", values.get("caption"))
+        stats = await publish_story(drv, nav, caption=caption, stickers=stickers, log=log)
+        published = stats.get("published", False)
+
     if published and pushed:
         try:
             await cleanup_gallery_via_mtouch(1, log=log)
