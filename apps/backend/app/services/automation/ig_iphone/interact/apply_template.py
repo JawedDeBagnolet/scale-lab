@@ -382,6 +382,7 @@ async def _dismiss_popups_inner(driver, log):
     dismissed = False
     for _ in range(3):
         await asyncio.sleep(0.5)
+        await driver.find_element(text="__refresh__", refresh=True)
         els = driver.elements
         all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
         # Popup systeme: "souhaite accéder" → tap OK
@@ -420,6 +421,8 @@ async def _dismiss_popups_inner(driver, log):
 
 async def _verify_screen(driver, expected_texts, label, log=print):
     """Verifie que l'ecran contient au moins un des textes attendus."""
+    # Force refresh des elements UI
+    await driver.find_element(text="__refresh__", refresh=True)
     els = driver.elements
     all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
     for txt in expected_texts:
@@ -428,6 +431,7 @@ async def _verify_screen(driver, expected_texts, label, log=print):
             return True
     log("   [check] %s — texte attendu non trouve, dismiss popups..." % label)
     if await _dismiss_popups(driver, log):
+        await driver.find_element(text="__refresh__", refresh=True)
         els = driver.elements
         all_text = " ".join([e.get("text", "") for e in els if e.get("text")])
         for txt in expected_texts:
