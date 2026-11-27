@@ -198,7 +198,7 @@ async def _add_and_position(driver, sticker, log=print):
             song_title = sticker.get("song", "")
             song_artist = sticker.get("artist", "")
         
-        duration = sticker.get("duration_s", 15)
+        duration = sticker.get("duration_s", None)
         style = sticker.get("variant", None)
         await add_music_sticker(driver, song=song_title, artist=song_artist, style=style, clip_duration=duration, log=log)
         # Musique: pas de repositionnement (sticker complexe, drag trouve les mauvais elements)
