@@ -742,7 +742,8 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
             create_new = True
 
     if create_new:
-        # Le bouton "Nouveau" n'est pas dans l'arbre → OCR
+        # Le bouton "Nouveau" (0 highlights) ou "+" (highlights existants)
+        # n'est pas dans l'arbre → OCR
         ocr = await driver.ht._call("ocr_screen")
         nouveau_found = False
         if ocr:
@@ -752,20 +753,21 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
                 if content and isinstance(content, list):
                     data = json.loads(content[0].get("text", "{}"))
                     for item in data.get("texts", []):
-                        txt = item.get("text", "").lower()
-                        if "nouveau" in txt or "new" in txt:
+                        txt = item.get("text", "").strip()
+                        # "Nouveau" quand 0 highlights, "+" quand il y en a deja
+                        if txt.lower() in ("nouveau", "new") or txt in ("+", "＋"):
                             tx = item["tap"]["x"]
                             ty = item["tap"]["y"]
-                            log("   OCR: Nouveau a (%d, %d)" % (tx, ty))
+                            log("   OCR: '%s' a (%d, %d)" % (txt, tx, ty))
                             await driver.ht.tap(tx, ty)
                             nouveau_found = True
                             break
             except Exception:
                 pass
         if not nouveau_found:
-            # Fallback coords (valide sur iPhone X)
-            log("   Nouveau (fallback 65, 744)")
-            await driver.ht.tap(65, 744)
+            # Fallback: bouton + en haut a droite du bottom sheet
+            log("   Nouveau/+ (fallback 347, 550)")
+            await driver.ht.tap(347, 550)
         await asyncio.sleep(1.5)
         await _human_pause(0.2, 0.5)
 
