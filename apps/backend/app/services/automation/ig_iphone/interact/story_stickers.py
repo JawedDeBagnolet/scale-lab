@@ -907,7 +907,14 @@ async def rename_highlight(driver, highlight_name, new_name, log=print):
 
     # 6. Valider avec "C'est fait"
     await _tap_done(driver, log)
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
+
+    # 7. Dismiss popup promo ("Ajoutez votre contenu à la une") → tap haut ecran
+    el = await driver.find_element(text="Ajoutez votre contenu", contains=True, refresh=True)
+    if el:
+        log("   dismiss popup promo highlight")
+        await driver.ht.tap(188, 100)
+        await asyncio.sleep(1)
 
     log("   highlight renomme -> '%s'" % new_name)
     return True
@@ -943,6 +950,14 @@ async def delete_highlight(driver, highlight_name, log=print):
     else:
         log("   ! bouton confirmation non trouve")
         return False
+
+    # 4. Dismiss popup promo si present
+    await asyncio.sleep(0.5)
+    el = await driver.find_element(text="Ajoutez votre contenu", contains=True, refresh=True)
+    if el:
+        log("   dismiss popup promo highlight")
+        await driver.ht.tap(188, 100)
+        await asyncio.sleep(1)
 
     log("   highlight '%s' supprime" % highlight_name)
     return True
