@@ -880,33 +880,33 @@ async def rename_highlight(driver, highlight_name, new_name, log=print):
     await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
     await asyncio.sleep(2)
 
-    # 3. Tap sur le champ nom (en haut de l'ecran de modification)
+    # 3. Tap sur le champ nom pour le selectionner
     name_el = await driver.find_element(text=highlight_name, contains=True, clickable=True, refresh=True)
     if name_el:
         await driver.ht.tap(name_el["tap"]["x"], name_el["tap"]["y"])
         await asyncio.sleep(0.5)
     else:
-        # Fallback: champ nom generalement en haut centre
-        await driver.ht.tap(188, 200)
+        await driver.ht.tap(188, 255)
         await asyncio.sleep(0.5)
 
-    # 4. Effacer le texte existant et ecrire le nouveau
-    # Select all + delete
-    for _ in range(len(highlight_name) + 5):
-        await driver.ht._call("press_key", {"key": "delete"})
-        await asyncio.sleep(0.05)
-    await asyncio.sleep(0.3)
+    # 4. Effacer via "Effacer le texte" (croix dans le champ)
+    clear = await driver.find_element(text="Effacer le texte", contains=True, clickable=True, refresh=True)
+    if clear:
+        await driver.ht.tap(clear["tap"]["x"], clear["tap"]["y"])
+        await asyncio.sleep(0.5)
+    else:
+        # Fallback: spammer delete
+        for _ in range(len(highlight_name) + 5):
+            await driver.ht._call("press_key", {"key": "delete"})
+            await asyncio.sleep(0.05)
+        await asyncio.sleep(0.3)
+
+    # 5. Ecrire le nouveau nom
     await driver.ht.type_text(new_name)
     await asyncio.sleep(0.5)
 
-    # 5. Valider
-    done = await driver.find_element(text="Termin", contains=True, clickable=True, refresh=True)
-    if not done:
-        done = await driver.find_element(text="OK", clickable=True, refresh=True)
-    if done:
-        await driver.ht.tap(done["tap"]["x"], done["tap"]["y"])
-    else:
-        await _tap_done(driver, log)
+    # 6. Valider avec "C'est fait"
+    await _tap_done(driver, log)
     await asyncio.sleep(1)
 
     log("   highlight renomme -> '%s'" % new_name)
