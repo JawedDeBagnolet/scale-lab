@@ -829,6 +829,125 @@ async def add_to_highlight(driver, highlight_name=None, create_new=False, log=pr
     return True
 
 
+async def _long_press_highlight(driver, highlight_name, log=print):
+    """Long press sur un highlight par nom via OCR. Retourne True si le menu s'ouvre."""
+    # 1. OCR pour localiser le highlight
+    ocr = await driver.ht._call("ocr_screen")
+    if not ocr:
+        log("   ! OCR indisponible")
+        return False
+    import json
+    try:
+        content = ocr.get("content", [])
+        if content and isinstance(content, list):
+            data = json.loads(content[0].get("text", "{}"))
+            for item in data.get("texts", []):
+                if highlight_name.lower() in item.get("text", "").lower():
+                    tx = item["tap"]["x"]
+                    ty = item["tap"]["y"]
+                    log("   OCR: highlight '%s' a (%d, %d)" % (highlight_name, tx, ty))
+                    # Long press via MCP
+                    await driver.ht._call("long_press", {"x": tx, "y": ty})
+                    await asyncio.sleep(1.5)
+                    return True
+    except Exception as e:
+        log("   ! OCR erreur: %s" % str(e)[:60])
+    log("   ! highlight '%s' non trouve en OCR" % highlight_name)
+    return False
+
+
+async def rename_highlight(driver, highlight_name, new_name, log=print):
+    """Renomme un highlight existant.
+
+    Flow: Profil → long press highlight → "Modifier le contenu à la une"
+          → champ nom → effacer → ecrire nouveau nom → "Terminé"/"OK"
+
+    Args:
+        highlight_name: nom actuel du highlight
+        new_name: nouveau nom
+    """
+    log("   [highlight] renommer '%s' -> '%s'" % (highlight_name, new_name))
+
+    # 1. Long press sur le highlight
+    if not await _long_press_highlight(driver, highlight_name, log):
+        return False
+
+    # 2. Tap "Modifier le contenu à la une"
+    el = await driver.find_element(text="Modifier le contenu", contains=True, clickable=True, refresh=True)
+    if not el:
+        log("   ! 'Modifier le contenu' non trouve")
+        return False
+    await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
+    await asyncio.sleep(2)
+
+    # 3. Tap sur le champ nom (en haut de l'ecran de modification)
+    name_el = await driver.find_element(text=highlight_name, contains=True, clickable=True, refresh=True)
+    if name_el:
+        await driver.ht.tap(name_el["tap"]["x"], name_el["tap"]["y"])
+        await asyncio.sleep(0.5)
+    else:
+        # Fallback: champ nom generalement en haut centre
+        await driver.ht.tap(188, 200)
+        await asyncio.sleep(0.5)
+
+    # 4. Effacer le texte existant et ecrire le nouveau
+    # Select all + delete
+    for _ in range(len(highlight_name) + 5):
+        await driver.ht._call("press_key", {"key": "delete"})
+        await asyncio.sleep(0.05)
+    await asyncio.sleep(0.3)
+    await driver.ht.type_text(new_name)
+    await asyncio.sleep(0.5)
+
+    # 5. Valider
+    done = await driver.find_element(text="Termin", contains=True, clickable=True, refresh=True)
+    if not done:
+        done = await driver.find_element(text="OK", clickable=True, refresh=True)
+    if done:
+        await driver.ht.tap(done["tap"]["x"], done["tap"]["y"])
+    else:
+        await _tap_done(driver, log)
+    await asyncio.sleep(1)
+
+    log("   highlight renomme -> '%s'" % new_name)
+    return True
+
+
+async def delete_highlight(driver, highlight_name, log=print):
+    """Supprime un highlight existant.
+
+    Flow: Profil → long press highlight → "Supprimer le contenu à la une" → confirmer
+
+    Args:
+        highlight_name: nom du highlight a supprimer
+    """
+    log("   [highlight] supprimer '%s'" % highlight_name)
+
+    # 1. Long press sur le highlight
+    if not await _long_press_highlight(driver, highlight_name, log):
+        return False
+
+    # 2. Tap "Supprimer le contenu à la une"
+    el = await driver.find_element(text="Supprimer le contenu", contains=True, clickable=True, refresh=True)
+    if not el:
+        log("   ! 'Supprimer le contenu' non trouve")
+        return False
+    await driver.ht.tap(el["tap"]["x"], el["tap"]["y"])
+    await asyncio.sleep(1.5)
+
+    # 3. Confirmer la suppression
+    confirm = await driver.find_element(text="Supprimer", clickable=True, refresh=True)
+    if confirm:
+        await driver.ht.tap(confirm["tap"]["x"], confirm["tap"]["y"])
+        await asyncio.sleep(1)
+    else:
+        log("   ! bouton confirmation non trouve")
+        return False
+
+    log("   highlight '%s' supprime" % highlight_name)
+    return True
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Sticker Texte
 # ═══════════════════════════════════════════════════════════════════════════
