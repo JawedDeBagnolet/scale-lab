@@ -256,6 +256,9 @@ class CampagneBase(BaseModel):
     icon: str | None = Field(default=None, max_length=50)
     persona_id: UUID | None = None
     plateforme: str | None = Field(default=None, max_length=10)
+    post_type: str | None = Field(default=None, max_length=20)
+    collection_id: UUID | None = None
+    accounts: list | None = None
     status: str = Field(default="draft", max_length=20)
     scenarios: list | None = None
     waves: list[dict] | None = None
@@ -271,6 +274,9 @@ class CampagneUpdate(BaseModel):
     icon: str | None = Field(default=None, max_length=50)
     persona_id: UUID | None = None
     plateforme: str | None = Field(default=None, max_length=10)
+    post_type: str | None = Field(default=None, max_length=20)
+    collection_id: UUID | None = None
+    accounts: list | None = None
     status: str | None = Field(default=None, max_length=20)
     scenarios: list | None = None
     waves: list[dict] | None = None
@@ -279,6 +285,9 @@ class CampagneUpdate(BaseModel):
 
 class CampagneOut(CampagneBase):
     id: UUID
+    last_posted_at: datetime | None = None
+    post_count: int = 0
+    rotation_index: int = 0
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}

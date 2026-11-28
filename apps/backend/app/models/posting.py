@@ -217,10 +217,18 @@ class Campagne(Base):
         UUID(as_uuid=True), ForeignKey("personas.id", ondelete="SET NULL")
     )
     plateforme: Mapped[str | None] = mapped_column(String(10))
+    post_type: Mapped[str | None] = mapped_column(String(20))  # post, reel, story, carousel
+    collection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("collections.id", ondelete="SET NULL")
+    )
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft, active, paused, done
+    accounts: Mapped[list | None] = mapped_column(JSONB, default=list)  # list of compte UUIDs
     scenarios: Mapped[list | None] = mapped_column(JSONB, default=list)  # scenario IDs
     waves: Mapped[list[dict] | None] = mapped_column(JSONB, default=list)  # vagues
-    planning: Mapped[dict | None] = mapped_column(JSONB, default=dict)
+    planning: Mapped[dict | None] = mapped_column(JSONB, default=dict)  # {mode, freq, from_h, to_h, days, delay}
+    last_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    post_count: Mapped[int] = mapped_column(Integer, default=0)
+    rotation_index: Mapped[int] = mapped_column(Integer, default=0)  # current position in collection rotation
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

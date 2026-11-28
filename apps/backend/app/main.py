@@ -34,6 +34,8 @@ from app.ws import ws_logs
 async def lifespan(app: FastAPI):
     await execution_engine.start()
     await usb_monitor.start()
+    from app.services.campaign_scheduler import start_campaign_scheduler
+    start_campaign_scheduler()
     yield
     await usb_monitor.stop()
     await execution_engine.stop()

@@ -4806,7 +4806,7 @@ class Component extends DCLogic {
     const accs = Object.keys(w.accs).filter(k => w.accs[k]);
     const nDays = w.days.filter(Boolean).length;
     const c = { id: 'c' + Date.now(), name: w.name.trim() || per.name + ' · ' + ty.label + ' #' + (this.state.camps.length + 1), icon: w.icon, mode: w.mode, persona: w.persona, plat: w.plat, type: w.type, accounts: accs, coll: w.coll, status: 'active', start: w.start === 'now' ? Date.now() : this.today0() + 864e5, fromM: w.fromM, toM: w.toM, from: Math.floor(w.fromM / 60), to: Math.ceil(w.toM / 60), freq: w.freq, published: 0, planned: accs.length * w.freq * nDays * 2, delay: +w.delay || 0, feed: w.feed ? this.feedNorm(w.feedCfg) : null };
-    const SD = window.SCALE_DATA; if (SD && SD._live) { const res = SD.apiPost('/posting/campagnes', { name: c.name, icon: c.icon || null, persona_id: c.persona || null, plateforme: c.plat, status: c.status, planning: { mode: c.mode, type: c.type, from: c.from, to: c.to, freq: c.freq, delay: c.delay } }); if (res && res.id) c.id = res.id; }
+    const SD = window.SCALE_DATA; if (SD && SD._live) { const res = SD.apiPost('/posting/campagnes', { name: c.name, icon: c.icon || null, persona_id: c.persona || null, plateforme: c.plat, post_type: c.type, collection_id: c.coll || null, accounts: accs, status: c.status, planning: { mode: c.mode, type: c.type, from: c.from, to: c.to, freq: c.freq, delay: c.delay, days: w.days, fromM: w.fromM, toM: w.toM } }); if (res && res.id) c.id = res.id; }
     this.setState(x => ({ camps: [c].concat(x.camps), wiz: null, tab: 'camp' }));
     this.toastMsg('Campagne lancée · ' + c.name);
   }
